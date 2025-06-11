@@ -54,6 +54,10 @@ export default function PixelGrid() {
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    // If the click is on a map pixel, don't start dragging for pan.
+    if ((e.target as HTMLElement).closest('.map-pixel')) {
+      return; 
+    }
     setIsDragging(true);
     setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
   };
@@ -74,6 +78,23 @@ export default function PixelGrid() {
     if (hoverTimeout) clearTimeout(hoverTimeout);
   };
 
+  const handlePixelClick = (event: React.MouseEvent) => {
+    const pixelElement = (event.target as HTMLElement).closest('.map-pixel');
+    if (pixelElement) {
+      if (hoverTimeout) clearTimeout(hoverTimeout); // Clear any pending hover timeout
+
+      const pixelId = pixelElement.getAttribute('data-pixel-id') || 'unknown-pixel';
+      const regionId = pixelElement.getAttribute('data-region-id') || 'unknown-region';
+      const svgX = parseInt(pixelElement.getAttribute('x') || "0", 10);
+      const svgY = parseInt(pixelElement.getAttribute('y') || "0", 10);
+
+      console.log(`Pixel clicked: ${pixelId}, Region: ${regionId}, SVG Coords: (${svgX}, ${svgY})`);
+      
+      setSelectedPixel({ x: svgX, y: svgY });
+      setShowAiModal(true); 
+    }
+  };
+
   const handlePixelHover = (x: number, y: number) => {
     if (hoverTimeout) clearTimeout(hoverTimeout);
     const timeoutId = setTimeout(() => {
@@ -90,12 +111,9 @@ export default function PixelGrid() {
   const handleGenerateDescription = useCallback(async () => {
     if (!selectedPixel || !svgContainerRef.current) return;
     setIsGeneratingDesc(true);
-    setPixelDescription(null); // Clear previous description
+    setPixelDescription(null); 
 
     try {
-        // Capture a portion of the SVG around the pixel
-        // This is a simplified approach. Real-world SVG to image conversion is complex.
-        // For a robust solution, consider server-side rendering or a library like html2canvas.
         const svgElement = svgContainerRef.current.querySelector('svg');
         if (!svgElement) {
           toast({ title: "Erro", description: "Não foi possível encontrar o elemento SVG.", variant: "destructive" });
@@ -104,14 +122,13 @@ export default function PixelGrid() {
           return;
         }
 
-        // Create a temporary SVG with a viewBox centered on the pixel
         const tempSvg = svgElement.cloneNode(true) as SVGSVGElement;
-        const viewBoxSize = 200; // Size of the surrounding area to capture
-        const mapPixelSize = PIXEL_SIZE * zoom; // This needs to be adjusted based on actual SVG coordinate system
-        const pixelSvgX = selectedPixel.x * mapPixelSize + position.x; // This needs to be accurate
-        const pixelSvgY = selectedPixel.y * mapPixelSize + position.y; // This needs to be accurate
+        const viewBoxSize = 200; 
+        // The selectedPixel.x and selectedPixel.y are now SVG coordinates
+        const pixelSvgX = selectedPixel.x; 
+        const pixelSvgY = selectedPixel.y; 
         
-        tempSvg.setAttribute('viewBox', `${pixelSvgX - viewBoxSize/2} ${pixelSvgY - viewBoxSize/2} ${viewBoxSize} ${viewBoxSize}`);
+        tempSvg.setAttribute('viewBox', `${pixelSvgX - viewBoxSize/2 + PIXEL_SIZE / 2} ${pixelSvgY - viewBoxSize/2 + PIXEL_SIZE / 2} ${viewBoxSize} ${viewBoxSize}`);
         tempSvg.setAttribute('width', `${viewBoxSize}`);
         tempSvg.setAttribute('height', `${viewBoxSize}`);
         
@@ -119,8 +136,8 @@ export default function PixelGrid() {
         const surroundingAreaImageDataUri = `data:image/svg+xml;base64,${btoa(svgString)}`;
 
         const input: GeneratePixelDescriptionInput = {
-            x: selectedPixel.x,
-            y: selectedPixel.y,
+            x: selectedPixel.x, // SVG x coordinate
+            y: selectedPixel.y, // SVG y coordinate
             surroundingAreaImageDataUri,
         };
         const result = await generatePixelDescription(input);
@@ -132,9 +149,10 @@ export default function PixelGrid() {
         toast({ title: "Erro na IA", description: "Não foi possível gerar a descrição.", variant: "destructive" });
     } finally {
         setIsGeneratingDesc(false);
-        setShowAiModal(false);
+        // Keep AI modal open if description was generated or failed, user closes manually or via button
+        // setShowAiModal(false); // Let's not close it automatically
     }
-  }, [selectedPixel, zoom, position, toast]);
+  }, [selectedPixel, toast]);
 
 
   useEffect(() => {
@@ -157,9 +175,9 @@ export default function PixelGrid() {
               width: `${PIXEL_SIZE * zoom}px`,
               height: `${PIXEL_SIZE * zoom}px`,
             }}
-            onMouseEnter={() => handlePixelHover(x,y)}
-            onMouseLeave={handlePixelLeave}
-            onClick={() => setSelectedPixel({x, y})} // Also select on click for mobile
+            // onMouseEnter={() => handlePixelHover(x,y)} // Click is primary now for SVG
+            // onMouseLeave={handlePixelLeave}
+            // onClick={() => setSelectedPixel({x, y})} // Click is handled by svgContainerRef for SVG pixels
           />
         );
       }
@@ -229,7 +247,7 @@ export default function PixelGrid() {
           <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center z-50">
               <Sparkles className="h-16 w-16 text-primary animate-pulse" />
               <p className="mt-4 text-lg font-headline">A IA está a gerar a descrição...</p>
-              <Progress value={50} className="w-1/2 mt-4" /> {/* Placeholder progress */}
+              <Progress value={50} className="w-1/2 mt-4" /> 
           </div>
       )}
       
@@ -241,11 +259,11 @@ export default function PixelGrid() {
                 Gerar Descrição com IA
             </DialogTitle>
             <DialogDescription>
-              A IA pode analisar a área ao redor do pixel ({selectedPixel?.x}, {selectedPixel?.y}) e gerar uma descrição. Deseja continuar?
+              Analisar a área ao redor do pixel ({selectedPixel?.x}, {selectedPixel?.y}) para gerar uma descrição?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setShowAiModal(false)}>Cancelar</Button>
+            <Button variant="ghost" onClick={() => { setShowAiModal(false); setPixelDescription(null); setSelectedPixel(null); }}>Cancelar</Button>
             <Button onClick={handleGenerateDescription} disabled={isGeneratingDesc}>
               {isGeneratingDesc ? "A gerar..." : "Gerar Descrição"}
             </Button>
@@ -263,7 +281,7 @@ export default function PixelGrid() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-popover-foreground">{pixelDescription}</p>
-            <Button variant="outline" size="sm" className="mt-3" onClick={() => setPixelDescription(null)}>Fechar</Button>
+            <Button variant="outline" size="sm" className="mt-3" onClick={() => {setPixelDescription(null); setSelectedPixel(null); setShowAiModal(false);}}>Fechar</Button>
           </CardContent>
         </Card>
       )}
@@ -275,6 +293,7 @@ export default function PixelGrid() {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
+        onClick={handlePixelClick} 
       >
         <div 
           style={{
@@ -283,14 +302,12 @@ export default function PixelGrid() {
             transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`,
             transition: isDragging ? 'none' : 'transform 0.1s ease-out',
           }}
-          className="text-foreground/10" // Color for the SVG paths
+          className="text-foreground/10" 
         >
           <PortugalMapSvg />
-          {/* Fallback grid logic is removed as SVG should be primary display. If needed, can be added here. */}
         </div>
       </div>
       
-      {/* Floating Action Button Menu */}
       <div className="absolute bottom-6 right-6 z-20">
         <Dialog>
           <DialogTrigger asChild>
@@ -319,4 +336,3 @@ export default function PixelGrid() {
     </div>
   );
 }
-
