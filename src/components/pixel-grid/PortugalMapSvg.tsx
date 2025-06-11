@@ -21,9 +21,10 @@ export default function PortugalMapSvg({ className }: { className?: string }) {
         <path data-z="362" className="z z362" d="M4190 24601l131 0 66 98 33 130 -99 195 -99 65 -98 196 -99 32 -99 -32 -124 -8 -107 -57 -296 65 -99 195 -33 -97 -99 -33 -99 65 -33 -98 66 -195 -33 -98 132 -195 33 -98 99 -32 33 -98 66 -65 132 0 197 -65 99 32 99 65 231 33z"/>
         <path data-z="361" className="z z361" d="M2910 24421l0 -130 126 82 33 98 198 65 99 65 -33 98 -99 32 -33 98 -132 195 33 98 -66 195 33 98 -164 33 -99 163 -99 65 -99 97 -187 85 65 -196 -33 -131 98 -32 98 -196 33 -131 -66 -228 98 -163 66 -131 130 -229z"/>
         
-        <circle cx="7500" cy="25500" r="50" fill="hsl(var(--primary))" class="map-pixel hover:opacity-70 cursor-pointer" data-pixel-id="faro-1" data-region-id="D18-Faro" />
-        <circle cx="7000" cy="26000" r="40" fill="hsl(var(--accent))" class="map-pixel hover:opacity-70 cursor-pointer" data-pixel-id="faro-2" data-region-id="D18-Faro" />
-        <circle cx="6500" cy="25000" r="60" fill="hsl(var(--primary))" class="map-pixel hover:opacity-70 cursor-pointer" data-pixel-id="faro-3" data-region-id="D18-Faro" />
+        <rect x="7450" y="25450" width="50" height="50" fill="hsl(var(--muted))" stroke="hsl(var(--border))" strokeWidth="5" class="map-pixel hover:opacity-70 cursor-pointer" data-pixel-id="faro-px-001" data-region-id="D18-Faro" />
+        <rect x="7510" y="25450" width="50" height="50" fill="hsl(var(--accent))" stroke="hsl(var(--border))" strokeWidth="5" class="map-pixel hover:opacity-70 cursor-pointer" data-pixel-id="faro-px-002" data-region-id="D18-Faro" />
+        <rect x="7000" y="25950" width="50" height="50" fill="hsl(var(--primary))" stroke="hsl(var(--border))" strokeWidth="5" class="map-pixel hover:opacity-70 cursor-pointer" data-pixel-id="faro-px-003" data-region-id="D18-Faro" />
+        <rect x="6550" y="25050" width="50" height="50" fill="hsl(var(--muted))" stroke="hsl(var(--border))" strokeWidth="5" class="map-pixel hover:opacity-70 cursor-pointer" data-pixel-id="faro-px-004" data-region-id="D18-Faro" />
       </g>
       <g id="D17-Beja">
         <path data-z="360" className="z z360" d="M6957 24177l-99 33 -99 33 -98 32 -66 -195 -66 -98 -33 -195 33 -98 33 -130 -33 -98 99 -130 33 -196 -33 -163 33 -97 0 -131 -66 -195 -99 -98 132 -130 98 -33 132 0 198 -97 33 97 33 98 99 33 197 -131 99 33 66 0 66 65 -33 98 1 129 230 34 95 -41 102 41 132 -98 297 163 66 32 -45 143 -63 123 30 105 -54 85 -76 111 -33 98 -56 85 -42 111 0 131 33 98 -156 -15 -197 65 -99 65 -99 33 -99 -33 -132 0 -99 33 -98 33 -99 32 -99 65 -99 65z"/>
@@ -320,9 +321,9 @@ export default function PortugalMapSvg({ className }: { className?: string }) {
         <path data-z="100" className="z z100" d="M3893 1086l-165 -33 99 -130 33 -98 -66 -97 33 -98 30 -75 66 -131 163 -32 261 32 196 -65 131 33 -56 173 0 97 99 66 33 97 33 228 -132 -97 -297 97 -263 0 -198 33z"/>
         <path data-z="99" className="z z99" d="M5079 858l-165 32 -33 98 -98 65 -33 -228 -33 -97 -99 -66 0 -97 56 -173 32 -98 294 -196 196 -98 33 98 -33 131 65 228 98 -65 131 0 98 32 32 98 0 131 -65 98 -98 33 -32 98 -98 65 -33 98 -98 65 -65 229 -52 -123 33 -130 66 -196 -99 -32z"/>
         
-        <circle cx="3500" cy="1500" r="50" fill="hsl(var(--primary))" class="map-pixel hover:opacity-70 cursor-pointer" data-pixel-id="viana-1" data-region-id="D01-Viana_do_Castelo" />
-        <circle cx="4000" cy="2000" r="40" fill="hsl(var(--accent))" class="map-pixel hover:opacity-70 cursor-pointer" data-pixel-id="viana-2" data-region-id="D01-Viana_do_Castelo" />
-        <circle cx="3300" cy="2500" r="60" fill="hsl(var(--primary))" class="map-pixel hover:opacity-70 cursor-pointer" data-pixel-id="viana-3" data-region-id="D01-Viana_do_Castelo" />
+        <rect x="3450" y="1450" width="50" height="50" fill="hsl(var(--primary))" stroke="hsl(var(--border))" strokeWidth="5" class="map-pixel hover:opacity-70 cursor-pointer" data-pixel-id="viana-px-001" data-region-id="D01-Viana_do_Castelo" />
+        <rect x="3950" y="1950" width="50" height="50" fill="hsl(var(--accent))" stroke="hsl(var(--border))" strokeWidth="5" class="map-pixel hover:opacity-70 cursor-pointer" data-pixel-id="viana-px-002" data-region-id="D01-Viana_do_Castelo" />
+        <rect x="3250" y="2450" width="50" height="50" fill="hsl(var(--muted))" stroke="hsl(var(--border))" strokeWidth="5" class="map-pixel hover:opacity-70 cursor-pointer" data-pixel-id="viana-px-003" data-region-id="D01-Viana_do_Castelo" />
       </g>
     </svg>
   );
