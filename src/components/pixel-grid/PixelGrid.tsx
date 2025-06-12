@@ -37,8 +37,10 @@ export default function PixelGrid() {
   const [pixelDescription, setPixelDescription] = useState<string | null>(null);
   const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
   const [showAiModal, setShowAiModal] = useState(false);
-  const [progressValue, setProgressValue] = useState(0); 
-  
+  const [progressValue, setProgressValue] = useState(0);
+  const [initialProgress, setInitialProgress] = useState(0);
+
+
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [mapPath2D, setMapPath2D] = useState<Path2D | null>(null);
@@ -63,10 +65,14 @@ export default function PixelGrid() {
 
     canvas.width = canvasDrawWidth;
     canvas.height = canvasDrawHeight;
-    
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = 'rgba(160, 160, 160, 0.7)'; 
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)'; 
+    ctx.fillStyle = 'rgba(180, 180, 180, 0.8)'; // Cor de preenchimento mais clara e opaca
+    ctx.strokeStyle = 'rgba(40, 40, 40, 0.6)'; // Contorno mais escuro e mais opaco
+    ctx.lineWidth = 0.2; // Espessura da linha do contorno do pixel (já escala com o zoom do canvas)
+    ctx.lineCap = 'butt';
+    ctx.lineJoin = 'miter';
+
 
     const scaleXToSvg = SVG_VIEWBOX_WIDTH / canvasDrawWidth;
     const scaleYToSvg = SVG_VIEWBOX_HEIGHT / canvasDrawHeight;
@@ -75,13 +81,38 @@ export default function PixelGrid() {
       for (let c = 0; c < logicalGridCols; c++) {
         const pixelCanvasX = c * renderedPixelSize;
         const pixelCanvasY = r * renderedPixelSize;
-        const pixelCenterXCanvas = pixelCanvasX + renderedPixelSize / 2;
-        const pixelCenterYCanvas = pixelCanvasY + renderedPixelSize / 2;
 
-        const svgCoordX = pixelCenterXCanvas * scaleXToSvg;
-        const svgCoordY = pixelCenterYCanvas * scaleYToSvg;
+        // Coordenadas dos 4 cantos no canvas
+        const cornersCanvas = [
+          { x: pixelCanvasX, y: pixelCanvasY }, // Top-left
+          { x: pixelCanvasX + renderedPixelSize, y: pixelCanvasY }, // Top-right
+          { x: pixelCanvasX, y: pixelCanvasY + renderedPixelSize }, // Bottom-left
+          { x: pixelCanvasX + renderedPixelSize, y: pixelCanvasY + renderedPixelSize }, // Bottom-right
+        ];
+
+        let isPixelInsideMap = false;
+        for (const corner of cornersCanvas) {
+          const svgCoordX = corner.x * scaleXToSvg;
+          const svgCoordY = corner.y * scaleYToSvg;
+          if (ctx.isPointInPath(mapPath2D, svgCoordX, svgCoordY)) {
+            isPixelInsideMap = true;
+            break; 
+          }
+        }
         
-        if (ctx.isPointInPath(mapPath2D, svgCoordX, svgCoordY)) {
+        // Adicionalmente, verificar o centro para casos onde todos os cantos estão fora mas o centro está dentro (pixels maiores que detalhes finos)
+        if (!isPixelInsideMap) {
+            const pixelCenterXCanvas = pixelCanvasX + renderedPixelSize / 2;
+            const pixelCenterYCanvas = pixelCanvasY + renderedPixelSize / 2;
+            const svgCenterCoordX = pixelCenterXCanvas * scaleXToSvg;
+            const svgCenterCoordY = pixelCenterYCanvas * scaleYToSvg;
+            if (ctx.isPointInPath(mapPath2D, svgCenterCoordX, svgCenterCoordY)) {
+                isPixelInsideMap = true;
+            }
+        }
+
+
+        if (isPixelInsideMap) {
           ctx.fillRect(
             pixelCanvasX,
             pixelCanvasY,
@@ -105,39 +136,47 @@ export default function PixelGrid() {
     }
     if (containerRef.current) {
         const { offsetWidth: containerWidth, offsetHeight: containerHeight } = containerRef.current;
-        const initialZoom = 1; 
+        const initialZoom = 1;
         const canvasContentWidth = canvasDrawWidth * initialZoom;
         const canvasContentHeight = canvasDrawHeight * initialZoom;
-        setPosition({ 
-            x: (containerWidth - canvasContentWidth) / 2, 
-            y: (containerHeight - canvasContentHeight) / 2 
+        setPosition({
+            x: (containerWidth - canvasContentWidth) / 2,
+            y: (containerHeight - canvasContentHeight) / 2
         });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drawPixelsOnCanvas, mapPath2D]);
 
-  useEffect(() => {
+
+ useEffect(() => {
     let animationFrameId: number;
     if (isGeneratingDesc) {
-      setProgressValue(0);
+      setInitialProgress(0); // Reset initialProgress as well
       let currentProgress = 0;
       const animateProgress = () => {
-        currentProgress += 2; 
+        currentProgress += 2;
         if (currentProgress <= 75) {
           setProgressValue(currentProgress);
           animationFrameId = requestAnimationFrame(animateProgress);
-        } else if (currentProgress < 90) { 
-           setProgressValue(75 + Math.floor(Math.random() * 15));
-           animationFrameId = requestAnimationFrame(animateProgress); 
+        } else if (currentProgress < 90) {
+          setProgressValue(75 + Math.floor(Math.random() * 15));
+          animationFrameId = requestAnimationFrame(animateProgress);
         }
       };
       animationFrameId = requestAnimationFrame(animateProgress);
     } else {
+      // Only update if progressValue was actively changing (not just initial 0)
       if (progressValue > 0 && progressValue < 100) {
-        setProgressValue(100); 
-        setTimeout(() => setProgressValue(0), 500); 
+        setProgressValue(100);
+        setTimeout(() => {
+          setProgressValue(0);
+          setInitialProgress(0); // Ensure it resets for next time
+        }, 500);
       } else if (progressValue === 100) {
-        setTimeout(() => setProgressValue(0), 500);
+         setTimeout(() => {
+          setProgressValue(0);
+          setInitialProgress(0); // Ensure it resets for next time
+        }, 500);
       }
     }
     return () => {
@@ -151,7 +190,7 @@ export default function PixelGrid() {
 
   const handleZoomIn = () => setZoom((prevZoom) => Math.min(prevZoom * 1.2, 10));
   const handleZoomOut = () => setZoom((prevZoom) => Math.max(prevZoom / 1.2, 0.05));
-  
+
   const handleResetView = useCallback(() => {
     const currentZoom = 1;
     setZoom(currentZoom);
@@ -159,28 +198,39 @@ export default function PixelGrid() {
         const { offsetWidth: containerWidth, offsetHeight: containerHeight } = containerRef.current;
         const canvasContentWidth = canvasDrawWidth * currentZoom;
         const canvasContentHeight = canvasDrawHeight * currentZoom;
-        setPosition({ 
-            x: (containerWidth - canvasContentWidth) / 2, 
-            y: (containerHeight - canvasContentHeight) / 2 
+        setPosition({
+            x: (containerWidth - canvasContentWidth) / 2,
+            y: (containerHeight - canvasContentHeight) / 2
         });
     }
   }, [canvasDrawWidth, canvasDrawHeight]);
 
   useEffect(() => {
-    handleResetView(); 
+    handleResetView();
   }, [handleResetView]);
 
 
  const handleMouseDown = (e: React.MouseEvent) => {
+    // Check if the click is on the canvas itself or its direct container.
+    // Prevent dragging if the click is on UI controls or dialogs.
     const targetElement = e.target as HTMLElement;
-    if (targetElement === canvasRef.current) { 
-      // If click is on canvas, let handleCanvasClick manage it
+    if (
+      targetElement.closest('button, input, [role="slider"], [data-dialog-content], [role="dialog"]') ||
+      (canvasRef.current && targetElement !== canvasRef.current && targetElement !== containerRef.current && !containerRef.current?.contains(targetElement))
+    ) {
+      // If it's a UI control or outside the interactive area (but not canvas), don't drag.
+      if (targetElement === canvasRef.current){
+         // If it is the canvas, let handleCanvasClick manage it.
+      } else {
+         return;
+      }
+    }
+    // If click is on canvas, let handleCanvasClick manage it later
+    if (targetElement === canvasRef.current) {
+      // Do not setIsDragging true here, canvas click will handle selection
       return;
     }
-    // Prevent dragging if the click is on UI controls
-    if (targetElement.closest('button, input, [role="slider"], [data-dialog-content], [role="dialog"]')) {
-      return; 
-    }
+
     setIsDragging(true);
     setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
   };
@@ -196,15 +246,15 @@ export default function PixelGrid() {
   const handleMouseUpOrLeave = () => {
     setIsDragging(false);
   };
-  
+
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current || !mapPath2D) return;
     const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect(); 
+    const rect = canvas.getBoundingClientRect();
 
     const clickXInCanvasElement = event.clientX - rect.left;
     const clickYInCanvasElement = event.clientY - rect.top;
-    
+
     const scaleXFromElementToBuffer = canvas.width / rect.width;
     const scaleYFromElementToBuffer = canvas.height / rect.height;
 
@@ -215,9 +265,10 @@ export default function PixelGrid() {
     const logicalRow = Math.floor(canvasBufferY / renderedPixelSize);
 
     if (logicalCol >= 0 && logicalCol < logicalGridCols && logicalRow >= 0 && logicalRow < logicalGridRows) {
+      // Check if the center of the clicked logical pixel is inside the map path
       const pixelCenterXCanvas = (logicalCol + 0.5) * renderedPixelSize;
       const pixelCenterYCanvas = (logicalRow + 0.5) * renderedPixelSize;
-      
+
       const scaleXToSvg = SVG_VIEWBOX_WIDTH / canvasDrawWidth;
       const scaleYToSvg = SVG_VIEWBOX_HEIGHT / canvasDrawHeight;
       const svgCoordX = pixelCenterXCanvas * scaleXToSvg;
@@ -227,7 +278,8 @@ export default function PixelGrid() {
       if (ctx && ctx.isPointInPath(mapPath2D, svgCoordX, svgCoordY)) {
         setSelectedPixel({ x: logicalCol, y: logicalRow });
         setShowAiModal(true);
-        setPixelDescription(null); 
+        setPixelDescription(null);
+        setInitialProgress(Math.random()); // Trigger useEffect for progress animation
       } else {
         setSelectedPixel(null);
       }
@@ -239,7 +291,7 @@ export default function PixelGrid() {
   const handleGenerateDescription = useCallback(async () => {
     if (!selectedPixel) return;
     setIsGeneratingDesc(true);
-    setPixelDescription(null); 
+    setPixelDescription(null);
 
     try {
         const input: GeneratePixelDescriptionInput = {
@@ -249,16 +301,16 @@ export default function PixelGrid() {
         };
         const result = await generatePixelDescription(input);
         setPixelDescription(result.description);
-        setProgressValue(100); 
+        setProgressValue(100);
         toast({ title: "Descrição Gerada", description: "A IA gerou uma descrição para o pixel." });
     } catch (error) {
         console.error("Error generating pixel description:", error);
         setPixelDescription("Falha ao gerar descrição.");
-        setProgressValue(100); 
+        setProgressValue(100);
         toast({ title: "Erro na IA", description: "Não foi possível gerar a descrição.", variant: "destructive" });
     } finally {
         setIsGeneratingDesc(false);
-        setTimeout(() => setProgressValue(0), 1000);
+        // setTimeout is handled by useEffect for progressValue
     }
   }, [selectedPixel, toast]);
 
@@ -309,13 +361,14 @@ export default function PixelGrid() {
           <p>Total Pixels: ~{(logicalGridCols * logicalGridRows / 1000000).toFixed(2)}M</p>
         </div>
       </div>
-      
+
       <Dialog open={showAiModal} onOpenChange={(isOpen) => {
           setShowAiModal(isOpen);
-          if (!isOpen) { 
+          if (!isOpen) {
               setPixelDescription(null);
-              setIsGeneratingDesc(false); 
+              setIsGeneratingDesc(false);
               setProgressValue(0);
+              setInitialProgress(0);
           }
       }}>
         <DialogContent className="sm:max-w-[425px] bg-card" data-dialog-content>
@@ -328,14 +381,14 @@ export default function PixelGrid() {
               O que gostaria de fazer com este pixel?
             </DialogDescription>
           </DialogHeader>
-          {(isGeneratingDesc || (progressValue > 0 && progressValue < 100)) && (
+          {(isGeneratingDesc || (progressValue > 0 && progressValue < 100 && initialProgress !== 0)) && (
             <div className="flex flex-col items-center justify-center my-4">
               <Sparkles className="h-12 w-12 text-primary animate-pulse mb-2" />
               <p className="text-sm font-headline">A IA está a gerar a descrição...</p>
               <Progress value={progressValue} className="w-full mt-2" />
             </div>
           )}
-          {pixelDescription && !isGeneratingDesc && progressValue === 0 && (
+          {pixelDescription && !isGeneratingDesc && progressValue === 0 && initialProgress === 0 && (
             <div className="my-4 p-3 bg-background/50 rounded-md">
                 <p className="text-sm font-semibold mb-1 text-primary">Descrição da IA:</p>
                 <p className="text-sm text-foreground">{pixelDescription}</p>
@@ -358,32 +411,32 @@ export default function PixelGrid() {
         onMouseUp={handleMouseUpOrLeave}
         onMouseLeave={handleMouseUpOrLeave}
       >
-        <div 
+        <div
           style={{
             transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`,
             transition: isDragging ? 'none' : 'transform 0.05s ease-out',
-            width: `${canvasDrawWidth}px`, 
+            width: `${canvasDrawWidth}px`,
             height: `${canvasDrawHeight}px`,
-            transformOrigin: 'top left', 
-            position: 'relative', 
+            transformOrigin: 'top left',
+            position: 'relative',
           }}
         >
-          <PortugalMapSvg 
+          <PortugalMapSvg
             className="absolute top-0 left-0 w-full h-full text-foreground/10 pointer-events-none z-0"
             onMapPathLoaded={handleMapPathLoaded}
           />
-          <canvas 
+          <canvas
             ref={canvasRef}
             onClick={handleCanvasClick}
-            className="absolute top-0 left-0 z-10" 
-            style={{ 
-              width: '100%', 
+            className="absolute top-0 left-0 z-10"
+            style={{
+              width: '100%',
               height: '100%',
-            }} 
+            }}
           />
         </div>
       </div>
-      
+
       <div className="absolute bottom-6 right-6 z-20">
         <Dialog>
           <DialogTrigger asChild>
@@ -411,4 +464,3 @@ export default function PixelGrid() {
     </div>
   );
 }
-
