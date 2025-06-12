@@ -18,13 +18,13 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogTrigger, // Correctly imported
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Progress } from '@/components/ui/progress';
 
 const LOGICAL_GRID_COLS = 200;
 const LOGICAL_GRID_ROWS = 200;
-const RENDERED_PIXEL_SIZE = 10;
+const RENDERED_PIXEL_SIZE = 10; // The drawn size of each logical pixel on the canvas at 1x zoom
 const PLACEHOLDER_IMAGE_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 
 export default function PixelGrid() {
@@ -36,12 +36,13 @@ export default function PixelGrid() {
   const [pixelDescription, setPixelDescription] = useState<string | null>(null);
   const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
   const [showAiModal, setShowAiModal] = useState(false);
-  const [progressValue, setProgressValue] = useState(50); // For hydration-safe progress
+  const [progressValue, setProgressValue] = useState(0); // For hydration-safe progress
   
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
 
+  // Calculate the total width and height of the canvas content based on logical grid and rendered size
   const canvasDrawWidth = LOGICAL_GRID_COLS * RENDERED_PIXEL_SIZE;
   const canvasDrawHeight = LOGICAL_GRID_ROWS * RENDERED_PIXEL_SIZE;
 
@@ -51,11 +52,15 @@ export default function PixelGrid() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Set canvas internal resolution (drawing buffer size)
     canvas.width = canvasDrawWidth;
     canvas.height = canvasDrawHeight;
     
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = 'rgba(128, 128, 128, 0.5)';
+    
+    // Example: Draw a simple grid of gray pixels
+    // In a real app, you'd fetch pixel data and draw accordingly
+    ctx.fillStyle = 'rgba(128, 128, 128, 0.5)'; // Semi-transparent gray for unowned pixels
 
     for (let r = 0; r < LOGICAL_GRID_ROWS; r++) {
       for (let c = 0; c < LOGICAL_GRID_COLS; c++) {
@@ -65,7 +70,8 @@ export default function PixelGrid() {
           RENDERED_PIXEL_SIZE,
           RENDERED_PIXEL_SIZE
         );
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        // Optional: draw a lighter border for each pixel
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)'; // Very light border
         ctx.strokeRect(
             c * RENDERED_PIXEL_SIZE,
             r * RENDERED_PIXEL_SIZE,
@@ -77,24 +83,28 @@ export default function PixelGrid() {
   }, [canvasDrawWidth, canvasDrawHeight]);
 
   useEffect(() => {
+    // Initial draw and centering
     drawPixelsOnCanvas();
     
     if (containerRef.current) {
         const { offsetWidth: containerWidth, offsetHeight: containerHeight } = containerRef.current;
+        // Calculate the scaled dimensions of the canvas content
         const canvasContentWidth = canvasDrawWidth * zoom;
         const canvasContentHeight = canvasDrawHeight * zoom;
 
+        // Center the canvas content
         setPosition({ 
             x: (containerWidth - canvasContentWidth) / 2, 
             y: (containerHeight - canvasContentHeight) / 2 
         });
     }
-  }, [drawPixelsOnCanvas, canvasDrawWidth, canvasDrawHeight, zoom]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drawPixelsOnCanvas]); // Zoom is intentionally omitted to prevent re-centering on zoom
 
   useEffect(() => {
+    // Client-side only effect for progress bar to avoid hydration mismatch
     if (isGeneratingDesc) {
-      // Ensure this only runs on the client to avoid hydration mismatch
-      setProgressValue(Math.floor(Math.random() * 50) + 25);
+      setProgressValue(Math.floor(Math.random() * 50) + 25); 
     }
   }, [isGeneratingDesc]);
 
@@ -116,15 +126,11 @@ export default function PixelGrid() {
 
   const handleMouseDown = (e: React.MouseEvent) => {
     const targetElement = e.target as HTMLElement;
-    // Prevent dragging if click is on UI elements like buttons or sliders in the controls
-    if (targetElement.closest('button, input, [role="slider"]')) {
+    if (targetElement.closest('button, input, [role="slider"], canvas')) {
+      // If click is on canvas, let handleCanvasClick take over
+      // Otherwise, if it's another UI element, prevent drag
       return;
     }
-    // If the click target is the canvas itself, let the canvas's onClick handle it, don't start a pan.
-    if (targetElement.tagName === 'CANVAS' || targetElement.closest('canvas')) {
-      return;
-    }
-
     setIsDragging(true);
     setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
   };
@@ -143,23 +149,29 @@ export default function PixelGrid() {
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current) return;
     const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
+    const rect = canvas.getBoundingClientRect(); // Gets the *rendered* size and position of the canvas
 
-    const clickXInTransformedSpace = event.clientX - rect.left;
-    const clickYInTransformedSpace = event.clientY - rect.top;
+    // Calculate click coordinates relative to the canvas element
+    const clickXInCanvasElement = event.clientX - rect.left;
+    const clickYInCanvasElement = event.clientY - rect.top;
     
+    // Convert click coordinates from canvas element space to canvas drawing buffer space
+    // This accounts for the CSS scaling of the canvas element if its width/height attributes
+    // differ from its style.width/style.height.
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
 
-    const canvasX = clickXInTransformedSpace * scaleX;
-    const canvasY = clickYInTransformedSpace * scaleY;
+    const canvasX = clickXInCanvasElement * scaleX;
+    const canvasY = clickXInCanvasElement * scaleY;
 
+    // Determine which logical pixel was clicked
     const logicalCol = Math.floor(canvasX / RENDERED_PIXEL_SIZE);
     const logicalRow = Math.floor(canvasY / RENDERED_PIXEL_SIZE);
 
     if (logicalCol >= 0 && logicalCol < LOGICAL_GRID_COLS && logicalRow >= 0 && logicalRow < LOGICAL_GRID_ROWS) {
       setSelectedPixel({ x: logicalCol, y: logicalRow });
-      setShowAiModal(true);
+      console.log(`Clicked logical pixel: (${logicalCol}, ${logicalRow})`);
+      setShowAiModal(true); // Open the AI description modal
     } else {
       setSelectedPixel(null);
     }
@@ -171,10 +183,12 @@ export default function PixelGrid() {
     setPixelDescription(null); 
 
     try {
+        // For AI, we need a data URI of the surrounding area.
+        // For now, using a placeholder. In a real app, you might capture a portion of the canvas.
         const input: GeneratePixelDescriptionInput = {
             x: selectedPixel.x,
             y: selectedPixel.y,
-            surroundingAreaImageDataUri: PLACEHOLDER_IMAGE_DATA_URI,
+            surroundingAreaImageDataUri: PLACEHOLDER_IMAGE_DATA_URI, // Placeholder
         };
         const result = await generatePixelDescription(input);
         setPixelDescription(result.description);
@@ -250,8 +264,9 @@ export default function PixelGrid() {
       
       <Dialog open={showAiModal} onOpenChange={(isOpen) => {
           setShowAiModal(isOpen);
-          if (!isOpen) {
+          if (!isOpen) { // Reset when modal closes
               setPixelDescription(null);
+              // setSelectedPixel(null); // Keep selected pixel to show coords if modal is reopened
           }
       }}>
         <DialogContent className="sm:max-w-[425px] bg-card">
@@ -278,6 +293,7 @@ export default function PixelGrid() {
         </DialogContent>
       </Dialog>
 
+      {/* Container for pan and zoom */}
       <div
         ref={containerRef}
         className="flex-grow w-full h-full cursor-grab active:cursor-grabbing overflow-hidden bg-background relative"
@@ -286,34 +302,36 @@ export default function PixelGrid() {
         onMouseUp={handleMouseUpOrLeave}
         onMouseLeave={handleMouseUpOrLeave}
       >
+        {/* This div is transformed for pan and zoom */}
         <div 
           style={{
             transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`,
             transition: isDragging ? 'none' : 'transform 0.05s ease-out',
-            width: `${canvasDrawWidth}px`,
-            height: `${canvasDrawHeight}px`,
-            transformOrigin: 'top left',
-            position: 'relative',
+            width: `${canvasDrawWidth}px`, // Intrinsic content width
+            height: `${canvasDrawHeight}px`, // Intrinsic content height
+            transformOrigin: 'top left', // Ensures scaling originates correctly
+            position: 'relative', // For absolute positioning of children if needed
           }}
         >
+          {/* SVG map as background, scaled to fit the transformed div */}
           <PortugalMapSvg 
             className="absolute top-0 left-0 w-full h-full text-foreground/10 pointer-events-none z-0"
-            clipCanvasWidth={canvasDrawWidth}
-            clipCanvasHeight={canvasDrawHeight}
           />
+          {/* Canvas for pixels, also scaled to fit the transformed div */}
           <canvas 
             ref={canvasRef}
             onClick={handleCanvasClick}
-            className="absolute top-0 left-0 z-10"
+            className="absolute top-0 left-0 z-10" // Positioned over the SVG
             style={{ 
               width: '100%', 
               height: '100%',
-              clipPath: 'url(#portugal-clip-path)'
+              clipPath: 'url(#portugal-clip-path)' // Apply clipping
             }} 
           />
         </div>
       </div>
       
+      {/* Floating Action Button */}
       <div className="absolute bottom-6 right-6 z-20">
         <Dialog>
           <DialogTrigger asChild>
@@ -332,7 +350,7 @@ export default function PixelGrid() {
               <Button variant="outline"><Sparkles className="mr-2 h-4 w-4" />Eventos Especiais</Button>
             </div>
             <DialogFooter>
-              <Button variant="ghost" onClick={() => { /* Close dialog */ }}>Fechar</Button>
+              <Button variant="ghost" onClick={() => { /* Logic to close dialog can be handled by Dialog's onOpenChange */ }}>Fechar</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
