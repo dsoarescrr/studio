@@ -1,10 +1,41 @@
+// src/components/pixel-grid/PortugalMapSvg.tsx
+'use client';
+
+import React, { useEffect, useRef } from 'react';
+
+type PortugalMapSvgProps = {
+  className?: string;
+  onMapPathLoaded?: (path: Path2D) => void;
+};
 
 // CC-BY-SA-4.0 Por: Afonso Gomes http://afonsogomes.com https://github.com/AfonsoFG/PortugalSVG
-export default function PortugalMapSvg({ className }: { className?: string }) {
+export default function PortugalMapSvg({ className, onMapPathLoaded }: PortugalMapSvgProps) {
+  const landmassPathsRef = useRef<SVGGElement>(null);
+
+  useEffect(() => {
+    if (landmassPathsRef.current && onMapPathLoaded) {
+      const combinedPath = new Path2D();
+      // Query all path elements within the ref'd group
+      const pathElements = landmassPathsRef.current.querySelectorAll('path');
+      pathElements.forEach(pathEl => {
+        const d = pathEl.getAttribute('d');
+        if (d) {
+          // Create a new Path2D for each SVG path string and add it to the combined Path2D
+          // This ensures that even non-contiguous parts of the map are included.
+          combinedPath.addPath(new Path2D(d));
+        }
+      });
+      onMapPathLoaded(combinedPath);
+    }
+  }, [onMapPathLoaded]);
+
   return (
     <svg width="100%" height="100%" viewBox="0 0 12969 26674" preserveAspectRatio="xMidYMid meet">
-      <defs>
-        <g id="portugal-landmass-paths">
+      {/* <defs>
+        Removed clipPath as it's not being used reliably with canvas
+      </defs> */}
+      {/* This group is for visual rendering and for the ref to access path data */}
+      <g id="portugal-landmass-paths" ref={landmassPathsRef} className={className} stroke="hsl(var(--border))" strokeWidth="10" fill="currentColor">
           <g id="D18-Faro">
             <path data-z="376" className="z z376" d="M8112 25289l0 131 33 130 120 112 -288 144 -30 -126 33 -98 0 -130 0 -130 -66 -98 198 65zm382 308l-84 -82 12 -132 217 46 33 219 -178 -51z"/>
             <path data-z="375" className="z z375" d="M8265 25662l-120 -112 -33 -130 0 -131 -198 -65 -99 -65 -99 -65 -33 -98 132 -391 165 -65 428 131 118 -21 0 163 23 138 42 150 -32 137 65 98 15 93 -217 -46 -12 132 84 82 -229 65z"/>
@@ -319,12 +350,7 @@ export default function PortugalMapSvg({ className }: { className?: string }) {
             <path data-z="100" className="z z100" d="M3893 1086l-165 -33 99 -130 33 -98 -66 -97 33 -98 30 -75 66 -131 163 -32 261 32 196 -65 131 33 -56 173 0 97 99 66 33 97 33 228 -132 -97 -297 97 -263 0 -198 33z"/>
             <path data-z="99" className="z z99" d="M5079 858l-165 32 -33 98 -98 65 -33 -228 -33 -97 -99 -66 0 -97 56 -173 32 -98 294 -196 196 -98 33 98 -33 131 65 228 98 -65 131 0 98 32 32 98 0 131 -65 98 -98 33 -32 98 -98 65 -33 98 -98 65 -65 229 -52 -123 33 -130 66 -196 -99 -32z"/>
           </g>
-        </g>
-        <clipPath id="portugal-clip-path">
-          <use href="#portugal-landmass-paths" />
-        </clipPath>
-      </defs>
-      <use href="#portugal-landmass-paths" className={className} stroke="hsl(var(--border))" strokeWidth="10" />
+      </g>
     </svg>
   );
 }

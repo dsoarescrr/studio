@@ -1,4 +1,3 @@
-
 // src/components/pixel-grid/PixelGrid.tsx
 'use client';
 
@@ -7,7 +6,6 @@ import { ZoomIn, ZoomOut, Expand, Search, Sparkles, MousePointer2, Palette } fro
 import PortugalMapSvg from './PortugalMapSvg';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-// import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { generatePixelDescription, type GeneratePixelDescriptionInput } from '@/ai/flows/generate-pixel-description';
 import { useToast } from '@/hooks/use-toast';
@@ -18,7 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogTrigger,
+  DialogTrigger, // Ensure DialogTrigger is imported
 } from "@/components/ui/dialog";
 import { Progress } from '@/components/ui/progress';
 
@@ -26,6 +24,8 @@ const LOGICAL_GRID_COLS = 200;
 const LOGICAL_GRID_ROWS = 200;
 const RENDERED_PIXEL_SIZE = 10; // The drawn size of each logical pixel on the canvas at 1x zoom
 const PLACEHOLDER_IMAGE_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+const SVG_VIEWBOX_WIDTH = 12969;
+const SVG_VIEWBOX_HEIGHT = 26674;
 
 export default function PixelGrid() {
   const [zoom, setZoom] = useState(1);
@@ -36,75 +36,89 @@ export default function PixelGrid() {
   const [pixelDescription, setPixelDescription] = useState<string | null>(null);
   const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
   const [showAiModal, setShowAiModal] = useState(false);
-  const [progressValue, setProgressValue] = useState(0); // For hydration-safe progress
+  const [progressValue, setProgressValue] = useState(0); 
   
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [mapPath2D, setMapPath2D] = useState<Path2D | null>(null);
   const { toast } = useToast();
 
-  // Calculate the total width and height of the canvas content based on logical grid and rendered size
   const canvasDrawWidth = LOGICAL_GRID_COLS * RENDERED_PIXEL_SIZE;
   const canvasDrawHeight = LOGICAL_GRID_ROWS * RENDERED_PIXEL_SIZE;
 
+  const handleMapPathLoaded = useCallback((path: Path2D) => {
+    setMapPath2D(path);
+  }, []);
+
   const drawPixelsOnCanvas = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || !mapPath2D) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Set canvas internal resolution (drawing buffer size)
     canvas.width = canvasDrawWidth;
     canvas.height = canvasDrawHeight;
     
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Example: Draw a simple grid of gray pixels
-    // In a real app, you'd fetch pixel data and draw accordingly
-    ctx.fillStyle = 'rgba(128, 128, 128, 0.5)'; // Semi-transparent gray for unowned pixels
+    ctx.fillStyle = 'rgba(128, 128, 128, 0.5)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+
+    // Scaling factors from canvas drawing buffer size to SVG viewBox
+    const scaleXToSvg = SVG_VIEWBOX_WIDTH / canvasDrawWidth;
+    const scaleYToSvg = SVG_VIEWBOX_HEIGHT / canvasDrawHeight;
 
     for (let r = 0; r < LOGICAL_GRID_ROWS; r++) {
       for (let c = 0; c < LOGICAL_GRID_COLS; c++) {
-        ctx.fillRect(
-          c * RENDERED_PIXEL_SIZE,
-          r * RENDERED_PIXEL_SIZE,
-          RENDERED_PIXEL_SIZE,
-          RENDERED_PIXEL_SIZE
-        );
-        // Optional: draw a lighter border for each pixel
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)'; // Very light border
-        ctx.strokeRect(
-            c * RENDERED_PIXEL_SIZE,
-            r * RENDERED_PIXEL_SIZE,
+        const pixelCanvasX = c * RENDERED_PIXEL_SIZE;
+        const pixelCanvasY = r * RENDERED_PIXEL_SIZE;
+        const pixelCenterXCanvas = pixelCanvasX + RENDERED_PIXEL_SIZE / 2;
+        const pixelCenterYCanvas = pixelCanvasY + RENDERED_PIXEL_SIZE / 2;
+
+        // Convert canvas center coords to SVG viewBox coords for isPointInPath check
+        const svgCoordX = pixelCenterXCanvas * scaleXToSvg;
+        const svgCoordY = pixelCenterYCanvas * scaleYToSvg;
+        
+        if (ctx.isPointInPath(mapPath2D, svgCoordX, svgCoordY)) {
+          ctx.fillRect(
+            pixelCanvasX,
+            pixelCanvasY,
             RENDERED_PIXEL_SIZE,
             RENDERED_PIXEL_SIZE
-        );
+          );
+          ctx.strokeRect(
+            pixelCanvasX,
+            pixelCanvasY,
+            RENDERED_PIXEL_SIZE,
+            RENDERED_PIXEL_SIZE
+          );
+        }
       }
     }
-  }, [canvasDrawWidth, canvasDrawHeight]);
+  }, [canvasDrawWidth, canvasDrawHeight, mapPath2D]);
 
   useEffect(() => {
-    // Initial draw and centering
-    drawPixelsOnCanvas();
-    
-    if (containerRef.current) {
+    if (mapPath2D) { // Only draw if we have the map path
+      drawPixelsOnCanvas();
+    }
+    if (containerRef.current && !mapPath2D) { // Center initially if map path not yet loaded
         const { offsetWidth: containerWidth, offsetHeight: containerHeight } = containerRef.current;
-        // Calculate the scaled dimensions of the canvas content
-        const canvasContentWidth = canvasDrawWidth * zoom;
-        const canvasContentHeight = canvasDrawHeight * zoom;
-
-        // Center the canvas content
+        const currentZoom = zoom; // Use current zoom for initial centering if map path is slow
+        const canvasContentWidth = canvasDrawWidth * currentZoom;
+        const canvasContentHeight = canvasDrawHeight * currentZoom;
         setPosition({ 
             x: (containerWidth - canvasContentWidth) / 2, 
             y: (containerHeight - canvasContentHeight) / 2 
         });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drawPixelsOnCanvas]); // Zoom is intentionally omitted to prevent re-centering on zoom
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drawPixelsOnCanvas, mapPath2D]); // Redraw when mapPath2D is available
 
   useEffect(() => {
-    // Client-side only effect for progress bar to avoid hydration mismatch
     if (isGeneratingDesc) {
-      setProgressValue(Math.floor(Math.random() * 50) + 25); 
+      // Avoid direct Math.random() in render path for hydration safety
+      setProgressValue(0); // Reset first
+      const timer = setTimeout(() => setProgressValue(Math.floor(Math.random() * 50) + 25), 100);
+      return () => clearTimeout(timer);
     }
   }, [isGeneratingDesc]);
 
@@ -125,10 +139,14 @@ export default function PixelGrid() {
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    // Check if the click originated on the canvas itself
+    if (e.target === canvasRef.current) {
+        // Let handleCanvasClick take over, do not initiate pan
+        return;
+    }
+    // Allow dragging if click is on the container but not on interactive elements within it
     const targetElement = e.target as HTMLElement;
-    if (targetElement.closest('button, input, [role="slider"], canvas')) {
-      // If click is on canvas, let handleCanvasClick take over
-      // Otherwise, if it's another UI element, prevent drag
+    if (targetElement.closest('button, input, [role="slider"]')) {
       return;
     }
     setIsDragging(true);
@@ -147,31 +165,38 @@ export default function PixelGrid() {
   };
   
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current) return;
+    if (!canvasRef.current || !mapPath2D) return;
     const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect(); // Gets the *rendered* size and position of the canvas
+    const rect = canvas.getBoundingClientRect(); 
 
-    // Calculate click coordinates relative to the canvas element
     const clickXInCanvasElement = event.clientX - rect.left;
     const clickYInCanvasElement = event.clientY - rect.top;
     
-    // Convert click coordinates from canvas element space to canvas drawing buffer space
-    // This accounts for the CSS scaling of the canvas element if its width/height attributes
-    // differ from its style.width/style.height.
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
+    const scaleXFromElementToBuffer = canvas.width / rect.width;
+    const scaleYFromElementToBuffer = canvas.height / rect.height;
 
-    const canvasX = clickXInCanvasElement * scaleX;
-    const canvasY = clickXInCanvasElement * scaleY;
+    const canvasBufferX = clickXInCanvasElement * scaleXFromElementToBuffer;
+    const canvasBufferY = clickYInCanvasElement * scaleYFromElementToBuffer;
 
-    // Determine which logical pixel was clicked
-    const logicalCol = Math.floor(canvasX / RENDERED_PIXEL_SIZE);
-    const logicalRow = Math.floor(canvasY / RENDERED_PIXEL_SIZE);
+    const logicalCol = Math.floor(canvasBufferX / RENDERED_PIXEL_SIZE);
+    const logicalRow = Math.floor(canvasBufferY / RENDERED_PIXEL_SIZE);
 
     if (logicalCol >= 0 && logicalCol < LOGICAL_GRID_COLS && logicalRow >= 0 && logicalRow < LOGICAL_GRID_ROWS) {
-      setSelectedPixel({ x: logicalCol, y: logicalRow });
-      console.log(`Clicked logical pixel: (${logicalCol}, ${logicalRow})`);
-      setShowAiModal(true); // Open the AI description modal
+      const pixelCenterXCanvas = (logicalCol + 0.5) * RENDERED_PIXEL_SIZE;
+      const pixelCenterYCanvas = (logicalRow + 0.5) * RENDERED_PIXEL_SIZE;
+      
+      const scaleXToSvg = SVG_VIEWBOX_WIDTH / canvasDrawWidth;
+      const scaleYToSvg = SVG_VIEWBOX_HEIGHT / canvasDrawHeight;
+      const svgCoordX = pixelCenterXCanvas * scaleXToSvg;
+      const svgCoordY = pixelCenterYCanvas * scaleYToSvg;
+
+      const ctx = canvas.getContext('2d');
+      if (ctx && ctx.isPointInPath(mapPath2D, svgCoordX, svgCoordY)) {
+        setSelectedPixel({ x: logicalCol, y: logicalRow });
+        setShowAiModal(true);
+      } else {
+        setSelectedPixel(null);
+      }
     } else {
       setSelectedPixel(null);
     }
@@ -183,12 +208,10 @@ export default function PixelGrid() {
     setPixelDescription(null); 
 
     try {
-        // For AI, we need a data URI of the surrounding area.
-        // For now, using a placeholder. In a real app, you might capture a portion of the canvas.
         const input: GeneratePixelDescriptionInput = {
             x: selectedPixel.x,
             y: selectedPixel.y,
-            surroundingAreaImageDataUri: PLACEHOLDER_IMAGE_DATA_URI, // Placeholder
+            surroundingAreaImageDataUri: PLACEHOLDER_IMAGE_DATA_URI,
         };
         const result = await generatePixelDescription(input);
         setPixelDescription(result.description);
@@ -264,9 +287,9 @@ export default function PixelGrid() {
       
       <Dialog open={showAiModal} onOpenChange={(isOpen) => {
           setShowAiModal(isOpen);
-          if (!isOpen) { // Reset when modal closes
+          if (!isOpen) { 
               setPixelDescription(null);
-              // setSelectedPixel(null); // Keep selected pixel to show coords if modal is reopened
+              // setSelectedPixel(null); // Optionally clear selection when closing modal
           }
       }}>
         <DialogContent className="sm:max-w-[425px] bg-card">
@@ -293,7 +316,6 @@ export default function PixelGrid() {
         </DialogContent>
       </Dialog>
 
-      {/* Container for pan and zoom */}
       <div
         ref={containerRef}
         className="flex-grow w-full h-full cursor-grab active:cursor-grabbing overflow-hidden bg-background relative"
@@ -302,36 +324,33 @@ export default function PixelGrid() {
         onMouseUp={handleMouseUpOrLeave}
         onMouseLeave={handleMouseUpOrLeave}
       >
-        {/* This div is transformed for pan and zoom */}
         <div 
           style={{
             transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`,
             transition: isDragging ? 'none' : 'transform 0.05s ease-out',
-            width: `${canvasDrawWidth}px`, // Intrinsic content width
-            height: `${canvasDrawHeight}px`, // Intrinsic content height
-            transformOrigin: 'top left', // Ensures scaling originates correctly
-            position: 'relative', // For absolute positioning of children if needed
+            width: `${canvasDrawWidth}px`, 
+            height: `${canvasDrawHeight}px`,
+            transformOrigin: 'top left', 
+            position: 'relative', 
           }}
         >
-          {/* SVG map as background, scaled to fit the transformed div */}
           <PortugalMapSvg 
             className="absolute top-0 left-0 w-full h-full text-foreground/10 pointer-events-none z-0"
+            onMapPathLoaded={handleMapPathLoaded}
           />
-          {/* Canvas for pixels, also scaled to fit the transformed div */}
           <canvas 
             ref={canvasRef}
-            onClick={handleCanvasClick}
-            className="absolute top-0 left-0 z-10" // Positioned over the SVG
+            onClick={handleCanvasClick} // Click handler for canvas
+            className="absolute top-0 left-0 z-10"
             style={{ 
               width: '100%', 
               height: '100%',
-              clipPath: 'url(#portugal-clip-path)' // Apply clipping
+              // clipPath: 'url(#portugal-clip-path)' // Removed as isPointInPath is used
             }} 
           />
         </div>
       </div>
       
-      {/* Floating Action Button */}
       <div className="absolute bottom-6 right-6 z-20">
         <Dialog>
           <DialogTrigger asChild>
@@ -350,7 +369,7 @@ export default function PixelGrid() {
               <Button variant="outline"><Sparkles className="mr-2 h-4 w-4" />Eventos Especiais</Button>
             </div>
             <DialogFooter>
-              <Button variant="ghost" onClick={() => { /* Logic to close dialog can be handled by Dialog's onOpenChange */ }}>Fechar</Button>
+              <Button variant="ghost" onClick={() => { /* Logic to close dialog */ }}>Fechar</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -358,5 +377,3 @@ export default function PixelGrid() {
     </div>
   );
 }
-
-    
