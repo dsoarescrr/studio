@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ZoomIn, ZoomOut, Expand, Search, Sparkles, MousePointer2, Palette, DialogTrigger } from 'lucide-react';
+import { ZoomIn, ZoomOut, Expand, Search, Sparkles, MousePointer2, Palette } from 'lucide-react';
 import PortugalMapSvg from './PortugalMapSvg';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -17,6 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Progress } from '@/components/ui/progress';
 
@@ -43,7 +44,6 @@ export default function PixelGrid() {
   const [mapPath2D, setMapPath2D] = useState<Path2D | null>(null);
   const { toast } = useToast();
 
-  // Calculate dimensions to maintain SVG aspect ratio
   const canvasDrawWidth = LOGICAL_GRID_COLS_CONFIG * RENDERED_PIXEL_SIZE_CONFIG;
   const canvasDrawHeight = Math.floor(canvasDrawWidth * (SVG_VIEWBOX_HEIGHT / SVG_VIEWBOX_WIDTH));
   const logicalGridCols = LOGICAL_GRID_COLS_CONFIG;
@@ -65,8 +65,8 @@ export default function PixelGrid() {
     canvas.height = canvasDrawHeight;
     
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = 'rgba(160, 160, 160, 0.7)'; // Brighter, more opaque pixel color
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)'; // Grid line color
+    ctx.fillStyle = 'rgba(160, 160, 160, 0.7)'; 
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)'; 
 
     const scaleXToSvg = SVG_VIEWBOX_WIDTH / canvasDrawWidth;
     const scaleYToSvg = SVG_VIEWBOX_HEIGHT / canvasDrawHeight;
@@ -88,7 +88,6 @@ export default function PixelGrid() {
             renderedPixelSize,
             renderedPixelSize
           );
-          // Draw stroke for all visible pixels to enhance grid effect
           ctx.strokeRect(
             pixelCanvasX,
             pixelCanvasY,
@@ -127,18 +126,16 @@ export default function PixelGrid() {
         if (currentProgress <= 75) {
           setProgressValue(currentProgress);
           animationFrameId = requestAnimationFrame(animateProgress);
-        } else if (currentProgress < 90) { // Simulate holding at 75-90%
+        } else if (currentProgress < 90) { 
            setProgressValue(75 + Math.floor(Math.random() * 15));
            animationFrameId = requestAnimationFrame(animateProgress); 
         }
-        // Stop animation or let it complete elsewhere
       };
       animationFrameId = requestAnimationFrame(animateProgress);
     } else {
-      // Ensure progress completes or resets when not generating
       if (progressValue > 0 && progressValue < 100) {
-        setProgressValue(100); // Quickly complete if generation finished
-        setTimeout(() => setProgressValue(0), 500); // Reset after a short delay
+        setProgressValue(100); 
+        setTimeout(() => setProgressValue(0), 500); 
       } else if (progressValue === 100) {
         setTimeout(() => setProgressValue(0), 500);
       }
@@ -147,8 +144,6 @@ export default function PixelGrid() {
       if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
       }
-      // Don't reset progress to 0 immediately on cleanup if it was completed,
-      // allow it to show 100% briefly.
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isGeneratingDesc]);
@@ -176,16 +171,20 @@ export default function PixelGrid() {
   }, [handleResetView]);
 
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    // Prevent dragging if the click is on the canvas (for pixel selection) or UI controls
+ const handleMouseDown = (e: React.MouseEvent) => {
     const targetElement = e.target as HTMLElement;
-    if (targetElement === canvasRef.current || 
-        targetElement.closest('button, input, [role="slider"], [data-dialog-content], [role="dialog"]')) {
+    if (targetElement === canvasRef.current) { 
+      // If click is on canvas, let handleCanvasClick manage it
+      return;
+    }
+    // Prevent dragging if the click is on UI controls
+    if (targetElement.closest('button, input, [role="slider"], [data-dialog-content], [role="dialog"]')) {
       return; 
     }
     setIsDragging(true);
     setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
   };
+
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging || !containerRef.current) return;
@@ -250,16 +249,15 @@ export default function PixelGrid() {
         };
         const result = await generatePixelDescription(input);
         setPixelDescription(result.description);
-        setProgressValue(100); // Mark as complete
+        setProgressValue(100); 
         toast({ title: "Descrição Gerada", description: "A IA gerou uma descrição para o pixel." });
     } catch (error) {
         console.error("Error generating pixel description:", error);
         setPixelDescription("Falha ao gerar descrição.");
-        setProgressValue(100); // Mark as complete even on error to stop animation
+        setProgressValue(100); 
         toast({ title: "Erro na IA", description: "Não foi possível gerar a descrição.", variant: "destructive" });
     } finally {
         setIsGeneratingDesc(false);
-        // Reset progress after a delay so user sees 100%
         setTimeout(() => setProgressValue(0), 1000);
     }
   }, [selectedPixel, toast]);
@@ -316,7 +314,7 @@ export default function PixelGrid() {
           setShowAiModal(isOpen);
           if (!isOpen) { 
               setPixelDescription(null);
-              setIsGeneratingDesc(false); // Ensure generation stops if modal is closed
+              setIsGeneratingDesc(false); 
               setProgressValue(0);
           }
       }}>
@@ -330,7 +328,7 @@ export default function PixelGrid() {
               O que gostaria de fazer com este pixel?
             </DialogDescription>
           </DialogHeader>
-          {(isGeneratingDesc || progressValue > 0 && progressValue < 100) && (
+          {(isGeneratingDesc || (progressValue > 0 && progressValue < 100)) && (
             <div className="flex flex-col items-center justify-center my-4">
               <Sparkles className="h-12 w-12 text-primary animate-pulse mb-2" />
               <p className="text-sm font-headline">A IA está a gerar a descrição...</p>
