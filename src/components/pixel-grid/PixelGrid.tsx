@@ -1,3 +1,4 @@
+
 // src/components/pixel-grid/PixelGrid.tsx
 'use client';
 
@@ -16,13 +17,13 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogTrigger, // Ensure DialogTrigger is imported
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Progress } from '@/components/ui/progress';
 
-const LOGICAL_GRID_COLS = 200;
-const LOGICAL_GRID_ROWS = 200;
-const RENDERED_PIXEL_SIZE = 10; // The drawn size of each logical pixel on the canvas at 1x zoom
+const LOGICAL_GRID_COLS_CONFIG = 700; // Base columns for ~1M pixels
+const RENDERED_PIXEL_SIZE_CONFIG = 2; // Visual size of each logical pixel at 1x zoom
+
 const PLACEHOLDER_IMAGE_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 const SVG_VIEWBOX_WIDTH = 12969;
 const SVG_VIEWBOX_HEIGHT = 26674;
@@ -43,8 +44,13 @@ export default function PixelGrid() {
   const [mapPath2D, setMapPath2D] = useState<Path2D | null>(null);
   const { toast } = useToast();
 
-  const canvasDrawWidth = LOGICAL_GRID_COLS * RENDERED_PIXEL_SIZE;
-  const canvasDrawHeight = LOGICAL_GRID_ROWS * RENDERED_PIXEL_SIZE;
+  // Calculate dimensions to maintain SVG aspect ratio
+  const canvasDrawWidth = LOGICAL_GRID_COLS_CONFIG * RENDERED_PIXEL_SIZE_CONFIG;
+  const canvasDrawHeight = Math.floor(canvasDrawWidth * (SVG_VIEWBOX_HEIGHT / SVG_VIEWBOX_WIDTH));
+  const logicalGridCols = LOGICAL_GRID_COLS_CONFIG;
+  const logicalGridRows = Math.floor(canvasDrawHeight / RENDERED_PIXEL_SIZE_CONFIG);
+  const renderedPixelSize = RENDERED_PIXEL_SIZE_CONFIG;
+
 
   const handleMapPathLoaded = useCallback((path: Path2D) => {
     setMapPath2D(path);
@@ -60,21 +66,19 @@ export default function PixelGrid() {
     canvas.height = canvasDrawHeight;
     
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = 'rgba(128, 128, 128, 0.5)';
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.fillStyle = 'rgba(128, 128, 128, 0.5)'; // Default pixel color
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)'; // Grid line color
 
-    // Scaling factors from canvas drawing buffer size to SVG viewBox
     const scaleXToSvg = SVG_VIEWBOX_WIDTH / canvasDrawWidth;
     const scaleYToSvg = SVG_VIEWBOX_HEIGHT / canvasDrawHeight;
 
-    for (let r = 0; r < LOGICAL_GRID_ROWS; r++) {
-      for (let c = 0; c < LOGICAL_GRID_COLS; c++) {
-        const pixelCanvasX = c * RENDERED_PIXEL_SIZE;
-        const pixelCanvasY = r * RENDERED_PIXEL_SIZE;
-        const pixelCenterXCanvas = pixelCanvasX + RENDERED_PIXEL_SIZE / 2;
-        const pixelCenterYCanvas = pixelCanvasY + RENDERED_PIXEL_SIZE / 2;
+    for (let r = 0; r < logicalGridRows; r++) {
+      for (let c = 0; c < logicalGridCols; c++) {
+        const pixelCanvasX = c * renderedPixelSize;
+        const pixelCanvasY = r * renderedPixelSize;
+        const pixelCenterXCanvas = pixelCanvasX + renderedPixelSize / 2;
+        const pixelCenterYCanvas = pixelCanvasY + renderedPixelSize / 2;
 
-        // Convert canvas center coords to SVG viewBox coords for isPointInPath check
         const svgCoordX = pixelCenterXCanvas * scaleXToSvg;
         const svgCoordY = pixelCenterYCanvas * scaleYToSvg;
         
@@ -82,49 +86,72 @@ export default function PixelGrid() {
           ctx.fillRect(
             pixelCanvasX,
             pixelCanvasY,
-            RENDERED_PIXEL_SIZE,
-            RENDERED_PIXEL_SIZE
+            renderedPixelSize,
+            renderedPixelSize
           );
-          ctx.strokeRect(
-            pixelCanvasX,
-            pixelCanvasY,
-            RENDERED_PIXEL_SIZE,
-            RENDERED_PIXEL_SIZE
-          );
+          // Optionally draw grid lines if pixels are large enough
+          if (renderedPixelSize > 4) {
+             ctx.strokeRect(
+              pixelCanvasX,
+              pixelCanvasY,
+              renderedPixelSize,
+              renderedPixelSize
+            );
+          }
         }
       }
     }
-  }, [canvasDrawWidth, canvasDrawHeight, mapPath2D]);
+  }, [canvasDrawWidth, canvasDrawHeight, mapPath2D, logicalGridCols, logicalGridRows, renderedPixelSize]);
 
   useEffect(() => {
-    if (mapPath2D) { // Only draw if we have the map path
+    if (mapPath2D) {
       drawPixelsOnCanvas();
     }
-    if (containerRef.current && !mapPath2D) { // Center initially if map path not yet loaded
+    if (containerRef.current) {
         const { offsetWidth: containerWidth, offsetHeight: containerHeight } = containerRef.current;
-        const currentZoom = zoom; // Use current zoom for initial centering if map path is slow
-        const canvasContentWidth = canvasDrawWidth * currentZoom;
-        const canvasContentHeight = canvasDrawHeight * currentZoom;
+        // Center based on the new canvasDrawWidth and canvasDrawHeight
+        const initialZoom = 1; // Or use current zoom if preferred
+        const canvasContentWidth = canvasDrawWidth * initialZoom;
+        const canvasContentHeight = canvasDrawHeight * initialZoom;
         setPosition({ 
             x: (containerWidth - canvasContentWidth) / 2, 
             y: (containerHeight - canvasContentHeight) / 2 
         });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drawPixelsOnCanvas, mapPath2D]); // Redraw when mapPath2D is available
+  }, [drawPixelsOnCanvas, mapPath2D]); // Dependencies for re-centering: canvasDrawWidth, canvasDrawHeight (remove from here, handled by initial draw)
 
   useEffect(() => {
+    let animationFrameId: number;
     if (isGeneratingDesc) {
-      // Avoid direct Math.random() in render path for hydration safety
-      setProgressValue(0); // Reset first
-      const timer = setTimeout(() => setProgressValue(Math.floor(Math.random() * 50) + 25), 100);
-      return () => clearTimeout(timer);
+      setProgressValue(0);
+      let currentProgress = 0;
+      const animateProgress = () => {
+        currentProgress += 2; // Adjust speed of progress
+        if (currentProgress <= 75) { // Simulate progress up to 75%
+          setProgressValue(currentProgress);
+          animationFrameId = requestAnimationFrame(animateProgress);
+        } else {
+           // Hold at 75% or simulate more complex loading
+           setProgressValue(75 + Math.floor(Math.random() * 10)); // Small random fluctuation
+           animationFrameId = requestAnimationFrame(animateProgress); // Keep "generating"
+        }
+      };
+      animationFrameId = requestAnimationFrame(animateProgress);
     }
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+      setProgressValue(0); // Reset on cleanup
+    };
   }, [isGeneratingDesc]);
+
 
   const handleZoomIn = () => setZoom((prevZoom) => Math.min(prevZoom * 1.2, 10));
   const handleZoomOut = () => setZoom((prevZoom) => Math.max(prevZoom / 1.2, 0.05));
-  const handleResetView = () => {
+  
+  const handleResetView = useCallback(() => {
     const currentZoom = 1;
     setZoom(currentZoom);
      if (containerRef.current) {
@@ -136,18 +163,20 @@ export default function PixelGrid() {
             y: (containerHeight - canvasContentHeight) / 2 
         });
     }
-  };
+  }, [canvasDrawWidth, canvasDrawHeight]);
+
+  useEffect(() => {
+    handleResetView(); // Center on initial load
+  }, [handleResetView]);
+
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    // Check if the click originated on the canvas itself
     if (e.target === canvasRef.current) {
-        // Let handleCanvasClick take over, do not initiate pan
-        return;
+        return; // Let handleCanvasClick take over if click is directly on canvas
     }
-    // Allow dragging if click is on the container but not on interactive elements within it
     const targetElement = e.target as HTMLElement;
-    if (targetElement.closest('button, input, [role="slider"]')) {
-      return;
+    if (targetElement.closest('button, input, [role="slider"], [data-dialog-content]') || (e.target as HTMLElement).closest('[role="dialog"]')) {
+      return; // Do not drag if clicking on interactive elements or dialogs
     }
     setIsDragging(true);
     setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
@@ -178,12 +207,12 @@ export default function PixelGrid() {
     const canvasBufferX = clickXInCanvasElement * scaleXFromElementToBuffer;
     const canvasBufferY = clickYInCanvasElement * scaleYFromElementToBuffer;
 
-    const logicalCol = Math.floor(canvasBufferX / RENDERED_PIXEL_SIZE);
-    const logicalRow = Math.floor(canvasBufferY / RENDERED_PIXEL_SIZE);
+    const logicalCol = Math.floor(canvasBufferX / renderedPixelSize);
+    const logicalRow = Math.floor(canvasBufferY / renderedPixelSize);
 
-    if (logicalCol >= 0 && logicalCol < LOGICAL_GRID_COLS && logicalRow >= 0 && logicalRow < LOGICAL_GRID_ROWS) {
-      const pixelCenterXCanvas = (logicalCol + 0.5) * RENDERED_PIXEL_SIZE;
-      const pixelCenterYCanvas = (logicalRow + 0.5) * RENDERED_PIXEL_SIZE;
+    if (logicalCol >= 0 && logicalCol < logicalGridCols && logicalRow >= 0 && logicalRow < logicalGridRows) {
+      const pixelCenterXCanvas = (logicalCol + 0.5) * renderedPixelSize;
+      const pixelCenterYCanvas = (logicalRow + 0.5) * renderedPixelSize;
       
       const scaleXToSvg = SVG_VIEWBOX_WIDTH / canvasDrawWidth;
       const scaleYToSvg = SVG_VIEWBOX_HEIGHT / canvasDrawHeight;
@@ -194,6 +223,7 @@ export default function PixelGrid() {
       if (ctx && ctx.isPointInPath(mapPath2D, svgCoordX, svgCoordY)) {
         setSelectedPixel({ x: logicalCol, y: logicalRow });
         setShowAiModal(true);
+        setPixelDescription(null); // Reset previous description
       } else {
         setSelectedPixel(null);
       }
@@ -233,7 +263,7 @@ export default function PixelGrid() {
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden relative">
-      <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 bg-card/80 p-2 rounded-md shadow-lg">
+      <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 bg-card/80 p-2 rounded-md shadow-lg backdrop-blur-sm">
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -274,44 +304,44 @@ export default function PixelGrid() {
           <p>Zoom: {zoom.toFixed(2)}x</p>
           <p>X: {Math.round(position.x)}, Y: {Math.round(position.y)}</p>
           {selectedPixel && <p>Pixel Lógico: ({selectedPixel.x}, {selectedPixel.y})</p>}
+          <p>Total Pixels: ~{(logicalGridCols * logicalGridRows / 1000000).toFixed(2)}M</p>
         </div>
       </div>
-
-      {isGeneratingDesc && (
-          <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center z-50">
-              <Sparkles className="h-16 w-16 text-primary animate-pulse" />
-              <p className="mt-4 text-lg font-headline">A IA está a gerar a descrição...</p>
-              <Progress value={progressValue} className="w-1/2 mt-4" /> 
-          </div>
-      )}
       
       <Dialog open={showAiModal} onOpenChange={(isOpen) => {
           setShowAiModal(isOpen);
           if (!isOpen) { 
               setPixelDescription(null);
-              // setSelectedPixel(null); // Optionally clear selection when closing modal
           }
       }}>
-        <DialogContent className="sm:max-w-[425px] bg-card">
+        <DialogContent className="sm:max-w-[425px] bg-card" data-dialog-content>
           <DialogHeader>
             <DialogTitle className="font-headline flex items-center">
                 <Sparkles className="h-5 w-5 mr-2 text-primary" />
-                Gerar Descrição com IA
+                Interagir com Pixel ({selectedPixel?.x}, {selectedPixel?.y})
             </DialogTitle>
             <DialogDescription>
-              Analisar a área ao redor do pixel lógico ({selectedPixel?.x}, {selectedPixel?.y}) para gerar uma descrição?
+              O que gostaria de fazer com este pixel?
             </DialogDescription>
           </DialogHeader>
-          {pixelDescription && (
+          {isGeneratingDesc && (
+            <div className="flex flex-col items-center justify-center my-4">
+              <Sparkles className="h-12 w-12 text-primary animate-pulse mb-2" />
+              <p className="text-sm font-headline">A IA está a gerar a descrição...</p>
+              <Progress value={progressValue} className="w-full mt-2" />
+            </div>
+          )}
+          {pixelDescription && !isGeneratingDesc && (
             <div className="my-4 p-3 bg-background/50 rounded-md">
+                <p className="text-sm font-semibold mb-1 text-primary">Descrição da IA:</p>
                 <p className="text-sm text-foreground">{pixelDescription}</p>
             </div>
           )}
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => { setShowAiModal(false); setPixelDescription(null); setSelectedPixel(null);}}>Cancelar</Button>
-            <Button onClick={handleGenerateDescription} disabled={isGeneratingDesc}>
-              {isGeneratingDesc ? "A gerar..." : (pixelDescription ? "Gerar Novamente" : "Gerar Descrição")}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={handleGenerateDescription} disabled={isGeneratingDesc || !selectedPixel}>
+              {isGeneratingDesc ? "A gerar..." : (pixelDescription ? "Gerar Nova Descrição" : "Gerar Descrição com IA")}
             </Button>
+            <Button disabled={!selectedPixel}>Comprar Pixel (Em Breve)</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -340,12 +370,11 @@ export default function PixelGrid() {
           />
           <canvas 
             ref={canvasRef}
-            onClick={handleCanvasClick} // Click handler for canvas
-            className="absolute top-0 left-0 z-10"
+            onClick={handleCanvasClick}
+            className="absolute top-0 left-0 z-10" // Canvas for pixels
             style={{ 
               width: '100%', 
               height: '100%',
-              // clipPath: 'url(#portugal-clip-path)' // Removed as isPointInPath is used
             }} 
           />
         </div>
@@ -356,7 +385,7 @@ export default function PixelGrid() {
           <DialogTrigger asChild>
             {ActionButtonDialogTrigger}
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md bg-card">
+          <DialogContent className="sm:max-w-md bg-card" data-dialog-content>
             <DialogHeader>
               <DialogTitle className="font-headline">Ações Rápidas</DialogTitle>
               <DialogDescription>
@@ -369,7 +398,11 @@ export default function PixelGrid() {
               <Button variant="outline"><Sparkles className="mr-2 h-4 w-4" />Eventos Especiais</Button>
             </div>
             <DialogFooter>
-              <Button variant="ghost" onClick={() => { /* Logic to close dialog */ }}>Fechar</Button>
+               {/* The DialogClose component from shadcn/ui can be used here if preferred,
+                   or a simple button that calls setShowAiModal(false) or equivalent.
+                   For consistency, ensure the dialog can be closed.
+                   Using DialogClose as intended by shadcn/ui for the main modal.
+              */}
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -377,3 +410,4 @@ export default function PixelGrid() {
     </div>
   );
 }
+
