@@ -15,13 +15,10 @@ export default function PortugalMapSvg({ className, onMapPathLoaded }: PortugalM
   useEffect(() => {
     if (landmassPathsRef.current && onMapPathLoaded) {
       const combinedPath = new Path2D();
-      // Query all path elements within the ref'd group
       const pathElements = landmassPathsRef.current.querySelectorAll('path');
       pathElements.forEach(pathEl => {
         const d = pathEl.getAttribute('d');
         if (d) {
-          // Create a new Path2D for each SVG path string and add it to the combined Path2D
-          // This ensures that even non-contiguous parts of the map are included.
           combinedPath.addPath(new Path2D(d));
         }
       });
@@ -31,11 +28,9 @@ export default function PortugalMapSvg({ className, onMapPathLoaded }: PortugalM
 
   return (
     <svg width="100%" height="100%" viewBox="0 0 12969 26674" preserveAspectRatio="xMidYMid meet">
-      {/* <defs>
-        Removed clipPath as it's not being used reliably with canvas
-      </defs> */}
       {/* This group is for visual rendering and for the ref to access path data */}
-      <g id="portugal-landmass-paths" ref={landmassPathsRef} className={className} stroke="hsl(var(--border))" strokeWidth="10" fill="currentColor">
+      {/* Increased strokeWidth from 10 to 20 to make map outlines more prominent */}
+      <g id="portugal-landmass-paths" ref={landmassPathsRef} className={className} stroke="hsl(var(--border))" strokeWidth="20" fill="currentColor">
           <g id="D18-Faro">
             <path data-z="376" className="z z376" d="M8112 25289l0 131 33 130 120 112 -288 144 -30 -126 33 -98 0 -130 0 -130 -66 -98 198 65zm382 308l-84 -82 12 -132 217 46 33 219 -178 -51z"/>
             <path data-z="375" className="z z375" d="M8265 25662l-120 -112 -33 -130 0 -131 -198 -65 -99 -65 -99 -65 -33 -98 132 -391 165 -65 428 131 118 -21 0 163 23 138 42 150 -32 137 65 98 15 93 -217 -46 -12 132 84 82 -229 65z"/>

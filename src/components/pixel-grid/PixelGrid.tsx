@@ -21,8 +21,8 @@ import {
 } from "@/components/ui/dialog";
 import { Progress } from '@/components/ui/progress';
 
-const LOGICAL_GRID_COLS_CONFIG = 700; // Base columns for ~1M pixels
-const RENDERED_PIXEL_SIZE_CONFIG = 2; // Visual size of each logical pixel at 1x zoom
+const LOGICAL_GRID_COLS_CONFIG = 700; 
+const RENDERED_PIXEL_SIZE_CONFIG = 2; 
 
 const PLACEHOLDER_IMAGE_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 const SVG_VIEWBOX_WIDTH = 12969;
@@ -38,7 +38,7 @@ export default function PixelGrid() {
   const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
   const [showAiModal, setShowAiModal] = useState(false);
   const [progressValue, setProgressValue] = useState(0);
-  const [initialProgress, setInitialProgress] = useState(0);
+  const [initialProgressTrigger, setInitialProgressTrigger] = useState(0);
 
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -67,9 +67,9 @@ export default function PixelGrid() {
     canvas.height = canvasDrawHeight;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = 'rgba(180, 180, 180, 0.8)'; // Cor de preenchimento mais clara e opaca
-    ctx.strokeStyle = 'rgba(40, 40, 40, 0.6)'; // Contorno mais escuro e mais opaco
-    ctx.lineWidth = 0.2; // Espessura da linha do contorno do pixel (já escala com o zoom do canvas)
+    ctx.fillStyle = 'rgba(180, 180, 180, 0.7)'; // Slightly lighter and less opaque fill
+    ctx.strokeStyle = 'rgba(30, 30, 30, 0.75)'; // Darker and more opaque stroke for better definition
+    ctx.lineWidth = 0.2; 
     ctx.lineCap = 'butt';
     ctx.lineJoin = 'miter';
 
@@ -82,12 +82,11 @@ export default function PixelGrid() {
         const pixelCanvasX = c * renderedPixelSize;
         const pixelCanvasY = r * renderedPixelSize;
 
-        // Coordenadas dos 4 cantos no canvas
         const cornersCanvas = [
-          { x: pixelCanvasX, y: pixelCanvasY }, // Top-left
-          { x: pixelCanvasX + renderedPixelSize, y: pixelCanvasY }, // Top-right
-          { x: pixelCanvasX, y: pixelCanvasY + renderedPixelSize }, // Bottom-left
-          { x: pixelCanvasX + renderedPixelSize, y: pixelCanvasY + renderedPixelSize }, // Bottom-right
+          { x: pixelCanvasX, y: pixelCanvasY },
+          { x: pixelCanvasX + renderedPixelSize, y: pixelCanvasY },
+          { x: pixelCanvasX, y: pixelCanvasY + renderedPixelSize },
+          { x: pixelCanvasX + renderedPixelSize, y: pixelCanvasY + renderedPixelSize },
         ];
 
         let isPixelInsideMap = false;
@@ -100,7 +99,6 @@ export default function PixelGrid() {
           }
         }
         
-        // Adicionalmente, verificar o centro para casos onde todos os cantos estão fora mas o centro está dentro (pixels maiores que detalhes finos)
         if (!isPixelInsideMap) {
             const pixelCenterXCanvas = pixelCanvasX + renderedPixelSize / 2;
             const pixelCenterYCanvas = pixelCanvasY + renderedPixelSize / 2;
@@ -110,7 +108,6 @@ export default function PixelGrid() {
                 isPixelInsideMap = true;
             }
         }
-
 
         if (isPixelInsideMap) {
           ctx.fillRect(
@@ -151,7 +148,7 @@ export default function PixelGrid() {
  useEffect(() => {
     let animationFrameId: number;
     if (isGeneratingDesc) {
-      setInitialProgress(0); // Reset initialProgress as well
+      setProgressValue(0); 
       let currentProgress = 0;
       const animateProgress = () => {
         currentProgress += 2;
@@ -165,17 +162,14 @@ export default function PixelGrid() {
       };
       animationFrameId = requestAnimationFrame(animateProgress);
     } else {
-      // Only update if progressValue was actively changing (not just initial 0)
       if (progressValue > 0 && progressValue < 100) {
         setProgressValue(100);
         setTimeout(() => {
           setProgressValue(0);
-          setInitialProgress(0); // Ensure it resets for next time
         }, 500);
       } else if (progressValue === 100) {
          setTimeout(() => {
           setProgressValue(0);
-          setInitialProgress(0); // Ensure it resets for next time
         }, 500);
       }
     }
@@ -184,8 +178,7 @@ export default function PixelGrid() {
         cancelAnimationFrame(animationFrameId);
       }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isGeneratingDesc]);
+  }, [isGeneratingDesc, initialProgressTrigger, progressValue]);
 
 
   const handleZoomIn = () => setZoom((prevZoom) => Math.min(prevZoom * 1.2, 10));
@@ -211,28 +204,18 @@ export default function PixelGrid() {
 
 
  const handleMouseDown = (e: React.MouseEvent) => {
-    // Check if the click is on the canvas itself or its direct container.
-    // Prevent dragging if the click is on UI controls or dialogs.
     const targetElement = e.target as HTMLElement;
     if (
-      targetElement.closest('button, input, [role="slider"], [data-dialog-content], [role="dialog"]') ||
-      (canvasRef.current && targetElement !== canvasRef.current && targetElement !== containerRef.current && !containerRef.current?.contains(targetElement))
+      targetElement.closest('button, input, [role="slider"], [data-dialog-content], [role="dialog"]')
     ) {
-      // If it's a UI control or outside the interactive area (but not canvas), don't drag.
-      if (targetElement === canvasRef.current){
-         // If it is the canvas, let handleCanvasClick manage it.
-      } else {
-         return;
-      }
+      return; 
     }
-    // If click is on canvas, let handleCanvasClick manage it later
-    if (targetElement === canvasRef.current) {
-      // Do not setIsDragging true here, canvas click will handle selection
-      return;
+    
+    // Only set dragging if not clicking directly on the canvas
+    if (targetElement !== canvasRef.current && containerRef.current?.contains(targetElement)) {
+      setIsDragging(true);
+      setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
     }
-
-    setIsDragging(true);
-    setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
   };
 
 
@@ -265,7 +248,6 @@ export default function PixelGrid() {
     const logicalRow = Math.floor(canvasBufferY / renderedPixelSize);
 
     if (logicalCol >= 0 && logicalCol < logicalGridCols && logicalRow >= 0 && logicalRow < logicalGridRows) {
-      // Check if the center of the clicked logical pixel is inside the map path
       const pixelCenterXCanvas = (logicalCol + 0.5) * renderedPixelSize;
       const pixelCenterYCanvas = (logicalRow + 0.5) * renderedPixelSize;
 
@@ -279,7 +261,7 @@ export default function PixelGrid() {
         setSelectedPixel({ x: logicalCol, y: logicalRow });
         setShowAiModal(true);
         setPixelDescription(null);
-        setInitialProgress(Math.random()); // Trigger useEffect for progress animation
+        setInitialProgressTrigger(prev => prev + 1); 
       } else {
         setSelectedPixel(null);
       }
@@ -292,6 +274,7 @@ export default function PixelGrid() {
     if (!selectedPixel) return;
     setIsGeneratingDesc(true);
     setPixelDescription(null);
+    setInitialProgressTrigger(prev => prev + 1); // Ensure progress animation starts
 
     try {
         const input: GeneratePixelDescriptionInput = {
@@ -301,16 +284,15 @@ export default function PixelGrid() {
         };
         const result = await generatePixelDescription(input);
         setPixelDescription(result.description);
-        setProgressValue(100);
+        setProgressValue(100); 
         toast({ title: "Descrição Gerada", description: "A IA gerou uma descrição para o pixel." });
     } catch (error) {
         console.error("Error generating pixel description:", error);
         setPixelDescription("Falha ao gerar descrição.");
-        setProgressValue(100);
+        setProgressValue(100); 
         toast({ title: "Erro na IA", description: "Não foi possível gerar a descrição.", variant: "destructive" });
     } finally {
         setIsGeneratingDesc(false);
-        // setTimeout is handled by useEffect for progressValue
     }
   }, [selectedPixel, toast]);
 
@@ -368,7 +350,6 @@ export default function PixelGrid() {
               setPixelDescription(null);
               setIsGeneratingDesc(false);
               setProgressValue(0);
-              setInitialProgress(0);
           }
       }}>
         <DialogContent className="sm:max-w-[425px] bg-card" data-dialog-content>
@@ -381,14 +362,14 @@ export default function PixelGrid() {
               O que gostaria de fazer com este pixel?
             </DialogDescription>
           </DialogHeader>
-          {(isGeneratingDesc || (progressValue > 0 && progressValue < 100 && initialProgress !== 0)) && (
+          {(isGeneratingDesc || (progressValue > 0 && progressValue < 100 && initialProgressTrigger !== 0)) && (
             <div className="flex flex-col items-center justify-center my-4">
               <Sparkles className="h-12 w-12 text-primary animate-pulse mb-2" />
               <p className="text-sm font-headline">A IA está a gerar a descrição...</p>
               <Progress value={progressValue} className="w-full mt-2" />
             </div>
           )}
-          {pixelDescription && !isGeneratingDesc && progressValue === 0 && initialProgress === 0 && (
+          {pixelDescription && !isGeneratingDesc && (progressValue === 0 || progressValue === 100) && (
             <div className="my-4 p-3 bg-background/50 rounded-md">
                 <p className="text-sm font-semibold mb-1 text-primary">Descrição da IA:</p>
                 <p className="text-sm text-foreground">{pixelDescription}</p>
