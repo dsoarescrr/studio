@@ -24,7 +24,6 @@ import { Progress } from '@/components/ui/progress';
 const SVG_VIEWBOX_WIDTH = 12969;
 const SVG_VIEWBOX_HEIGHT = 26674;
 
-// Configuração para ~10.4M pixels com canvasDrawWidth = 1350
 const RENDERED_PIXEL_SIZE_CONFIG = 0.6;
 const LOGICAL_GRID_COLS_CONFIG = 2250;
 
@@ -35,7 +34,14 @@ const logicalGridRows = Math.floor(canvasDrawHeight / RENDERED_PIXEL_SIZE_CONFIG
 const totalLogicalPixels = LOGICAL_GRID_COLS_CONFIG * logicalGridRows; // ~10,395,000
 
 const PLACEHOLDER_IMAGE_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
-const ROWS_PER_DRAW_CHUNK = 100;
+const ROWS_PER_DRAW_CHUNK = 100; // Previously 50, then 100
+
+// Define types for worker messages
+type WorkerProgressMessage = { type: 'progress'; progress: number };
+type WorkerDoneMessage = { type: 'done'; bitmap: ArrayBuffer };
+type WorkerErrorMessage = { type: 'error'; error: string };
+type WorkerMessage = WorkerProgressMessage | WorkerDoneMessage | WorkerErrorMessage;
+
 
 export default function PixelGrid() {
   const [zoom, setZoom] = useState(1);
@@ -66,7 +72,7 @@ export default function PixelGrid() {
     if (data && data.pathStrings && data.pathStrings.length > 0 && data.path2D) {
       setMapData(data);
       setProgressMessage("Mapa carregado. A preparar grelha de pixels...");
-      setWorkerStatus('idle'); // Ready to start worker
+      setWorkerStatus('idle'); 
       setWorkerErrorMessage(null);
     } else {
       setWorkerStatus('error');
@@ -77,83 +83,97 @@ export default function PixelGrid() {
     }
   }, [toast]);
 
-  useEffect(() => {
-    if (!mapData || !mapData.pathStrings || mapData.pathStrings.length === 0 || workerStatus === 'processing-worker' || workerStatus === 'error') {
-      if (mapData && (!mapData.pathStrings || mapData.pathStrings.length === 0) && workerStatus !== 'error') {
-        const errorMsg = "Erro: pathStrings do mapa estão vazias.";
-        setWorkerStatus('error');
-        setWorkerErrorMessage(errorMsg);
-        setProgressMessage(errorMsg);
-      }
-      return;
-    }
-    
-    if (workerStatus === 'idle' && mapData && mapData.pathStrings.length > 0) {
+ useEffect(() => {
+    // This effect manages the Web Worker lifecycle based on mapData
+    if (mapData?.pathStrings && mapData.pathStrings.length > 0 && !workerRef.current && workerStatus === 'idle') {
       setProgressMessage("A iniciar worker para gerar mapa de pixels...");
-      setWorkerStatus('processing-worker');
+      setWorkerStatus('processing-worker'); // For UI feedback
       setOverallProgress(0);
       setWorkerErrorMessage(null);
-      
+
+      let workerInstance: Worker | null = null;
       try {
-        const worker = new Worker(new URL('../../workers/pixel-map-worker.ts', import.meta.url));
-        workerRef.current = worker;
+        workerInstance = new Worker(new URL('../../workers/pixel-map-worker.ts', import.meta.url));
+        workerRef.current = workerInstance;
+        
+        // For the current super-simplified worker, we don't need to send it data.
+        // If we restore full worker logic, uncomment and send necessary data:
+        /*
+        workerRef.current.postMessage({
+          pathStrings: mapData.pathStrings,
+          canvasWidth: canvasDrawWidth,
+          canvasHeight: canvasDrawHeight,
+          svgViewBoxWidth: SVG_VIEWBOX_WIDTH,
+          svgViewBoxHeight: SVG_VIEWBOX_HEIGHT,
+          logicalCols: LOGICAL_GRID_COLS_CONFIG,
+          logicalRows: logicalGridRows,
+          pixelSize: RENDERED_PIXEL_SIZE_CONFIG,
+        });
+        */
 
-        // Não enviamos dados ao worker para este teste de comunicação básica.
-        // worker.postMessage({ pathStrings: mapData.pathStrings, ... });
-
-        worker.onmessage = (event) => {
+        workerRef.current.onmessage = (event: MessageEvent<WorkerMessage>) => {
           if (!event.data || typeof event.data.type === 'undefined') {
             console.warn('PixelGrid: Received malformed message from worker', event.data);
-            // Poderia definir um erro aqui se a comunicação estiver muito quebrada
-            // setWorkerStatus('error');
-            // setWorkerErrorMessage('Comunicação inválida do worker.');
+            setWorkerStatus('error');
+            setWorkerErrorMessage('Comunicação inválida do worker.');
+            setOverallProgress(0);
             return;
           }
-          const { type, progress, bitmap, error: workerErrorPayload } = event.data;
+          const { type } = event.data;
           
           if (type === 'progress') {
-            const workerProgress = Math.max(0, Math.min(100, Number(progress) || 0));
+            const workerProgress = Math.max(0, Math.min(100, Number((event.data as WorkerProgressMessage).progress) || 0));
+            // Worker contributes to the first 50% of the overall progress
             setOverallProgress(workerProgress * 0.5); 
             setProgressMessage(`A gerar mapa de pixels... ${(workerProgress * 0.5).toFixed(1)}%`);
           } else if (type === 'done') {
-            setPixelBitmap(new Uint8Array(bitmap));
+            setPixelBitmap(new Uint8Array((event.data as WorkerDoneMessage).bitmap));
             setWorkerStatus('drawing-canvas'); 
             setProgressMessage("Mapa de pixels gerado. A desenhar no canvas...");
-            setOverallProgress(50);
+            setOverallProgress(50); // Mark worker phase as complete (50%)
           } else if (type === 'error') {
-            const errorMessage = workerErrorPayload || 'Erro desconhecido no worker.';
+            const errorMessage = (event.data as WorkerErrorMessage).error || 'Erro desconhecido no worker.';
             setWorkerStatus('error');
             setWorkerErrorMessage(errorMessage);
             setProgressMessage(`Erro do Worker: ${errorMessage}`);
             setOverallProgress(0); 
-            toast({ title: "Erro do Worker", description: errorMessage, variant: "destructive" });
           }
         };
         
-        worker.onerror = (err) => {
-          const errorMessage = err.message || "Ocorreu um erro crítico e inesperado no worker.";
+        workerRef.current.onerror = (err: ErrorEvent) => {
+          const errorMessage = `WORKER SCRIPT ERROR: ${err.message}` || "Ocorreu um erro crítico e inesperado no worker.";
           setWorkerStatus('error');
           setWorkerErrorMessage(errorMessage);
           setProgressMessage(`Erro crítico no Worker: ${errorMessage}`);
           setOverallProgress(0);
-          toast({ title: "Erro Crítico do Worker", description: errorMessage, variant: "destructive" });
+          if (workerRef.current) {
+            workerRef.current.terminate();
+            workerRef.current = null;
+          }
         };
       } catch (e) {
         const errorMsg = e instanceof Error ? e.message : String(e);
         setWorkerStatus('error');
         setWorkerErrorMessage(`Falha ao criar Worker: ${errorMsg}`);
         setProgressMessage(`Falha ao criar Worker: ${errorMsg}`);
-        toast({ title: "Erro de Worker", description: `Falha ao criar Worker: ${errorMsg}`, variant: "destructive" });
+        setOverallProgress(0);
+        if (workerRef.current) { // Ensure cleanup if creation fails partially
+            workerRef.current.terminate();
+            workerRef.current = null;
+        }
       }
     }
 
+    // Cleanup function for the worker
     return () => {
       if (workerRef.current) {
         workerRef.current.terminate();
         workerRef.current = null;
+        // Optionally reset workerStatus to 'idle' if component unmounts and might remount
+        // setWorkerStatus('idle'); 
       }
     };
-  }, [mapData, workerStatus]); // Removido toast das dependências
+  }, [mapData]); // Depend only on mapData to setup the worker once
 
 
   const drawPixelsOnCanvas = useCallback(async () => {
@@ -162,6 +182,8 @@ export default function PixelGrid() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Progress message for drawing phase (50% to 100%)
+    // overallProgress is already at 50% when this function is called
     setProgressMessage(`A desenhar pixels no canvas... ${overallProgress.toFixed(1)}%`);
     canvas.width = canvasDrawWidth;
     canvas.height = canvasDrawHeight;
@@ -169,6 +191,7 @@ export default function PixelGrid() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = 'rgba(180, 180, 180, 0.7)';
     
+    // Only draw stroke if pixel size is reasonably large
     if (RENDERED_PIXEL_SIZE_CONFIG > 1) { 
         ctx.strokeStyle = 'rgba(30, 30, 30, 0.75)';
         ctx.lineWidth = 0.2;
@@ -194,7 +217,7 @@ export default function PixelGrid() {
           }
           rowsDrawn += (endRow - startRow);
           const drawingProgress = (rowsDrawn / logicalGridRows) * 50; // Canvas drawing is 50% of total
-          setOverallProgress(50 + drawingProgress);
+          setOverallProgress(50 + drawingProgress); // Add to the 50% from worker
           setProgressMessage(`A desenhar pixels no canvas... ${(50 + drawingProgress).toFixed(1)}%`);
           resolve();
         });
@@ -389,7 +412,7 @@ export default function PixelGrid() {
 
   const progressText = 
     workerStatus === 'error' ? "Erro" : 
-    (overallProgress === 0 && workerStatus !== 'processing-worker' && workerStatus !== 'drawing-canvas') ? "0.0" : 
+    (overallProgress === 0 && workerStatus !== 'processing-worker' && workerStatus !== 'drawing-canvas' && workerStatus !== 'idle') ? "0.0" : 
     (overallProgress >= 99.9 && workerStatus === 'done') ? "100" : 
     overallProgress.toFixed(1);
 
@@ -520,6 +543,7 @@ export default function PixelGrid() {
             <p className={`text-lg font-headline mb-2 ${workerStatus === 'error' ? 'text-destructive' : 'text-foreground'}`}>{progressMessage}</p>
             {workerStatus !== 'error' && <Progress value={overallProgress} className="w-1/2 max-w-md" />}
             {workerStatus !== 'error' && <p className="text-sm text-muted-foreground mt-1">{progressText}%</p>}
+            {workerErrorMessage && workerStatus === 'error' && <p className="text-xs text-destructive mt-1 max-w-md text-center">{workerErrorMessage}</p>}
           </div>
         )}
       </div>
@@ -551,4 +575,3 @@ export default function PixelGrid() {
     </div>
   );
 }
-
