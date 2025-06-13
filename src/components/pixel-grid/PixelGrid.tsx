@@ -34,14 +34,25 @@ const logicalGridRows = Math.floor(canvasDrawHeight / RENDERED_PIXEL_SIZE_CONFIG
 const totalLogicalPixels = LOGICAL_GRID_COLS_CONFIG * logicalGridRows; // ~10,395,000
 
 const PLACEHOLDER_IMAGE_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
-const ROWS_PER_DRAW_CHUNK = 100; // Anteriormente 50, depois 100
+const ROWS_PER_DRAW_CHUNK = 100;
 
 // Define types for worker messages
 type WorkerProgressMessage = { type: 'progress'; progress: number };
 type WorkerDoneMessage = { type: 'done'; bitmap: ArrayBuffer };
 type WorkerErrorMessage = { type: 'error'; error: string };
-// type WorkerTestMessage = { type: 'test_init'; payload: string }; // Removido o tipo de mensagem de teste
 type WorkerMessage = WorkerProgressMessage | WorkerDoneMessage | WorkerErrorMessage;
+
+// Define type for data sent to worker
+interface WorkerInput {
+  pathStrings: string[];
+  canvasWidth: number;
+  canvasHeight: number;
+  svgViewBoxWidth: number;
+  svgViewBoxHeight: number;
+  logicalCols: number;
+  logicalRows: number;
+  pixelSize: number;
+}
 
 
 export default function PixelGrid() {
@@ -87,7 +98,6 @@ export default function PixelGrid() {
   useEffect(() => {
     if (mapData && !workerRef.current) {
       setProgressMessage("A iniciar worker...");
-      setWorkerStatus('idle');
       setOverallProgress(0);
       setWorkerErrorMessage(null);
       let workerInstance: Worker | null = null;
@@ -95,8 +105,17 @@ export default function PixelGrid() {
         workerInstance = new Worker(new URL('../../workers/pixel-map-worker.ts', import.meta.url));
         workerRef.current = workerInstance;
         
-        // Envia uma mensagem de teste para o worker para acionar o seu onmessage
-        workerRef.current.postMessage({ testData: 'Hello Worker from Main' });
+        workerRef.current.postMessage({
+          pathStrings: mapData.pathStrings,
+          canvasWidth: canvasDrawWidth,
+          canvasHeight: canvasDrawHeight,
+          svgViewBoxWidth: SVG_VIEWBOX_WIDTH,
+          svgViewBoxHeight: SVG_VIEWBOX_HEIGHT,
+          logicalCols: LOGICAL_GRID_COLS_CONFIG,
+          logicalRows: logicalGridRows,
+          pixelSize: RENDERED_PIXEL_SIZE_CONFIG,
+        } as WorkerInput);
+        
         setWorkerStatus('processing-worker'); 
 
         workerRef.current.onmessage = (event: MessageEvent<WorkerMessage>) => {
@@ -111,7 +130,6 @@ export default function PixelGrid() {
           const { type } = event.data;
           
           if (type === 'progress') {
-            if (workerStatus === 'idle') setWorkerStatus('processing-worker');
             const workerProgress = Math.max(0, Math.min(100, Number((event.data as WorkerProgressMessage).progress) || 0));
             setOverallProgress(workerProgress * 0.5); 
             setProgressMessage(`A gerar mapa de pixels... ${(workerProgress * 0.5).toFixed(1)}%`);
@@ -157,10 +175,9 @@ export default function PixelGrid() {
       if (workerRef.current) {
         workerRef.current.terminate();
         workerRef.current = null;
-        // setWorkerStatus('idle'); // Comentado para evitar re-criação imediata se mapData não mudar
       }
     };
-  }, [mapData]); // Depende apenas de mapData para criar o worker
+  }, [mapData]);
 
 
   const drawPixelsOnCanvas = useCallback(async () => {
@@ -215,7 +232,7 @@ export default function PixelGrid() {
     setProgressMessage("Universo pixel pronto!");
     setOverallProgress(100); 
     setWorkerStatus('done');
-  }, [pixelBitmap, overallProgress]); // Adicionado overallProgress para evitar re-cálculo se ele mudar
+  }, [pixelBitmap, overallProgress]);
 
 
   const handleResetView = useCallback(() => {

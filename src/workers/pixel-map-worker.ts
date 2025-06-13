@@ -1,7 +1,6 @@
 
 // src/workers/pixel-map-worker.ts
 
-// Interface apenas para referência, não usada ativamente neste teste simplificado
 interface WorkerInput {
   pathStrings: string[];
   canvasWidth: number;
@@ -13,26 +12,31 @@ interface WorkerInput {
   pixelSize: number;
 }
 
-// O handler onmessage é reativado.
-// Por agora, ele apenas envia uma mensagem de progresso fixa quando recebe qualquer mensagem.
 self.onmessage = (event: MessageEvent<any>) => {
   try {
-    // Envia um pequeno progresso para indicar que onmessage foi chamado.
-    self.postMessage({ type: 'progress', progress: 0.5 });
+    // Verifica se event.data existe antes de tentar desestruturá-lo
+    if (!event.data) {
+      self.postMessage({ type: 'error', error: 'Worker Error: No data received in onmessage.' });
+      return;
+    }
 
-    // A lógica original de processamento de dados permanece comentada por enquanto.
-    /*
     const {
       pathStrings,
-      canvasWidth,
-      canvasHeight,
+      // canvasWidth, // Não usado diretamente no worker para cálculo do bitmap lógico
+      // canvasHeight, // Não usado diretamente no worker para cálculo do bitmap lógico
       svgViewBoxWidth,
       svgViewBoxHeight,
       logicalCols,
       logicalRows,
-      pixelSize,
+      // pixelSize, // Não usado diretamente no worker para cálculo do bitmap lógico
     } = event.data as WorkerInput;
 
+    // Envia um progresso inicial para confirmar que os dados foram recebidos e desestruturados
+    self.postMessage({ type: 'progress', progress: 1.0 });
+
+    // A lógica de processamento de pixels principal permanece comentada por enquanto.
+    // O objetivo deste passo é apenas confirmar a recepção dos dados.
+    /*
     if (!pathStrings || pathStrings.length === 0) {
       self.postMessage({ type: 'error', error: 'Worker Error: pathStrings array is empty or undefined.' });
       return;
@@ -51,7 +55,7 @@ self.onmessage = (event: MessageEvent<any>) => {
             return;
         }
     }
-    if (pathStrings.length > 0 && !combinedPath2D) { // Redundante se o try-catch acima pegar, mas é uma verificação extra
+    if (pathStrings.length > 0 && !combinedPath2D) {
         self.postMessage({ type: 'error', error: 'Worker Error: Failed to create combined Path2D object from pathStrings.' });
         return;
     }
@@ -73,7 +77,7 @@ self.onmessage = (event: MessageEvent<any>) => {
     
     const pixelBitmap = new Uint8Array(totalPixelsToProcess);
     let processedPixels = 0;
-    const progressUpdateInterval = Math.max(1, Math.floor(logicalRows / 50)); // Update progress roughly 50 times or per row
+    const progressUpdateInterval = Math.max(1, Math.floor(logicalRows / 50));
 
     for (let r = 0; r < logicalRows; r++) {
       for (let c = 0; c < logicalCols; c++) {
@@ -99,8 +103,8 @@ self.onmessage = (event: MessageEvent<any>) => {
     */
 
   } catch (e: any) {
-    self.postMessage({ type: 'error', error: `Worker uncaught error in onmessage: ${e.message || String(e)}` });
+    // Garante que qualquer erro dentro do onmessage seja enviado para a thread principal
+    const errorMessage = e instanceof Error ? e.message : String(e);
+    self.postMessage({ type: 'error', error: `Worker uncaught error in onmessage: ${errorMessage}` });
   }
 };
-
-// self.postMessage({ type: 'test_init', payload: 'Worker Script Loaded and Executed Top Level' }); // Removido
