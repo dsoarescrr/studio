@@ -1,4 +1,3 @@
-
 // src/components/pixel-grid/PixelGrid.tsx
 'use client';
 
@@ -24,8 +23,15 @@ import { Progress } from '@/components/ui/progress';
 const SVG_VIEWBOX_WIDTH = 12969;
 const SVG_VIEWBOX_HEIGHT = 26674;
 
-const LOGICAL_GRID_COLS_CONFIG = 2250; // Adjusted for ~10.4M pixels
-const RENDERED_PIXEL_SIZE_CONFIG = 0.6; // Adjusted for ~10.4M pixels
+// Target ~10.4M pixels
+// RENDERED_PIXEL_SIZE_CONFIG = sqrt((canvasDrawWidth * canvasDrawHeight) / N)
+// Given canvasDrawWidth = 1350, canvasDrawHeight = 2772, N = 10,400,000
+// RENDERED_PIXEL_SIZE_CONFIG = sqrt((1350 * 2772) / 10400000) = ~0.6
+const RENDERED_PIXEL_SIZE_CONFIG = 0.6;
+// LOGICAL_GRID_COLS_CONFIG = canvasDrawWidth / RENDERED_PIXEL_SIZE_CONFIG
+// LOGICAL_GRID_COLS_CONFIG = 1350 / 0.6 = 2250
+const LOGICAL_GRID_COLS_CONFIG = 2250;
+
 
 const PLACEHOLDER_IMAGE_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 
@@ -49,12 +55,12 @@ export default function PixelGrid() {
   const [drawingProgress, setDrawingProgress] = useState(0);
   const [initialDrawingComplete, setInitialDrawingComplete] = useState(false);
 
-  // Calculate canvas buffer dimensions
-  const canvasDrawWidth = LOGICAL_GRID_COLS_CONFIG * RENDERED_PIXEL_SIZE_CONFIG;
-  const canvasDrawHeight = Math.floor(canvasDrawWidth * (SVG_VIEWBOX_HEIGHT / SVG_VIEWBOX_WIDTH));
+  // Calculate canvas buffer dimensions based on a manageable width
+  const canvasDrawWidth = 1350; // Manageable width for the canvas buffer
+  const canvasDrawHeight = Math.floor(canvasDrawWidth * (SVG_VIEWBOX_HEIGHT / SVG_VIEWBOX_WIDTH)); // Maintain SVG aspect ratio
   
-  // Calculate logical grid dimensions based on canvas buffer and rendered pixel size
-  const logicalGridCols = LOGICAL_GRID_COLS_CONFIG; // This is now the primary definition
+  // Calculate logical grid dimensions based on canvas buffer and RENDERED_PIXEL_SIZE_CONFIG
+  const logicalGridCols = LOGICAL_GRID_COLS_CONFIG;
   const logicalGridRows = Math.floor(canvasDrawHeight / RENDERED_PIXEL_SIZE_CONFIG);
   const totalLogicalPixels = logicalGridCols * logicalGridRows;
 
@@ -82,7 +88,6 @@ export default function PixelGrid() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = 'rgba(180, 180, 180, 0.7)';
     ctx.strokeStyle = 'rgba(30, 30, 30, 0.75)';
-    // For very small RENDERED_PIXEL_SIZE_CONFIG, lineWidth might need to be smaller or fill only
     ctx.lineWidth = RENDERED_PIXEL_SIZE_CONFIG > 1 ? 0.2 : 0.1; 
     ctx.lineCap = 'butt';
     ctx.lineJoin = 'miter';
@@ -92,7 +97,7 @@ export default function PixelGrid() {
 
     const numLogicalColsToProcess = logicalGridCols;
     const numLogicalRowsToProcess = logicalGridRows;
-    const ROWS_PER_CHUNK = 20; // Keep chunking for responsiveness
+    const ROWS_PER_CHUNK = 50; // Increased chunk size
 
     let rowsProcessed = 0;
 
@@ -105,7 +110,6 @@ export default function PixelGrid() {
               const pixelCanvasX = c * RENDERED_PIXEL_SIZE_CONFIG;
               const pixelCanvasY = r * RENDERED_PIXEL_SIZE_CONFIG;
 
-              // Use the center of the logical pixel for hit detection in SVG space
               const pixelCenterXCanvas = pixelCanvasX + RENDERED_PIXEL_SIZE_CONFIG / 2;
               const pixelCenterYCanvas = pixelCanvasY + RENDERED_PIXEL_SIZE_CONFIG / 2;
               
@@ -119,8 +123,7 @@ export default function PixelGrid() {
                   RENDERED_PIXEL_SIZE_CONFIG,
                   RENDERED_PIXEL_SIZE_CONFIG
                 );
-                // Optionally skip stroke for very small pixels to save performance/visual clutter
-                if (RENDERED_PIXEL_SIZE_CONFIG > 0.5) { 
+                if (RENDERED_PIXEL_SIZE_CONFIG > 1) { // Stroke only for larger "pixels"
                   ctx.strokeRect(
                     pixelCanvasX,
                     pixelCanvasY,
@@ -144,7 +147,7 @@ export default function PixelGrid() {
 
     setInitialDrawingComplete(true);
     setDrawingProgress(100);
-    console.log(`Initial drawing complete. Canvas: ${currentCanvasWidth}x${currentCanvasHeight}. Logical: ${numLogicalColsToProcess}x${numLogicalRowsToProcess}. Total: ${totalLogicalPixels}`);
+    console.log(`Initial drawing complete. Canvas buffer: ${currentCanvasWidth}x${currentCanvasHeight}. Logical grid: ${numLogicalColsToProcess}x${numLogicalRowsToProcess}. Total logical pixels: ${totalLogicalPixels.toLocaleString()}`);
 
   }, [mapPath2D, logicalGridCols, logicalGridRows, totalLogicalPixels]);
 
@@ -154,7 +157,6 @@ export default function PixelGrid() {
     setZoom(currentZoom);
      if (containerRef.current) {
         const { offsetWidth: containerWidth, offsetHeight: containerHeight } = containerRef.current;
-        // The content being centered is the canvas buffer itself
         const canvasContentWidth = canvasDrawWidth * currentZoom; 
         const canvasContentHeight = canvasDrawHeight * currentZoom;
         setPosition({
@@ -167,12 +169,10 @@ export default function PixelGrid() {
   useEffect(() => {
     if (mapPath2D && canvasRef.current && containerRef.current) {
       requestAnimationFrame(() => {
-        handleResetView(); // Center first
-        // Pass the calculated canvas buffer dimensions directly
+        handleResetView(); 
         drawPixelsOnCanvas(canvasDrawWidth, canvasDrawHeight); 
       });
     }
-  // Add drawPixelsOnCanvas and handleResetView to dependencies
   }, [mapPath2D, canvasDrawWidth, canvasDrawHeight, drawPixelsOnCanvas, handleResetView]);
 
 
@@ -181,7 +181,7 @@ export default function PixelGrid() {
     let timeoutId: NodeJS.Timeout | undefined;
 
     if (isGeneratingDesc) {
-        setAiModalProgressValue(0); // Reset progress when starting
+        setAiModalProgressValue(0); 
         let currentProgress = 0;
         const animate = () => {
             currentProgress += 2; 
@@ -195,22 +195,19 @@ export default function PixelGrid() {
         };
         animationFrameId = requestAnimationFrame(animate);
     } else {
-        // If generation stops or completes, or modal is closed while generating
-        if (aiModalProgressValue > 0 && aiModalProgressValue < 100 && !pixelDescription) { // If it was in progress but no description yet
-             // Allow it to reach near completion if abruptly stopped
+        if (aiModalProgressValue > 0 && aiModalProgressValue < 100 && !pixelDescription) {
             setAiModalProgressValue(90 + Math.floor(Math.random() * 9));
              timeoutId = setTimeout(() => {
-                // Only close if no description was set (e.g. user closed modal)
                 if (!pixelDescription) setShowAiModal(false); 
                 setAiModalProgressValue(0); 
             }, 500);
 
-        } else if (pixelDescription || aiModalProgressValue === 100) { // If description is set or already complete
-             setAiModalProgressValue(100); // Ensure it shows complete
+        } else if (pixelDescription || aiModalProgressValue === 100) { 
+             setAiModalProgressValue(100); 
              timeoutId = setTimeout(() => {
                 setShowAiModal(false); 
                 setAiModalProgressValue(0);
-            }, 1000); // Close after 1 second
+            }, 1000); 
         }
     }
     return () => {
@@ -221,7 +218,6 @@ export default function PixelGrid() {
             clearTimeout(timeoutId);
         }
     };
-// Trigger animation only when generation starts or selected pixel changes
 }, [isGeneratingDesc, initialAiProgressTrigger, pixelDescription]);
 
 
@@ -236,11 +232,7 @@ export default function PixelGrid() {
     ) {
       return;
     }
-
-    // Check if the click is on the direct parent (containerRef) or the canvas's parent (the transformed div)
-    // but not on the canvas itself if we want canvas clicks for pixel selection
     if (targetElement !== canvasRef.current && containerRef.current?.contains(targetElement)) {
-       // Check if target is NOT the canvas or its children, but IS the draggable area
       const transformedDiv = canvasRef.current?.parentElement;
       if (targetElement === containerRef.current || targetElement === transformedDiv) {
         setIsDragging(true);
@@ -264,33 +256,26 @@ export default function PixelGrid() {
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current || !mapPath2D || !initialDrawingComplete) return;
     const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect(); // This gives display size
+    const rect = canvas.getBoundingClientRect(); 
 
-    // Mouse click relative to the canvas element's top-left
     const clickXInCanvasElement = event.clientX - rect.left;
     const clickYInCanvasElement = event.clientY - rect.top;
 
-    // Scale factor from display size to buffer size
     const scaleXFromElementToBuffer = canvas.width / rect.width;
     const scaleYFromElementToBuffer = canvas.height / rect.height;
 
-    // Click coordinates in the canvas buffer's coordinate system
     const canvasBufferX = clickXInCanvasElement * scaleXFromElementToBuffer;
     const canvasBufferY = clickYInCanvasElement * scaleYFromElementToBuffer;
 
-    // Determine logical col/row based on buffer coordinates and RENDERED_PIXEL_SIZE_CONFIG
     const logicalCol = Math.floor(canvasBufferX / RENDERED_PIXEL_SIZE_CONFIG);
     const logicalRow = Math.floor(canvasBufferY / RENDERED_PIXEL_SIZE_CONFIG);
 
     if (logicalCol >= 0 && logicalCol < logicalGridCols && logicalRow >= 0 && logicalRow < logicalGridRows) {
-      // For isPointInPath, we need SVG coordinates.
-      // Get the center of the logical pixel in canvas buffer coordinates
       const pixelCenterXCanvasBuffer = (logicalCol + 0.5) * RENDERED_PIXEL_SIZE_CONFIG;
       const pixelCenterYCanvasBuffer = (logicalRow + 0.5) * RENDERED_PIXEL_SIZE_CONFIG;
 
-      // Convert canvas buffer center to SVG coordinates
-      const scaleXToSvg = SVG_VIEWBOX_WIDTH / canvas.width; // canvas.width is canvasDrawWidth
-      const scaleYToSvg = SVG_VIEWBOX_HEIGHT / canvas.height; // canvas.height is canvasDrawHeight
+      const scaleXToSvg = SVG_VIEWBOX_WIDTH / canvas.width; 
+      const scaleYToSvg = SVG_VIEWBOX_HEIGHT / canvas.height; 
       const svgCoordX = pixelCenterXCanvasBuffer * scaleXToSvg;
       const svgCoordY = pixelCenterYCanvasBuffer * scaleYToSvg;
       
@@ -298,8 +283,8 @@ export default function PixelGrid() {
       if (ctx && ctx.isPointInPath(mapPath2D, svgCoordX, svgCoordY)) {
         setSelectedPixel({ x: logicalCol, y: logicalRow });
         setShowAiModal(true);
-        setPixelDescription(null); // Clear previous description
-        setInitialAiProgressTrigger(prev => prev + 1); // Re-trigger animation for new pixel
+        setPixelDescription(null); 
+        setInitialAiProgressTrigger(prev => prev + 1); 
       } else {
         setSelectedPixel(null);
       }
@@ -312,13 +297,12 @@ export default function PixelGrid() {
     if (!selectedPixel) return;
     setIsGeneratingDesc(true);
     setPixelDescription(null); 
-    // setInitialAiProgressTrigger(prev => prev + 1); // Animation already triggered by modal open / selection
     
     try {
         const input: GeneratePixelDescriptionInput = {
             x: selectedPixel.x,
             y: selectedPixel.y,
-            surroundingAreaImageDataUri: PLACEHOLDER_IMAGE_DATA_URI, // Placeholder
+            surroundingAreaImageDataUri: PLACEHOLDER_IMAGE_DATA_URI, 
         };
         const result = await generatePixelDescription(input);
         setPixelDescription(result.description);
@@ -377,16 +361,16 @@ export default function PixelGrid() {
           <p>Zoom: {zoom.toFixed(2)}x</p>
           <p>X: {Math.round(position.x)}, Y: {Math.round(position.y)}</p>
           {selectedPixel && <p>Pixel Lógico: ({selectedPixel.x}, {selectedPixel.y})</p>}
-          <p>Total Pixels: {(totalLogicalPixels / 1000000).toFixed(2)}M</p>
+          <p>Pixels: {(totalLogicalPixels / 1000000).toFixed(2)}M (Pop. PT aprox.)</p>
         </div>
       </div>
 
       <Dialog open={showAiModal} onOpenChange={(isOpen) => {
           setShowAiModal(isOpen);
-          if (!isOpen) { // When modal is closed
-              setPixelDescription(null); // Clear description
-              setIsGeneratingDesc(false); // Stop generation if any
-              setAiModalProgressValue(0); // Reset progress
+          if (!isOpen) { 
+              setPixelDescription(null); 
+              setIsGeneratingDesc(false); 
+              setAiModalProgressValue(0); 
           }
       }}>
         <DialogContent className="sm:max-w-[425px] bg-card" data-dialog-content pointerEvents="auto">
@@ -406,7 +390,7 @@ export default function PixelGrid() {
               <Progress value={aiModalProgressValue} className="w-full mt-2" />
             </div>
           )}
-          {pixelDescription && (aiModalProgressValue === 0 || aiModalProgressValue === 100) && ( // Show if description exists and not actively generating
+          {pixelDescription && (aiModalProgressValue === 0 || aiModalProgressValue === 100) && ( 
             <div className="my-4 p-3 bg-background/50 rounded-md">
                 <p className="text-sm font-semibold mb-1 text-primary">Descrição da IA:</p>
                 <p className="text-sm text-foreground">{pixelDescription}</p>
@@ -429,15 +413,14 @@ export default function PixelGrid() {
         onMouseUp={handleMouseUpOrLeave}
         onMouseLeave={handleMouseUpOrLeave}
       >
-        {/* This div is transformed for pan and zoom */}
         <div
           style={{
             transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`,
             transition: isDragging ? 'none' : 'transform 0.05s ease-out',
-            width: `${canvasDrawWidth}px`, // Use canvas buffer width for this div
-            height: `${canvasDrawHeight}px`, // Use canvas buffer height for this div
+            width: `${canvasDrawWidth}px`, 
+            height: `${canvasDrawHeight}px`, 
             transformOrigin: 'top left',
-            position: 'relative', // Important for absolute children
+            position: 'relative', 
           }}
         >
           <PortugalMapSvg
@@ -447,8 +430,6 @@ export default function PixelGrid() {
           <canvas
             ref={canvasRef}
             onClick={handleCanvasClick}
-            // Canvas element itself stretches to fill this transformed div
-            // Its drawing buffer size is set by canvas.width/height in drawPixelsOnCanvas
             className="absolute top-0 left-0 w-full h-full z-10"
           />
         </div>
