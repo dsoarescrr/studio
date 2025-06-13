@@ -23,19 +23,40 @@ const initialStats: StatItem[] = [
   { label: 'Pixels Especiais', value: 150, icon: <MapPin className="h-5 w-5 text-purple-400" />, trend: 'up', trendValue: '+10' },
 ];
 
+const FormattedStatValue: React.FC<{ value: number | string }> = ({ value }) => {
+  const [displayValue, setDisplayValue] = useState<string | number>(
+    typeof value === 'number' ? '...' : value 
+  );
+
+  useEffect(() => {
+    if (typeof value === 'number') {
+      setDisplayValue(value.toLocaleString());
+    } else {
+      setDisplayValue(value); 
+    }
+  }, [value]);
+
+  if (typeof value === 'number' && displayValue === '...') {
+    return <span className="text-lg font-semibold font-code">...</span>;
+  }
+
+  return <>{displayValue}</>;
+};
+
+
 export default function StatisticsPanel() {
   const [isMinimized, setIsMinimized] = useState(false);
   const [stats, setStats] = useState<StatItem[]>(initialStats);
   const panelRef = useRef<HTMLDivElement>(null);
   // Default position, will be updated on client if needed by drag
-  const [position, setPosition] = useState({ x: 0, y: 640 }); 
+  const [position, setPosition] = useState({ x: 10000, y: 680 }); // Consistent server-renderable value
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     // Set initial position based on window size only on client
      if (typeof window !== 'undefined') {
-        setPosition({ x: window.innerWidth - 340, y: 20 + 600 + 20 });
+        setPosition({ x: window.innerWidth - 340, y: 20 + 600 + 20 }); // Assuming ActivityFeedPanel height is 600px and there's a 20px gap
      }
   }, []);
 
@@ -126,7 +147,9 @@ export default function StatisticsPanel() {
                   <span className="ml-2 text-sm">{stat.label}</span>
                 </div>
                 <div className="text-right">
-                  <p className="text-lg font-semibold font-code">{typeof stat.value === 'number' ? stat.value.toLocaleString() : stat.value}</p>
+                  <p className="text-lg font-semibold font-code">
+                    <FormattedStatValue value={stat.value} />
+                  </p>
                   {stat.trend && (
                     <div className="flex items-center justify-end text-xs text-muted-foreground">
                       {getTrendIcon(stat.trend)}
@@ -139,7 +162,6 @@ export default function StatisticsPanel() {
           </div>
           <div className="mt-6">
             <CardDescription className="text-xs mb-1 font-code">Densidade de Pixels por Região (Exemplo):</CardDescription>
-            {/* Example density map - replace with actual chart component later */}
             <div className="space-y-2">
               <div>
                 <div className="flex justify-between text-xs mb-0.5"><span>Norte</span><span>75%</span></div>

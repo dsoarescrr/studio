@@ -56,8 +56,6 @@ const FormattedTimestamp: React.FC<{ timestamp: Date }> = ({ timestamp }) => {
   }, [timestamp]);
 
   if (!timeString || !dateString) {
-    // Render a placeholder or nothing on the server and initial client render
-    // You could return a Skeleton component here or simply an empty span
     return <span className="text-xs text-muted-foreground/70">Carregando data...</span>;
   }
 
@@ -74,22 +72,17 @@ export default function ActivityFeedPanel() {
   const [filter, setFilter] = useState<'all' | ActivityItem['type']>('all');
   const [onlineUsers, setOnlineUsers] = useState(137); // Placeholder
   const panelRef = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState(() => {
-    // Attempt to set initial position smartly, fallback for SSR
-    if (typeof window !== 'undefined') {
-      return { x: window.innerWidth - 340, y: 20 };
-    }
-    return { x: 10000, y: 20 }; // Default far off-screen for SSR
-  });
+  // Initialize with a server-renderable, consistent value
+  const [position, setPosition] = useState({ x: 10000, y: 20 }); 
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
-    // Adjust position on client-side mount if it was default
-    if (position.x === 10000 && typeof window !== 'undefined') {
+    // Set initial client-side position after mount
+    if (typeof window !== 'undefined') {
       setPosition({ x: window.innerWidth - 340, y: 20 });
     }
-  }, [position.x]);
+  }, []); // Empty dependency array ensures this runs once on mount
 
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -134,7 +127,6 @@ export default function ActivityFeedPanel() {
   const filteredActivities = activities.filter(act => filter === 'all' || act.type === filter);
 
   useEffect(() => {
-    // Simulate new activities and online user count changes
     const interval = setInterval(() => {
       setOnlineUsers(prev => Math.max(0, prev + Math.floor(Math.random() * 11) - 5)); 
       const newActivity: ActivityItem = {
@@ -202,7 +194,7 @@ export default function ActivityFeedPanel() {
               {filteredActivities.map((activity) => (
                 <div key={activity.id} className="flex items-start space-x-3">
                   <Avatar className="h-8 w-8 mt-1">
-                    <AvatarImage src={activity.user.avatarUrl || `https://placehold.co/40x40.png?text=${activity.user.name.substring(0,1)}`} alt={activity.user.name} data-ai-hint="avatar user" />
+                    <AvatarImage src={activity.user.avatarUrl || `https://placehold.co/40x40.png?text=${activity.user.name.substring(0,1)}`} alt={activity.user.name} data-ai-hint="avatar user"/>
                     <AvatarFallback>{activity.user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
@@ -235,5 +227,3 @@ export default function ActivityFeedPanel() {
     </Card>
   );
 }
-
-    
