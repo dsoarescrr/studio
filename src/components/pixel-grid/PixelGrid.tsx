@@ -24,13 +24,14 @@ import { Progress } from '@/components/ui/progress';
 const SVG_VIEWBOX_WIDTH = 12969;
 const SVG_VIEWBOX_HEIGHT = 26674;
 
-// Target ~10.4M pixels
+// Configuração para ~10.4M pixels com canvasDrawWidth = 1350
 const RENDERED_PIXEL_SIZE_CONFIG = 0.6;
-const canvasDrawWidth = 1350;
-const canvasDrawHeight = Math.floor(canvasDrawWidth * (SVG_VIEWBOX_HEIGHT / SVG_VIEWBOX_WIDTH)); // ~2772
+const LOGICAL_GRID_COLS_CONFIG = 2250;
 
-const LOGICAL_GRID_COLS_CONFIG = Math.floor(canvasDrawWidth / RENDERED_PIXEL_SIZE_CONFIG); // ~2250
-const logicalGridRows = Math.floor(canvasDrawHeight / RENDERED_PIXEL_SIZE_CONFIG); // ~4620
+const canvasDrawWidth = LOGICAL_GRID_COLS_CONFIG * RENDERED_PIXEL_SIZE_CONFIG; // 1350
+const canvasDrawHeight = Math.floor(canvasDrawWidth * (SVG_VIEWBOX_HEIGHT / SVG_VIEWBOX_WIDTH)); // 2772 (aprox)
+
+const logicalGridRows = Math.floor(canvasDrawHeight / RENDERED_PIXEL_SIZE_CONFIG); // 4620 (aprox)
 const totalLogicalPixels = LOGICAL_GRID_COLS_CONFIG * logicalGridRows; // ~10,395,000
 
 const PLACEHOLDER_IMAGE_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
@@ -57,20 +58,30 @@ export default function PixelGrid() {
   const [workerStatus, setWorkerStatus] = useState<'idle' | 'processing' | 'drawing' | 'done' | 'error'>('idle');
   const [overallProgress, setOverallProgress] = useState(0); 
   const [progressMessage, setProgressMessage] = useState("A carregar dados do mapa...");
+  const [workerErrorMessage, setWorkerErrorMessage] = useState<string | null>(null);
   
   const workerRef = useRef<Worker | null>(null);
 
   const handleMapDataLoaded = useCallback((data: MapData) => {
     setMapData(data);
     setProgressMessage("Mapa carregado. A preparar grelha de pixels...");
+    setWorkerErrorMessage(null); // Reset error message
   }, []);
 
   useEffect(() => {
-    if (!mapData || mapData.pathStrings.length === 0 || workerStatus !== 'idle') return;
+    if (!mapData || !mapData.pathStrings || mapData.pathStrings.length === 0 || workerStatus !== 'idle') {
+      if (mapData && (!mapData.pathStrings || mapData.pathStrings.length === 0) && workerStatus === 'idle') {
+        setProgressMessage("Erro: Dados do mapa (pathStrings) estão vazios.");
+        setWorkerStatus('error');
+        setWorkerErrorMessage("Os dados para desenhar o mapa não foram carregados corretamente.");
+      }
+      return;
+    }
 
     setProgressMessage("A gerar mapa de pixels (isto pode demorar)...");
     setWorkerStatus('processing');
     setOverallProgress(0);
+    setWorkerErrorMessage(null);
     
     const worker = new Worker(new URL('../../workers/pixel-map-worker.ts', import.meta.url));
     workerRef.current = worker;
@@ -87,30 +98,37 @@ export default function PixelGrid() {
     });
 
     worker.onmessage = (event) => {
-      const { type, bitmap, progress, error } = event.data;
+      const { type, bitmap, progress, error: workerErrorPayload } = event.data;
+      
       if (type === 'progress') {
-        // Worker contribui para os primeiros 50% do progresso total
-        setOverallProgress(progress * 0.5); 
+        const workerProgress = progress; // Progress from worker (0-100)
+        // Worker contributes to the first 50% of the overall progress
+        setOverallProgress(workerProgress * 0.5);
       } else if (type === 'done') {
         setPixelBitmap(new Uint8Array(bitmap));
         setWorkerStatus('drawing'); 
         setProgressMessage("Mapa de pixels gerado. A desenhar...");
-        setOverallProgress(50); 
+        // overallProgress will be 50% here (from the last worker progress message * 0.5 or forced 99.9 * 0.5)
+        // and will then increase from 50 to 100 during canvas drawing.
       } else if (type === 'error') {
-        console.error('Worker error:', error);
+        const errorMessage = workerErrorPayload || 'Erro desconhecido no worker.';
+        console.error('Worker error message from payload:', errorMessage);
         setWorkerStatus('error');
-        setProgressMessage(`Erro ao gerar mapa: ${error || 'Erro desconhecido no worker'}`);
-        setOverallProgress(0); // Indica erro na barra de progresso
-        toast({ title: "Erro do Worker", description: error || 'Ocorreu um erro no worker.', variant: "destructive" });
+        setWorkerErrorMessage(errorMessage);
+        setProgressMessage(`Erro ao gerar mapa: ${errorMessage}`);
+        setOverallProgress(0); 
+        toast({ title: "Erro do Worker", description: errorMessage, variant: "destructive" });
       }
     };
     
     worker.onerror = (err) => {
-      console.error('Worker error object:', err);
+      console.error('Worker critical error object:', err);
       setWorkerStatus('error');
-      setProgressMessage(`Erro crítico no worker: ${err.message}`);
+      const errorMessage = err.message || "Ocorreu um erro crítico e inesperado no worker."
+      setWorkerErrorMessage(errorMessage);
+      setProgressMessage(`Erro crítico no worker: ${errorMessage}`);
       setOverallProgress(0);
-      toast({ title: "Erro Crítico do Worker", description: err.message, variant: "destructive" });
+      toast({ title: "Erro Crítico do Worker", description: errorMessage, variant: "destructive" });
     };
 
     return () => {
@@ -119,7 +137,7 @@ export default function PixelGrid() {
         workerRef.current = null;
       }
     };
-  }, [mapData, workerStatus, toast]);
+  }, [mapData, workerStatus]); // Removido toast da lista de dependências
 
 
   const drawPixelsOnCanvas = useCallback(async () => {
@@ -128,13 +146,14 @@ export default function PixelGrid() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    setProgressMessage("A desenhar pixels...");
+    // Ensure this message is set when drawing starts
+    setProgressMessage(`A desenhar pixels... ${overallProgress.toFixed(1)}%`);
     canvas.width = canvasDrawWidth;
     canvas.height = canvasDrawHeight;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = 'rgba(180, 180, 180, 0.7)';
-    // Só desenha stroke se o pixel renderizado for maior que 1px
+    
     if (RENDERED_PIXEL_SIZE_CONFIG > 1) { 
         ctx.strokeStyle = 'rgba(30, 30, 30, 0.75)';
         ctx.lineWidth = 0.2;
@@ -159,8 +178,9 @@ export default function PixelGrid() {
             }
           }
           rowsDrawn += (endRow - startRow);
-          // Desenho do canvas contribui para os segundos 50% (progresso total de 50% a 100%)
-          setOverallProgress(50 + (rowsDrawn / logicalGridRows) * 50); 
+          // Drawing on canvas contributes to the second 50% (progress from 50% to 100%)
+          const drawingProgress = (rowsDrawn / logicalGridRows) * 50;
+          setOverallProgress(50 + drawingProgress); 
           resolve();
         });
       });
@@ -171,16 +191,17 @@ export default function PixelGrid() {
     }
     
     setProgressMessage("Universo pixel pronto!");
-    setOverallProgress(100);
+    setOverallProgress(100); // Ensure it hits 100
     setWorkerStatus('done');
-  }, [pixelBitmap]);
+  }, [pixelBitmap, overallProgress]); // Added overallProgress to ensure message updates if drawing starts at a non-50 value
 
 
   const handleResetView = useCallback(() => {
     const currentZoom = 1;
     setZoom(currentZoom);
-     if (containerRef.current) {
+     if (containerRef.current && canvasRef.current) { // Check canvasRef.current for dimensions
         const { offsetWidth: containerWidth, offsetHeight: containerHeight } = containerRef.current;
+        // Use canvasDrawWidth/Height for content dimensions as they are fixed
         const canvasContentWidth = canvasDrawWidth * currentZoom; 
         const canvasContentHeight = canvasDrawHeight * currentZoom;
         setPosition({
@@ -241,6 +262,21 @@ export default function PixelGrid() {
         if (timeoutId) clearTimeout(timeoutId);
     };
   }, [isGeneratingDesc, showAiModal, pixelDescription, initialAiProgressTrigger]); 
+
+  // useEffect to update progress message based on workerStatus and overallProgress
+  useEffect(() => {
+    if (workerStatus === 'error') {
+      setProgressMessage(`Erro: ${workerErrorMessage || 'Falha no processo.'}`);
+    } else if (workerStatus === 'processing') {
+      setProgressMessage(`A gerar mapa de pixels... ${overallProgress.toFixed(1)}%`);
+    } else if (workerStatus === 'drawing') {
+      setProgressMessage(`A desenhar pixels... ${overallProgress.toFixed(1)}%`);
+    } else if (workerStatus === 'done' && overallProgress >= 99.9) { // Check for >= 99.9 due to float precision
+      setProgressMessage("Universo pixel pronto!");
+    } else if (workerStatus === 'idle' && !mapData) {
+      setProgressMessage("A carregar dados do mapa...");
+    }
+  }, [workerStatus, overallProgress, mapData, workerErrorMessage]);
 
 
   const handleZoomIn = () => setZoom((prevZoom) => Math.min(prevZoom * 1.2, 10));
@@ -338,7 +374,11 @@ export default function PixelGrid() {
     }
   }, [selectedPixel, toast]);
 
-  const progressText = overallProgress === 0 && workerStatus !== 'error' ? "0" : overallProgress === 100 ? "100" : overallProgress.toFixed(1);
+  const progressText = 
+    workerStatus === 'error' ? "Erro" : 
+    (overallProgress === 0 && workerStatus !== 'processing') ? "0.0" : 
+    (overallProgress >= 99.9 && workerStatus === 'done') ? "100" : 
+    overallProgress.toFixed(1);
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden relative">
@@ -458,10 +498,10 @@ export default function PixelGrid() {
         </div>
         
         {/* Overlay de Progresso/Erro */}
-        {(workerStatus === 'processing' || workerStatus === 'drawing' || workerStatus === 'error') && overallProgress < 100 && (
+        {(workerStatus !== 'done' && workerStatus !== 'idle' || (workerStatus === 'done' && overallProgress < 99.9)) && (
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm pointer-events-none">
             {workerStatus !== 'error' && <Sparkles className="h-12 w-12 text-primary animate-pulse mb-4" />}
-            {workerStatus === 'error' && <div className="h-12 w-12 text-destructive flex items-center justify-center"><ZoomOut className="h-10 w-10"/></div>}
+            {workerStatus === 'error' && <div className="h-12 w-12 text-destructive flex items-center justify-center mb-4"><ZoomOut className="h-10 w-10"/></div>}
             <p className={`text-lg font-headline mb-2 ${workerStatus === 'error' ? 'text-destructive' : 'text-foreground'}`}>{progressMessage}</p>
             {workerStatus !== 'error' && <Progress value={overallProgress} className="w-1/2 max-w-md" />}
             {workerStatus !== 'error' && <p className="text-sm text-muted-foreground mt-1">{progressText}%</p>}
