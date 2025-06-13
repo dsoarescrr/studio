@@ -1,3 +1,4 @@
+
 // src/workers/pixel-map-worker.ts
 interface WorkerInput {
   pathStrings: string[];
@@ -22,8 +23,7 @@ self.onmessage = (event: MessageEvent<WorkerInput>) => {
     pixelSize,
   } = event.data;
 
-  // Create an OffscreenCanvas to use its context for isPointInPath
-  const offscreenCanvas = new OffscreenCanvas(1, 1); // Dimensions are minimal
+  const offscreenCanvas = new OffscreenCanvas(1, 1);
   const ctx = offscreenCanvas.getContext('2d');
 
   if (!ctx) {
@@ -34,13 +34,9 @@ self.onmessage = (event: MessageEvent<WorkerInput>) => {
   const combinedPath = new Path2D();
   pathStrings.forEach(d => {
     try {
-      // Note: Path2D constructor might not be available in all worker contexts
-      // or might have limitations. If issues arise, an alternative is to
-      // draw paths on a larger OffscreenCanvas and use getImageData.
       combinedPath.addPath(new Path2D(d));
     } catch (e) {
       console.warn('Worker: Invalid path string skipped', d, e);
-      // Optionally, post an error or warning back to the main thread
     }
   });
 
@@ -50,7 +46,15 @@ self.onmessage = (event: MessageEvent<WorkerInput>) => {
 
   let processedPixels = 0;
   const totalPixelsToProcess = logicalCols * logicalRows;
-  const progressUpdateInterval = Math.floor(logicalRows / 20) || 1; // Update roughly 20 times
+
+  if (totalPixelsToProcess === 0) {
+    self.postMessage({ type: 'error', error: 'Total pixels to process is zero. Check logicalCols/logicalRows input to worker.' });
+    return;
+  }
+
+  // Ajustar o intervalo de atualização para ser mais frequente
+  // Atualiza aproximadamente 50 vezes durante o processo, ou a cada linha se houver menos de 50 linhas.
+  const progressUpdateInterval = Math.max(1, Math.floor(logicalRows / 50));
 
   for (let r = 0; r < logicalRows; r++) {
     for (let c = 0; c < logicalCols; c++) {
@@ -70,7 +74,13 @@ self.onmessage = (event: MessageEvent<WorkerInput>) => {
       processedPixels++;
     }
     if (r % progressUpdateInterval === 0 || r === logicalRows - 1) {
-        self.postMessage({ type: 'progress', progress: (processedPixels / totalPixelsToProcess) * 100 });
+      const currentProgress = (processedPixels / totalPixelsToProcess) * 100;
+      if (Number.isFinite(currentProgress)) {
+        self.postMessage({ type: 'progress', progress: currentProgress });
+      } else {
+        // Se o progresso não for finito, pode haver um problema com os inputs
+        console.warn('Worker: Progress calculation resulted in non-finite number.', {processedPixels, totalPixelsToProcess});
+      }
     }
   }
 
