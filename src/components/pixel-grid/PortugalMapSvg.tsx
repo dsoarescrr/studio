@@ -5,26 +5,36 @@ import React, { useEffect, useRef } from 'react';
 
 type PortugalMapSvgProps = {
   className?: string;
-  onMapPathLoaded?: (path: Path2D) => void;
+  onMapDataLoaded?: (data: { path2D: Path2D; pathStrings: string[] }) => void;
 };
 
 // CC-BY-SA-4.0 Por: Afonso Gomes http://afonsogomes.com https://github.com/AfonsoFG/PortugalSVG
-export default function PortugalMapSvg({ className, onMapPathLoaded }: PortugalMapSvgProps) {
+export default function PortugalMapSvg({ className, onMapDataLoaded }: PortugalMapSvgProps) {
   const landmassPathsRef = useRef<SVGGElement>(null);
 
   useEffect(() => {
-    if (landmassPathsRef.current && onMapPathLoaded) {
-      const combinedPath = new Path2D();
+    if (landmassPathsRef.current && onMapDataLoaded) {
+      const combinedPath2D = new Path2D();
+      const pathStrings: string[] = [];
       const pathElements = landmassPathsRef.current.querySelectorAll('path');
+      
       pathElements.forEach(pathEl => {
         const d = pathEl.getAttribute('d');
         if (d) {
-          combinedPath.addPath(new Path2D(d));
+          try {
+            combinedPath2D.addPath(new Path2D(d)); // For main thread usage
+            pathStrings.push(d); // For worker usage
+          } catch (e) {
+            console.error("Error creating Path2D from d attribute:", d, e);
+          }
         }
       });
-      onMapPathLoaded(combinedPath);
+
+      if (pathStrings.length > 0) {
+        onMapDataLoaded({ path2D: combinedPath2D, pathStrings });
+      }
     }
-  }, [onMapPathLoaded]);
+  }, [onMapDataLoaded]);
 
   return (
     <svg width="100%" height="100%" viewBox="0 0 12969 26674" preserveAspectRatio="xMidYMid meet">
@@ -122,7 +132,7 @@ export default function PortugalMapSvg({ className, onMapPathLoaded }: PortugalM
             <path data-z="299" className="z z299" d="M8011 15970l33 98 -66 97 -32 98 -66 65 -198 -97 -66 97 -99 -32 -66 -98 -197 65 0 -130 33 -98 -99 -65 -165 -228 -66 -130 132 0 99 32 263 -32 99 -33 99 -32 99 -66 99 -32 99 0 -99 98c48,144 114,275 164,423z"/>
             <path data-z="298" className="z z298" d="M6562 16361l-132 130 -99 -32 -99 65 -132 65 -98 -33 33 -97 -165 -163 -231 -65 -99 -33 33 -98 132 -163 33 -97 66 -98 99 -33 329 0 33 -97 33 -228 231 -98 33 -98 98 195 33 130 132 33 33 98 66 130 165 228 99 65 -33 98 0 130 -99 33 -99 -33 -198 65 -99 -65 -197 98z"/>
             <path data-z="297" className="z z297" d="M9114 14888l33 98 0 130 65 66 -179 72 -99 32 -132 0 -99 33 -33 97 -131 98 -198 -98 -198 -65 -33 -130 -99 -65 -33 -98 66 -130 33 -196 -33 -97 -66 -98 -164 -130 132 -98 98 33 198 -98 99 32 66 98 0 130 99 66 66 97 98 -32 33 -98 215 -25 66 49 65 98 131 98 -66 131z"/>
-            <path data-z="296" className="z z296" d="M7188 15644l-99 -32 -132 0 -33 -98 -132 -33 -33 -130 -98 -195 -99 -65 66 -98 -33 -98 99 -65 65 -98 33 -130 99 33c131,43 184,89 297,163l132 195 98 33c99,65 198,130 297,195l263 65 99 65 -131 98 -99 0 -99 32 -99 66 -99 32 -99 33 -263 32z"/>
+            <path data-z="296" className="z z296" d="M7188 15644l-99 -32 -132 0 -33 -98 -132 -33 -33 -130 -98 -195 -99 -65 66 -98 -33 -98 99 -65 65 -98 33 -130 99 33c131,43 184,89 297,163l132 195 98 33c99,65 198,130 297,195l263 65 99 65 -131 98 -99 0 -99 32 -99 66 -99 33 -263 32z"/>
             <path data-z="295" className="z z295" d="M7814 14407l164 130 66 98 33 97 -33 196 -66 130 33 98 99 65 33 130 -66 0 -99 -65 -263 -65c-99,-65 -198,-130 -297,-195l-98 -33 -132 -195c-113,-74 -166,-120 -297,-163l-99 -33 -164 0 -99 33 33 -98c132,-43 263,-87 395,-130l198 -98 66 -65 33 -98 197 -98 66 196 198 130 99 33z"/>
             <path data-z="294" className="z z294" d="M6595 14895l33 98 -66 98 99 65 -99 32 -33 98 -231 98 -33 228 -33 97 -329 0 -99 33 -66 98 -33 97 -132 163 -33 98 -197 33 -132 195 -99 0 -99 -228 0 -130 -99 -65 -33 -98 -98 -65 -95 -39 62 -92 66 -97 32 -98 99 -65 99 -33 99 -32 66 -98 99 -65 66 -98 66 -163 65 -97 99 32 132 0 33 -97 99 -66 33 -97 66 -98 -33 -98 132 0 65 -97 66 32 33 98 99 32 198 131 99 -33 164 0 -33 130 -65 98 -99 65z"/>
             <path data-z="293" className="z z293" d="M8918 14512l-215 25 -33 98 -98 32 -66 -97 -99 -66 0 -130 -66 -98 99 -65 0 -130 33 -98 -33 -97 74 -297 45 91 98 65 131 0 130 98 -32 229 -75 186 42 42 0 163 65 49z"/>

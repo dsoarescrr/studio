@@ -23,11 +23,11 @@ import { Progress } from '@/components/ui/progress';
 const SVG_VIEWBOX_WIDTH = 12969;
 const SVG_VIEWBOX_HEIGHT = 26674;
 
-// Target ~10.4M pixels with a manageable canvas buffer size
-const RENDERED_PIXEL_SIZE_CONFIG = 0.6; 
 const LOGICAL_GRID_COLS_CONFIG = 2250; 
+const RENDERED_PIXEL_SIZE_CONFIG = 0.6;
 
 const PLACEHOLDER_IMAGE_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+const ROWS_PER_DRAW_CHUNK = 100; // For drawing from bitmap
 
 export default function PixelGrid() {
   const [zoom, setZoom] = useState(1);
@@ -43,116 +43,141 @@ export default function PixelGrid() {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [mapPath2D, setMapPath2D] = useState<Path2D | null>(null);
   const { toast } = useToast();
 
-  const [drawingProgress, setDrawingProgress] = useState(0);
-  const [initialDrawingComplete, setInitialDrawingComplete] = useState(false);
+  const [mapData, setMapData] = useState<{ path2D: Path2D | null; pathStrings: string[] }>({ path2D: null, pathStrings: [] });
+  const [pixelBitmap, setPixelBitmap] = useState<Uint8Array | null>(null);
+  const [workerStatus, setWorkerStatus] = useState<'idle' | 'processing' | 'done' | 'error'>('idle');
+  const [overallProgress, setOverallProgress] = useState(0); // 0-50 for worker, 50-100 for drawing
+  const [progressMessage, setProgressMessage] = useState("A carregar dados do mapa...");
+  
+  const workerRef = useRef<Worker | null>(null);
 
   // Calculate canvas buffer dimensions
-  const canvasDrawWidth = LOGICAL_GRID_COLS_CONFIG * RENDERED_PIXEL_SIZE_CONFIG; // e.g., 2250 * 0.6 = 1350
-  const canvasDrawHeight = Math.floor(canvasDrawWidth * (SVG_VIEWBOX_HEIGHT / SVG_VIEWBOX_WIDTH)); // Maintain SVG aspect ratio
+  const canvasDrawWidth = LOGICAL_GRID_COLS_CONFIG * RENDERED_PIXEL_SIZE_CONFIG;
+  const canvasDrawHeight = Math.floor(canvasDrawWidth * (SVG_VIEWBOX_HEIGHT / SVG_VIEWBOX_WIDTH));
 
   // Calculate logical grid dimensions
-  const logicalGridCols = LOGICAL_GRID_COLS_CONFIG; // Renamed for clarity, effectively the same
+  const logicalGridCols = LOGICAL_GRID_COLS_CONFIG;
   const logicalGridRows = Math.floor(canvasDrawHeight / RENDERED_PIXEL_SIZE_CONFIG);
-  const totalLogicalPixels = logicalGridCols * logicalGridRows; // Approx 10.4M
+  const totalLogicalPixels = logicalGridCols * logicalGridRows;
 
-
-  const handleMapPathLoaded = useCallback((path: Path2D) => {
-    setMapPath2D(path);
+  const handleMapDataLoaded = useCallback((data: { path2D: Path2D; pathStrings: string[] }) => {
+    setMapData(data);
+    setProgressMessage("Mapa carregado. A preparar grelha de pixels...");
   }, []);
 
-  const drawPixelsOnCanvas = useCallback(async (
-    currentCanvasWidth: number,
-    currentCanvasHeight: number
-  ) => {
+  // Initialize Web Worker and process bitmap
+  useEffect(() => {
+    if (mapData.pathStrings.length === 0 || workerStatus !== 'idle') return;
+
+    setProgressMessage("A gerar mapa de pixels (isto pode demorar)...");
+    setWorkerStatus('processing');
+    
+    const worker = new Worker(new URL('../../workers/pixel-map-worker.ts', import.meta.url));
+    workerRef.current = worker;
+
+    worker.postMessage({
+      pathStrings: mapData.pathStrings,
+      canvasWidth: canvasDrawWidth,
+      canvasHeight: canvasDrawHeight,
+      svgViewBoxWidth: SVG_VIEWBOX_WIDTH,
+      svgViewBoxHeight: SVG_VIEWBOX_HEIGHT,
+      logicalCols: logicalGridCols,
+      logicalRows: logicalGridRows,
+      pixelSize: RENDERED_PIXEL_SIZE_CONFIG,
+    });
+
+    worker.onmessage = (event) => {
+      const { type, bitmap, progress, error } = event.data;
+      if (type === 'progress') {
+        setOverallProgress(progress * 0.5); // Worker contributes to first 50%
+      } else if (type === 'done') {
+        setPixelBitmap(new Uint8Array(bitmap));
+        setWorkerStatus('done');
+        setProgressMessage("Mapa de pixels gerado. A desenhar...");
+        setOverallProgress(50); // Mark worker phase as complete
+      } else if (type === 'error') {
+        console.error('Worker error:', error);
+        setWorkerStatus('error');
+        setProgressMessage("Erro ao gerar mapa de pixels.");
+        toast({ title: "Erro do Worker", description: error, variant: "destructive" });
+      }
+    };
+    
+    worker.onerror = (err) => {
+      console.error('Worker error:', err);
+      setWorkerStatus('error');
+      setProgressMessage("Erro crítico no worker.");
+      toast({ title: "Erro Crítico do Worker", description: err.message, variant: "destructive" });
+    };
+
+    return () => {
+      if (workerRef.current) {
+        workerRef.current.terminate();
+        workerRef.current = null;
+      }
+    };
+  }, [mapData, workerStatus, canvasDrawWidth, canvasDrawHeight, logicalGridCols, logicalGridRows, toast]);
+
+
+  const drawPixelsOnCanvas = useCallback(async () => {
     const canvas = canvasRef.current;
-    if (!canvas || !mapPath2D) return;
+    if (!canvas || !pixelBitmap) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    setInitialDrawingComplete(false);
-    setDrawingProgress(0);
-    console.log('Starting initial pixel drawing...');
-
-    canvas.width = currentCanvasWidth;
-    canvas.height = currentCanvasHeight;
+    setProgressMessage("A desenhar pixels...");
+    canvas.width = canvasDrawWidth;
+    canvas.height = canvasDrawHeight;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = 'rgba(180, 180, 180, 0.7)';
-    ctx.strokeStyle = 'rgba(30, 30, 30, 0.75)'; // Kept for potential future use if RENDERED_PIXEL_SIZE_CONFIG changes
-    ctx.lineWidth = RENDERED_PIXEL_SIZE_CONFIG > 1 ? 0.2 : 0.1; 
-    ctx.lineCap = 'butt';
-    ctx.lineJoin = 'miter';
+    if (RENDERED_PIXEL_SIZE_CONFIG > 1) { // Only set stroke if pixels are large enough
+        ctx.strokeStyle = 'rgba(30, 30, 30, 0.75)';
+        ctx.lineWidth = 0.2;
+    }
 
-    const scaleXToSvg = SVG_VIEWBOX_WIDTH / currentCanvasWidth;
-    const scaleYToSvg = SVG_VIEWBOX_HEIGHT / currentCanvasHeight;
-
-    const numLogicalColsToProcess = logicalGridCols;
-    const numLogicalRowsToProcess = logicalGridRows;
-    const ROWS_PER_CHUNK = 100; // Increased chunk size for potentially faster overall drawing
-
-    let rowsProcessed = 0;
+    let rowsDrawn = 0;
 
     function drawChunk(startRow: number) {
       return new Promise<void>((resolve) => {
         requestAnimationFrame(() => {
-          const endRow = Math.min(startRow + ROWS_PER_CHUNK, numLogicalRowsToProcess);
+          const endRow = Math.min(startRow + ROWS_PER_DRAW_CHUNK, logicalGridRows);
           for (let r = startRow; r < endRow; r++) {
-            for (let c = 0; c < numLogicalColsToProcess; c++) {
-              const pixelCanvasX = c * RENDERED_PIXEL_SIZE_CONFIG;
-              const pixelCanvasY = r * RENDERED_PIXEL_SIZE_CONFIG;
-
-              const pixelCenterXCanvas = pixelCanvasX + RENDERED_PIXEL_SIZE_CONFIG / 2;
-              const pixelCenterYCanvas = pixelCanvasY + RENDERED_PIXEL_SIZE_CONFIG / 2;
-              
-              const svgCoordX = pixelCenterXCanvas * scaleXToSvg;
-              const svgCoordY = pixelCenterYCanvas * scaleYToSvg;
-
-              if (ctx.isPointInPath(mapPath2D, svgCoordX, svgCoordY)) {
-                ctx.fillRect(
-                  pixelCanvasX,
-                  pixelCanvasY,
-                  RENDERED_PIXEL_SIZE_CONFIG,
-                  RENDERED_PIXEL_SIZE_CONFIG
-                );
-                // Stroke only if pixels are large enough to be visually distinct
-                if (RENDERED_PIXEL_SIZE_CONFIG > 1) { 
-                  ctx.strokeRect(
-                    pixelCanvasX,
-                    pixelCanvasY,
-                    RENDERED_PIXEL_SIZE_CONFIG,
-                    RENDERED_PIXEL_SIZE_CONFIG
-                  );
+            for (let c = 0; c < logicalGridCols; c++) {
+              if (pixelBitmap[r * logicalGridCols + c] === 1) {
+                const x = c * RENDERED_PIXEL_SIZE_CONFIG;
+                const y = r * RENDERED_PIXEL_SIZE_CONFIG;
+                ctx.fillRect(x, y, RENDERED_PIXEL_SIZE_CONFIG, RENDERED_PIXEL_SIZE_CONFIG);
+                if (RENDERED_PIXEL_SIZE_CONFIG > 1) {
+                  ctx.strokeRect(x, y, RENDERED_PIXEL_SIZE_CONFIG, RENDERED_PIXEL_SIZE_CONFIG);
                 }
               }
             }
           }
-          rowsProcessed += (endRow - startRow);
-          setDrawingProgress(Math.min(100, (rowsProcessed / numLogicalRowsToProcess) * 100));
+          rowsDrawn += (endRow - startRow);
+          setOverallProgress(50 + (rowsDrawn / totalLogicalPixels) * 50); // Drawing contributes to second 50%
           resolve();
         });
       });
     }
 
-    for (let r = 0; r < numLogicalRowsToProcess; r += ROWS_PER_CHUNK) {
+    for (let r = 0; r < logicalGridRows; r += ROWS_PER_DRAW_CHUNK) {
       await drawChunk(r);
     }
+    
+    setProgressMessage("Universo pixel pronto!");
+    setOverallProgress(100);
+    console.log(`Drawing from bitmap complete. Canvas buffer: ${canvasDrawWidth}x${canvasDrawHeight}. Logical grid: ${logicalGridCols}x${logicalGridRows}. Total logical pixels: ${totalLogicalPixels.toLocaleString()}`);
+  }, [pixelBitmap, canvasDrawWidth, canvasDrawHeight, logicalGridCols, logicalGridRows, totalLogicalPixels]);
 
-    setInitialDrawingComplete(true);
-    setDrawingProgress(100);
-    console.log(`Initial drawing complete. Canvas buffer: ${currentCanvasWidth}x${currentCanvasHeight}. Logical grid: ${numLogicalColsToProcess}x${numLogicalRowsToProcess}. Total logical pixels: ${totalLogicalPixels.toLocaleString()}`);
 
-  }, [mapPath2D, logicalGridCols, logicalGridRows, totalLogicalPixels]);
-
-
- const handleResetView = useCallback(() => {
+  const handleResetView = useCallback(() => {
     const currentZoom = 1;
     setZoom(currentZoom);
      if (containerRef.current) {
         const { offsetWidth: containerWidth, offsetHeight: containerHeight } = containerRef.current;
-        // canvasDrawWidth and canvasDrawHeight are the dimensions of the content being zoomed
         const canvasContentWidth = canvasDrawWidth * currentZoom; 
         const canvasContentHeight = canvasDrawHeight * currentZoom;
         setPosition({
@@ -163,20 +188,25 @@ export default function PixelGrid() {
   }, [canvasDrawWidth, canvasDrawHeight]);
 
   useEffect(() => {
-    if (mapPath2D && canvasRef.current && containerRef.current) {
-      requestAnimationFrame(() => {
-        handleResetView(); 
-        drawPixelsOnCanvas(canvasDrawWidth, canvasDrawHeight); 
-      });
+    if (mapData.path2D && canvasRef.current && containerRef.current) {
+        requestAnimationFrame(() => {
+            handleResetView();
+        });
     }
-  }, [mapPath2D, canvasDrawWidth, canvasDrawHeight, drawPixelsOnCanvas, handleResetView]);
+  }, [mapData.path2D, handleResetView]);
+
+  useEffect(() => {
+    if (workerStatus === 'done' && pixelBitmap) {
+      drawPixelsOnCanvas();
+    }
+  }, [workerStatus, pixelBitmap, drawPixelsOnCanvas]);
 
 
  useEffect(() => {
     let animationFrameId: number | undefined;
     let timeoutId: NodeJS.Timeout | undefined;
 
-    if (isGeneratingDesc && showAiModal) { // Only animate if modal is shown
+    if (isGeneratingDesc && showAiModal) {
         setAiModalProgressValue(0); 
         let currentProgress = 0;
         const animate = () => {
@@ -191,31 +221,23 @@ export default function PixelGrid() {
         };
         animationFrameId = requestAnimationFrame(animate);
     } else {
-        // Conditions for stopping animation or resetting progress
-        if (!isGeneratingDesc && showAiModal) { // AI finished, modal still open
-             if (pixelDescription) { // If description is successfully fetched
+        if (!isGeneratingDesc && showAiModal) {
+             if (pixelDescription) {
                 setAiModalProgressValue(100); 
                 timeoutId = setTimeout(() => {
-                    if (showAiModal) setShowAiModal(false); // Close modal after showing success
+                    if (showAiModal) setShowAiModal(false);
                     setAiModalProgressValue(0); 
                 }, 1000); 
-             } else { // AI finished but no description (e.g. error or cancelled)
-                // Potentially show a different state or just allow closing
-                // For now, just reset progress if modal is closed manually
              }
-        } else if (!showAiModal) { // Modal closed, reset progress
+        } else if (!showAiModal) {
             setAiModalProgressValue(0);
         }
     }
     return () => {
-        if (animationFrameId) {
-            cancelAnimationFrame(animationFrameId);
-        }
-        if (timeoutId) {
-            clearTimeout(timeoutId);
-        }
+        if (animationFrameId) cancelAnimationFrame(animationFrameId);
+        if (timeoutId) clearTimeout(timeoutId);
     };
-}, [isGeneratingDesc, showAiModal, pixelDescription, initialAiProgressTrigger]); // initialAiProgressTrigger ensures effect reruns when new generation starts
+  }, [isGeneratingDesc, showAiModal, pixelDescription, initialAiProgressTrigger]); 
 
 
   const handleZoomIn = () => setZoom((prevZoom) => Math.min(prevZoom * 1.2, 10));
@@ -224,13 +246,11 @@ export default function PixelGrid() {
 
  const handleMouseDown = (e: React.MouseEvent) => {
     const targetElement = e.target as HTMLElement;
-    // Check if the click is on the container or the transformed div itself, not on UI elements within it
     if (
       targetElement.closest('button, input, [role="slider"], [data-dialog-content], [role="dialog"]')
     ) {
-      return; // Ignore clicks on interactive elements
+      return; 
     }
-    // Allow dragging if clicking directly on the containerRef or the direct child div that is transformed
     if (targetElement !== canvasRef.current && containerRef.current?.contains(targetElement)) {
       const transformedDiv = canvasRef.current?.parentElement;
       if (targetElement === containerRef.current || targetElement === transformedDiv) {
@@ -253,43 +273,37 @@ export default function PixelGrid() {
   };
 
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current || !mapPath2D || !initialDrawingComplete) return;
+    if (!canvasRef.current || !mapData.path2D || overallProgress < 100) return;
     const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect(); // This gives the DISPLAYED size and position of the canvas
+    const rect = canvas.getBoundingClientRect(); 
 
-    // Calculate click coordinates relative to the canvas element
     const clickXInCanvasElement = event.clientX - rect.left;
     const clickYInCanvasElement = event.clientY - rect.top;
 
-    // Scale click coordinates from displayed size to buffer size
-    // canvas.width/height is the buffer size
-    // rect.width/height is the CSS-scaled size
     const scaleXFromElementToBuffer = canvas.width / rect.width;
     const scaleYFromElementToBuffer = canvas.height / rect.height;
 
     const canvasBufferX = clickXInCanvasElement * scaleXFromElementToBuffer;
     const canvasBufferY = clickYInCanvasElement * scaleYFromElementToBuffer;
 
-    // Convert buffer coordinates to logical grid coordinates
     const logicalCol = Math.floor(canvasBufferX / RENDERED_PIXEL_SIZE_CONFIG);
     const logicalRow = Math.floor(canvasBufferY / RENDERED_PIXEL_SIZE_CONFIG);
 
     if (logicalCol >= 0 && logicalCol < logicalGridCols && logicalRow >= 0 && logicalRow < logicalGridRows) {
-      // Check if the center of the logical pixel is within the SVG path
       const pixelCenterXCanvasBuffer = (logicalCol + 0.5) * RENDERED_PIXEL_SIZE_CONFIG;
       const pixelCenterYCanvasBuffer = (logicalRow + 0.5) * RENDERED_PIXEL_SIZE_CONFIG;
 
-      const scaleXToSvg = SVG_VIEWBOX_WIDTH / canvas.width; // canvas.width is canvasDrawWidth
-      const scaleYToSvg = SVG_VIEWBOX_HEIGHT / canvas.height; // canvas.height is canvasDrawHeight
+      const scaleXToSvg = SVG_VIEWBOX_WIDTH / canvas.width; 
+      const scaleYToSvg = SVG_VIEWBOX_HEIGHT / canvas.height;
       const svgCoordX = pixelCenterXCanvasBuffer * scaleXToSvg;
       const svgCoordY = pixelCenterYCanvasBuffer * scaleYToSvg;
       
       const ctx = canvas.getContext('2d');
-      if (ctx && ctx.isPointInPath(mapPath2D, svgCoordX, svgCoordY)) {
+      if (ctx && mapData.path2D && ctx.isPointInPath(mapData.path2D, svgCoordX, svgCoordY)) {
         setSelectedPixel({ x: logicalCol, y: logicalRow });
         setShowAiModal(true);
-        setPixelDescription(null); // Reset description
-        setInitialAiProgressTrigger(prev => prev + 1); // Trigger AI progress animation
+        setPixelDescription(null);
+        setInitialAiProgressTrigger(prev => prev + 1);
       } else {
         setSelectedPixel(null);
       }
@@ -301,16 +315,13 @@ export default function PixelGrid() {
   const handleGenerateDescription = useCallback(async () => {
     if (!selectedPixel) return;
     setIsGeneratingDesc(true);
-    setPixelDescription(null); // Clear previous description
+    setPixelDescription(null);
     
     try {
-        // For now, we use a placeholder for surroundingAreaImageDataUri
-        // In a real scenario, you'd capture a small image around the selected pixel from the canvas
-        // const surroundingDataUri = captureSurroundingArea(selectedPixel.x, selectedPixel.y);
         const input: GeneratePixelDescriptionInput = {
             x: selectedPixel.x,
             y: selectedPixel.y,
-            surroundingAreaImageDataUri: PLACEHOLDER_IMAGE_DATA_URI, // Placeholder
+            surroundingAreaImageDataUri: PLACEHOLDER_IMAGE_DATA_URI,
         };
         const result = await generatePixelDescription(input);
         setPixelDescription(result.description);
@@ -320,7 +331,7 @@ export default function PixelGrid() {
         setPixelDescription("Falha ao gerar descrição.");
         toast({ title: "Erro na IA", description: "Não foi possível gerar a descrição.", variant: "destructive" });
     } finally {
-        setIsGeneratingDesc(false); // This will trigger the useEffect to set progress to 100 or handle error
+        setIsGeneratingDesc(false);
     }
   }, [selectedPixel, toast]);
 
@@ -376,10 +387,10 @@ export default function PixelGrid() {
       {/* AI Interaction Modal */}
       <Dialog open={showAiModal} onOpenChange={(isOpen) => {
           setShowAiModal(isOpen);
-          if (!isOpen) { // Reset states when modal is closed
+          if (!isOpen) { 
               setPixelDescription(null); 
-              setIsGeneratingDesc(false); // Ensure isGeneratingDesc is false if modal is closed prematurely
-              setAiModalProgressValue(0); // Reset progress
+              setIsGeneratingDesc(false); 
+              setAiModalProgressValue(0);
           }
       }}>
         <DialogContent className="sm:max-w-[425px] bg-card" data-dialog-content pointerEvents="auto">
@@ -423,7 +434,6 @@ export default function PixelGrid() {
         onMouseUp={handleMouseUpOrLeave}
         onMouseLeave={handleMouseUpOrLeave}
       >
-        {/* This div is transformed for pan and zoom */}
         <div
           style={{
             transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`,
@@ -431,30 +441,27 @@ export default function PixelGrid() {
             width: `${canvasDrawWidth}px`, 
             height: `${canvasDrawHeight}px`, 
             transformOrigin: 'top left',
-            position: 'relative', // Important for positioning SVG and Canvas inside
+            position: 'relative', 
           }}
         >
           <PortugalMapSvg
             className="absolute top-0 left-0 w-full h-full text-foreground/10 pointer-events-none z-0"
-            onMapPathLoaded={handleMapPathLoaded}
+            onMapDataLoaded={handleMapDataLoaded}
           />
           <canvas
             ref={canvasRef}
             onClick={handleCanvasClick}
-            // className ensures canvas scales with its container if CSS dimensions are used,
-            // but width/height attributes define its actual drawing buffer size.
             className="absolute top-0 left-0 w-full h-full z-10"
-            // width and height attributes are set in drawPixelsOnCanvas
           />
         </div>
 
         {/* Loading/Progress Overlay */}
-        {(!initialDrawingComplete && mapPath2D && drawingProgress < 100) && (
+        {(overallProgress < 100 || workerStatus === 'processing') && (
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm pointer-events-none">
             <Sparkles className="h-12 w-12 text-primary animate-pulse mb-4" />
-            <p className="text-lg font-headline text-foreground mb-2">A preparar o universo pixel...</p>
-            <Progress value={drawingProgress} className="w-1/2 max-w-md" />
-            <p className="text-sm text-muted-foreground mt-1">{Math.round(drawingProgress)}%</p>
+            <p className="text-lg font-headline text-foreground mb-2">{progressMessage}</p>
+            <Progress value={overallProgress} className="w-1/2 max-w-md" />
+            <p className="text-sm text-muted-foreground mt-1">{Math.round(overallProgress)}%</p>
           </div>
         )}
       </div>
@@ -480,7 +487,6 @@ export default function PixelGrid() {
               <Button pointerEvents="auto" variant="outline"><Sparkles className="mr-2 h-4 w-4" />Eventos Especiais</Button>
             </div>
             <DialogFooter>
-              {/* Future actions could go here */}
             </DialogFooter>
           </DialogContent>
         </Dialog>
