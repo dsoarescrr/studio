@@ -12,12 +12,13 @@ interface WorkerInput {
   pixelSize: number;
 }
 
-self.onmessage = (event: MessageEvent<WorkerInput>) => {
+self.onmessage = (event: MessageEvent<any>) => { // Alterado para any para o teste
   try {
-    // Send a very small progress update immediately upon receiving data
-    // This helps confirm that onmessage is triggered and basic communication works.
-    self.postMessage({ type: 'progress', progress: 0.2 }); // Worker-side 0.2% progress
+    // Enviar um progresso fixo assim que onmessage é chamado, ignorando event.data por agora
+    self.postMessage({ type: 'progress', progress: 5.0 }); // Progresso de teste
 
+    // A lógica original está comentada para este teste
+    /*
     const {
       pathStrings,
       canvasWidth,
@@ -27,7 +28,7 @@ self.onmessage = (event: MessageEvent<WorkerInput>) => {
       logicalCols,
       logicalRows,
       pixelSize,
-    } = event.data;
+    } = event.data as WorkerInput;
 
     if (!pathStrings || pathStrings.length === 0) {
       self.postMessage({ type: 'error', error: 'Worker Error: pathStrings array is empty or undefined.' });
@@ -39,7 +40,7 @@ self.onmessage = (event: MessageEvent<WorkerInput>) => {
       return;
     }
 
-    const offscreenCanvas = new OffscreenCanvas(1, 1); // Minimal size for context
+    const offscreenCanvas = new OffscreenCanvas(1, 1);
     const ctx = offscreenCanvas.getContext('2d');
 
     if (!ctx) {
@@ -52,12 +53,8 @@ self.onmessage = (event: MessageEvent<WorkerInput>) => {
       pathStrings.forEach(d => {
         if (d && typeof d === 'string') {
           combinedPath.addPath(new Path2D(d));
-        } else {
-          // console.warn('Worker: Invalid or empty path string skipped:', d);
         }
       });
-      // It's hard to reliably check if combinedPath is "empty" without drawing.
-      // Relying on the try-catch for major Path2D construction errors.
     } catch (e: any) {
       self.postMessage({ type: 'error', error: `Worker Error: Failed to construct Path2D from pathStrings. Message: ${e.message || String(e)}` });
       return;
@@ -75,8 +72,7 @@ self.onmessage = (event: MessageEvent<WorkerInput>) => {
       return;
     }
     
-    // More frequent progress updates, especially at the beginning
-    const progressUpdateInterval = Math.max(1, Math.floor(logicalRows / 100)); // Update ~100 times or per row
+    const progressUpdateInterval = Math.max(1, Math.floor(logicalRows / 100)); 
 
     for (let r = 0; r < logicalRows; r++) {
       for (let c = 0; c < logicalCols; c++) {
@@ -100,16 +96,14 @@ self.onmessage = (event: MessageEvent<WorkerInput>) => {
         const currentProgress = (processedPixels / totalPixelsToProcess) * 100;
         if (Number.isFinite(currentProgress)) {
           self.postMessage({ type: 'progress', progress: currentProgress });
-        } else {
-          // console.warn('Worker: Progress calculation resulted in non-finite number.');
         }
       }
     }
     
     self.postMessage({ type: 'done', bitmap: pixelBitmap.buffer }, [pixelBitmap.buffer]);
+    */
 
   } catch (e: any) {
-    // Catch any other unexpected errors within onmessage
     self.postMessage({ type: 'error', error: `Worker uncaught error in onmessage: ${e.message || String(e)}` });
   }
 };
