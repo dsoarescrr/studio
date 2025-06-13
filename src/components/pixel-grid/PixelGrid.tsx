@@ -34,14 +34,14 @@ const logicalGridRows = Math.floor(canvasDrawHeight / RENDERED_PIXEL_SIZE_CONFIG
 const totalLogicalPixels = LOGICAL_GRID_COLS_CONFIG * logicalGridRows; // ~10,395,000
 
 const PLACEHOLDER_IMAGE_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
-const ROWS_PER_DRAW_CHUNK = 100;
+const ROWS_PER_DRAW_CHUNK = 100; // Anteriormente 50, depois 100
 
 // Define types for worker messages
 type WorkerProgressMessage = { type: 'progress'; progress: number };
 type WorkerDoneMessage = { type: 'done'; bitmap: ArrayBuffer };
 type WorkerErrorMessage = { type: 'error'; error: string };
-type WorkerTestMessage = { type: 'test_init'; payload: string };
-type WorkerMessage = WorkerProgressMessage | WorkerDoneMessage | WorkerErrorMessage | WorkerTestMessage;
+// type WorkerTestMessage = { type: 'test_init'; payload: string }; // Removido o tipo de mensagem de teste
+type WorkerMessage = WorkerProgressMessage | WorkerDoneMessage | WorkerErrorMessage;
 
 
 export default function PixelGrid() {
@@ -85,10 +85,9 @@ export default function PixelGrid() {
   }, [toast]);
 
   useEffect(() => {
-    // Only try to create worker if mapData is available and worker doesn't exist
     if (mapData && !workerRef.current) {
       setProgressMessage("A iniciar worker...");
-      setWorkerStatus('idle'); // Ensure status is idle before attempting to process
+      setWorkerStatus('idle');
       setOverallProgress(0);
       setWorkerErrorMessage(null);
       let workerInstance: Worker | null = null;
@@ -96,19 +95,9 @@ export default function PixelGrid() {
         workerInstance = new Worker(new URL('../../workers/pixel-map-worker.ts', import.meta.url));
         workerRef.current = workerInstance;
         
-        // DO NOT send postMessage to worker in this specific test.
-        // The worker will send a message on its own.
-        // workerRef.current.postMessage({
-        //   pathStrings: mapData.pathStrings,
-        //   canvasWidth: canvasDrawWidth,
-        //   canvasHeight: canvasDrawHeight,
-        //   svgViewBoxWidth: SVG_VIEWBOX_WIDTH,
-        //   svgViewBoxHeight: SVG_VIEWBOX_HEIGHT,
-        //   logicalCols: LOGICAL_GRID_COLS_CONFIG,
-        //   logicalRows: logicalGridRows,
-        //   pixelSize: RENDERED_PIXEL_SIZE_CONFIG,
-        // });
-        // setWorkerStatus('processing-worker'); // This will be set upon receiving first message or test message
+        // Envia uma mensagem de teste para o worker para acionar o seu onmessage
+        workerRef.current.postMessage({ testData: 'Hello Worker from Main' });
+        setWorkerStatus('processing-worker'); 
 
         workerRef.current.onmessage = (event: MessageEvent<WorkerMessage>) => {
           if (!event.data || typeof event.data.type === 'undefined') {
@@ -120,16 +109,9 @@ export default function PixelGrid() {
           }
           
           const { type } = event.data;
-
-          if (type === 'test_init') {
-            setProgressMessage("Mensagem de teste do worker recebida!");
-            setOverallProgress(1.23); // Distinct value to confirm this path
-            setWorkerStatus('idle'); // Or 'processing-worker' if we expect more
-            return;
-          }
           
           if (type === 'progress') {
-            if (workerStatus === 'idle') setWorkerStatus('processing-worker'); // First progress message transitions status
+            if (workerStatus === 'idle') setWorkerStatus('processing-worker');
             const workerProgress = Math.max(0, Math.min(100, Number((event.data as WorkerProgressMessage).progress) || 0));
             setOverallProgress(workerProgress * 0.5); 
             setProgressMessage(`A gerar mapa de pixels... ${(workerProgress * 0.5).toFixed(1)}%`);
@@ -175,11 +157,11 @@ export default function PixelGrid() {
       if (workerRef.current) {
         workerRef.current.terminate();
         workerRef.current = null;
-        setWorkerStatus('idle');
-        // setOverallProgress(0); // Consider if progress should be reset on unmount
+        // setWorkerStatus('idle'); // Comentado para evitar re-criação imediata se mapData não mudar
       }
     };
-  }, [mapData]); // Depend only on mapData to create the worker once map data is ready.
+  }, [mapData]); // Depende apenas de mapData para criar o worker
+
 
   const drawPixelsOnCanvas = useCallback(async () => {
     const canvas = canvasRef.current;
@@ -233,7 +215,7 @@ export default function PixelGrid() {
     setProgressMessage("Universo pixel pronto!");
     setOverallProgress(100); 
     setWorkerStatus('done');
-  }, [pixelBitmap, overallProgress]);
+  }, [pixelBitmap, overallProgress]); // Adicionado overallProgress para evitar re-cálculo se ele mudar
 
 
   const handleResetView = useCallback(() => {
@@ -417,17 +399,11 @@ export default function PixelGrid() {
   const progressText = 
     workerStatus === 'error' ? "Erro" : 
     (overallProgress === 0 && workerStatus !== 'processing-worker' && workerStatus !== 'drawing-canvas' && workerStatus !== 'idle' && workerStatus !== 'error') ? "0.0" : 
-    (overallProgress === 1.23 && progressMessage.includes("Mensagem de teste")) ? "Teste OK" : // Specific for test message
     (overallProgress >= 99.9 && workerStatus === 'done') ? "100" : 
     overallProgress.toFixed(1);
 
   const showLoadingOverlay = workerStatus !== 'done' || overallProgress < 100;
   
-  if (workerStatus === 'idle' && mapData && !workerRef.current && !workerErrorMessage) {
-    // This state is transient, useEffect will pick it up.
-    // We can show a specific loading message or rely on the useEffect to set progressMessage.
-  }
-
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden relative">
@@ -552,7 +528,7 @@ export default function PixelGrid() {
             {workerStatus !== 'error' && <Sparkles className="h-12 w-12 text-primary animate-pulse mb-4" />}
             {workerStatus === 'error' && <div className="h-12 w-12 text-destructive flex items-center justify-center mb-4"><ZoomOut className="h-10 w-10"/></div>}
             <p className={`text-lg font-headline mb-2 ${workerStatus === 'error' ? 'text-destructive' : 'text-foreground'}`}>{progressMessage}</p>
-            {workerStatus !== 'error' && <Progress value={overallProgress === 1.23 ? 1 : overallProgress} className="w-1/2 max-w-md" />}
+            {workerStatus !== 'error' && <Progress value={overallProgress} className="w-1/2 max-w-md" />}
             {workerStatus !== 'error' && <p className="text-sm text-muted-foreground mt-1">{progressText}%</p>}
             {workerErrorMessage && workerStatus === 'error' && <p className="text-xs text-destructive mt-1 max-w-md text-center">{workerErrorMessage}</p>}
           </div>
