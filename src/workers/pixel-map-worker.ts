@@ -1,5 +1,19 @@
 
 // src/workers/pixel-map-worker.ts
+
+// Tenta enviar uma mensagem de progresso imediatamente ao ser carregado.
+// Se isto não for recebido, há um problema fundamental com a criação/comunicação do worker.
+try {
+  self.postMessage({ type: 'progress', progress: 10 }); // Envia 10% como teste
+} catch (e) {
+  // Tenta enviar uma mensagem de erro se o postMessage inicial falhar
+  self.postMessage({ type: 'error', error: `Worker initial postMessage failed: ${e instanceof Error ? e.message : String(e)}` });
+}
+
+// A lógica original de onmessage e cálculo de bitmap é temporariamente removida para depuração.
+// Se a mensagem de progresso de 10% acima for recebida, restauraremos a lógica gradualmente.
+
+/*
 interface WorkerInput {
   pathStrings: string[];
   canvasWidth: number;
@@ -13,7 +27,7 @@ interface WorkerInput {
 
 self.onmessage = (event: MessageEvent<WorkerInput>) => {
   // Forçar um progresso inicial para teste de comunicação
-  self.postMessage({ type: 'progress', progress: 0.1 });
+  // self.postMessage({ type: 'progress', progress: 0.1 });
 
   const {
     pathStrings,
@@ -36,8 +50,7 @@ self.onmessage = (event: MessageEvent<WorkerInput>) => {
     return;
   }
 
-
-  const offscreenCanvas = new OffscreenCanvas(1, 1); // Canvas mínimo para usar o contexto
+  const offscreenCanvas = new OffscreenCanvas(1, 1);
   const ctx = offscreenCanvas.getContext('2d');
 
   if (!ctx) {
@@ -51,14 +64,15 @@ self.onmessage = (event: MessageEvent<WorkerInput>) => {
       if (d && typeof d === 'string') {
         combinedPath.addPath(new Path2D(d));
       } else {
-        // Não envia erro, mas regista se uma string 'd' específica for inválida.
-        console.warn('Worker: Invalid or empty path string skipped during Path2D construction:', d);
+        console.warn('Worker: Invalid or empty path string skipped:', d);
       }
     });
-    // Verifica se algo foi adicionado ao combinedPath; se não, pode ser problemático.
-    // No entanto, um Path2D vazio é tecnicamente válido, isPointInPath apenas retornará false.
+    if (pathStrings.length > 0 && combinedPath.toString() === new Path2D().toString()) { // Aproximação para verificar se algo foi adicionado
+         // self.postMessage({ type: 'error', error: 'Worker Error: CombinedPath2D is empty after processing pathStrings.' });
+         // return;
+    }
   } catch (e: any) {
-    self.postMessage({ type: 'error', error: `Worker Error: Failed to construct Path2D from pathStrings. ${e.message || e}` });
+    self.postMessage({ type: 'error', error: `Worker Error: Failed to construct Path2D. ${e.message || e}` });
     return;
   }
 
@@ -70,13 +84,13 @@ self.onmessage = (event: MessageEvent<WorkerInput>) => {
   const totalPixelsToProcess = logicalCols * logicalRows;
 
   if (totalPixelsToProcess === 0) {
-    self.postMessage({ type: 'error', error: 'Worker Error: Total pixels to process is zero.' });
+    self.postMessage({ type: 'error', error: 'Worker Error: Total pixels to process is zero (logicalCols or logicalRows is 0).' });
     return;
   }
+  
+  // self.postMessage({ type: 'progress', progress: 0.1 }); // Progresso inicial
 
-  // Ajustar o intervalo de atualização para ser mais frequente, especialmente no início.
-  // Tenta atualizar ~100 vezes durante o processo.
-  const progressUpdateInterval = Math.max(1, Math.floor(logicalRows / 100));
+  const progressUpdateInterval = Math.max(1, Math.floor(logicalRows / 100)); // Atualiza ~100 vezes
 
   for (let r = 0; r < logicalRows; r++) {
     for (let c = 0; c < logicalCols; c++) {
@@ -96,18 +110,17 @@ self.onmessage = (event: MessageEvent<WorkerInput>) => {
       processedPixels++;
     }
 
-    // Enviar progresso com mais frequência, especialmente no início, e no final.
-    if (r < 10 || r % progressUpdateInterval === 0 || r === logicalRows - 1) {
+    if (r < 5 || r % progressUpdateInterval === 0 || r === logicalRows - 1) {
       const currentProgress = (processedPixels / totalPixelsToProcess) * 100;
       if (Number.isFinite(currentProgress)) {
         self.postMessage({ type: 'progress', progress: currentProgress });
       } else {
-        console.warn('Worker: Progress calculation resulted in non-finite number.', {processedPixels, totalPixelsToProcess});
+        console.warn('Worker: Progress calculation resulted in non-finite number.');
       }
     }
   }
-
-  // Forçar um progresso final para teste de comunicação
-  self.postMessage({ type: 'progress', progress: 99.9 });
+  
+  // self.postMessage({ type: 'progress', progress: 99.9 }); // Progresso antes de 'done'
   self.postMessage({ type: 'done', bitmap: pixelBitmap.buffer }, [pixelBitmap.buffer]);
 };
+*/
