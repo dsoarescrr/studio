@@ -21,12 +21,13 @@ import {
 } from "@/components/ui/dialog";
 import { Progress } from '@/components/ui/progress';
 
-const LOGICAL_GRID_COLS_CONFIG = 700;
-const RENDERED_PIXEL_SIZE_CONFIG = 2;
-
-const PLACEHOLDER_IMAGE_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 const SVG_VIEWBOX_WIDTH = 12969;
 const SVG_VIEWBOX_HEIGHT = 26674;
+
+const LOGICAL_GRID_COLS_CONFIG = 2250; // Adjusted for ~10.4M pixels
+const RENDERED_PIXEL_SIZE_CONFIG = 5.764; // Adjusted for ~10.4M pixels (12969 / 2250)
+
+const PLACEHOLDER_IMAGE_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 
 export default function PixelGrid() {
   const [zoom, setZoom] = useState(1);
@@ -48,11 +49,11 @@ export default function PixelGrid() {
   const [drawingProgress, setDrawingProgress] = useState(0);
   const [initialDrawingComplete, setInitialDrawingComplete] = useState(false);
 
-  const canvasDrawWidth = LOGICAL_GRID_COLS_CONFIG * RENDERED_PIXEL_SIZE_CONFIG;
-  const canvasDrawHeight = Math.floor(canvasDrawWidth * (SVG_VIEWBOX_HEIGHT / SVG_VIEWBOX_WIDTH));
+  const canvasDrawWidth = LOGICAL_GRID_COLS_CONFIG * RENDERED_PIXEL_SIZE_CONFIG; // Should be 12969
+  const canvasDrawHeight = Math.floor(canvasDrawWidth * (SVG_VIEWBOX_HEIGHT / SVG_VIEWBOX_WIDTH)); // Should be 26674
   const logicalGridCols = LOGICAL_GRID_COLS_CONFIG;
-  const logicalGridRows = Math.floor(canvasDrawHeight / RENDERED_PIXEL_SIZE_CONFIG);
-  const totalLogicalPixels = logicalGridCols * logicalGridRows;
+  const logicalGridRows = Math.floor(canvasDrawHeight / RENDERED_PIXEL_SIZE_CONFIG); // Should be 4627
+  const totalLogicalPixels = logicalGridCols * logicalGridRows; // Should be ~10,410,750
 
 
   const handleMapPathLoaded = useCallback((path: Path2D) => {
@@ -78,7 +79,7 @@ export default function PixelGrid() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = 'rgba(180, 180, 180, 0.7)';
     ctx.strokeStyle = 'rgba(30, 30, 30, 0.75)';
-    ctx.lineWidth = 0.2;
+    ctx.lineWidth = 0.2; // This is in SVG/Canvas units after scaling
     ctx.lineCap = 'butt';
     ctx.lineJoin = 'miter';
 
@@ -87,7 +88,7 @@ export default function PixelGrid() {
 
     const numLogicalColsToProcess = logicalGridCols;
     const numLogicalRowsToProcess = logicalGridRows;
-    const ROWS_PER_CHUNK = 20;
+    const ROWS_PER_CHUNK = 20; 
 
     let rowsProcessed = 0;
 
@@ -158,7 +159,7 @@ export default function PixelGrid() {
     setDrawingProgress(100); 
     console.log('Initial drawing complete');
 
-  }, [mapPath2D, canvasDrawWidth, canvasDrawHeight, logicalGridCols, logicalGridRows, RENDERED_PIXEL_SIZE_CONFIG, SVG_VIEWBOX_WIDTH, SVG_VIEWBOX_HEIGHT]);
+  }, [mapPath2D, logicalGridCols, logicalGridRows]); // Dependencies updated
 
 
  const handleResetView = useCallback(() => {
@@ -182,7 +183,6 @@ export default function PixelGrid() {
         drawPixelsOnCanvas(canvasDrawWidth, canvasDrawHeight);
       });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapPath2D, canvasDrawWidth, canvasDrawHeight, drawPixelsOnCanvas, handleResetView]);
 
 
@@ -224,7 +224,7 @@ export default function PixelGrid() {
             clearTimeout(timeoutId);
         }
     };
-}, [isGeneratingDesc, initialAiProgressTrigger]); // Removed aiModalProgressValue
+}, [isGeneratingDesc, initialAiProgressTrigger]);
 
 
   const handleZoomIn = () => setZoom((prevZoom) => Math.min(prevZoom * 1.2, 10));
@@ -301,8 +301,7 @@ export default function PixelGrid() {
     if (!selectedPixel) return;
     setIsGeneratingDesc(true);
     setPixelDescription(null);
-    // setInitialAiProgressTrigger(prev => prev + 1); // Already set on modal open
-
+    
     try {
         const input: GeneratePixelDescriptionInput = {
             x: selectedPixel.x,
@@ -311,12 +310,10 @@ export default function PixelGrid() {
         };
         const result = await generatePixelDescription(input);
         setPixelDescription(result.description);
-        // setAiModalProgressValue(100); // Let the useEffect handle this when isGeneratingDesc turns false
         toast({ title: "Descrição Gerada", description: "A IA gerou uma descrição para o pixel." });
     } catch (error) {
         console.error("Error generating pixel description:", error);
         setPixelDescription("Falha ao gerar descrição.");
-        // setAiModalProgressValue(100); // Let the useEffect handle this
         toast({ title: "Erro na IA", description: "Não foi possível gerar a descrição.", variant: "destructive" });
     } finally {
         setIsGeneratingDesc(false);
@@ -368,7 +365,7 @@ export default function PixelGrid() {
           <p>Zoom: {zoom.toFixed(2)}x</p>
           <p>X: {Math.round(position.x)}, Y: {Math.round(position.y)}</p>
           {selectedPixel && <p>Pixel Lógico: ({selectedPixel.x}, {selectedPixel.y})</p>}
-          <p>Total Pixels: {(totalLogicalPixels / 1000000).toFixed(2)}M</p>
+          <p>Total Pixels: {(totalLogicalPixels / 1000000).toFixed(2)}M (Pop. PT)</p>
         </div>
       </div>
 
@@ -377,7 +374,6 @@ export default function PixelGrid() {
           if (!isOpen) {
               setPixelDescription(null);
               setIsGeneratingDesc(false);
-              // setAiModalProgressValue(0); // Let useEffect handle reset
           }
       }}>
         <DialogContent className="sm:max-w-[425px] bg-card" data-dialog-content pointerEvents="auto">
@@ -437,9 +433,9 @@ export default function PixelGrid() {
           <canvas
             ref={canvasRef}
             onClick={handleCanvasClick}
-            className="absolute top-0 left-0 w-full h-full z-10" // Ensure canvas fills its transformed parent
+            className="absolute top-0 left-0 w-full h-full z-10"
             style={{
-              width: '100%', // Explicitly set style width/height to 100% of parent
+              width: '100%', 
               height: '100%',
             }}
           />
