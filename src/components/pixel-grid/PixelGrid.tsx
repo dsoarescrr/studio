@@ -24,8 +24,9 @@ import { Progress } from '@/components/ui/progress';
 const SVG_VIEWBOX_WIDTH = 12969;
 const SVG_VIEWBOX_HEIGHT = 26674;
 
-const LOGICAL_GRID_COLS_CONFIG = 2250; // Adjusted for ~10.4M pixels
-const RENDERED_PIXEL_SIZE_CONFIG = 5.764; // Adjusted for ~10.4M pixels (12969 / 2250)
+// Reverted to ~1M pixels for stability
+const LOGICAL_GRID_COLS_CONFIG = 700;
+const RENDERED_PIXEL_SIZE_CONFIG = 2;
 
 const PLACEHOLDER_IMAGE_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 
@@ -49,11 +50,11 @@ export default function PixelGrid() {
   const [drawingProgress, setDrawingProgress] = useState(0);
   const [initialDrawingComplete, setInitialDrawingComplete] = useState(false);
 
-  const canvasDrawWidth = LOGICAL_GRID_COLS_CONFIG * RENDERED_PIXEL_SIZE_CONFIG; // Should be 12969
-  const canvasDrawHeight = Math.floor(canvasDrawWidth * (SVG_VIEWBOX_HEIGHT / SVG_VIEWBOX_WIDTH)); // Should be 26674
+  const canvasDrawWidth = LOGICAL_GRID_COLS_CONFIG * RENDERED_PIXEL_SIZE_CONFIG;
+  const canvasDrawHeight = Math.floor(canvasDrawWidth * (SVG_VIEWBOX_HEIGHT / SVG_VIEWBOX_WIDTH));
   const logicalGridCols = LOGICAL_GRID_COLS_CONFIG;
-  const logicalGridRows = Math.floor(canvasDrawHeight / RENDERED_PIXEL_SIZE_CONFIG); // Should be 4627
-  const totalLogicalPixels = logicalGridCols * logicalGridRows; // Should be ~10,410,750
+  const logicalGridRows = Math.floor(canvasDrawHeight / RENDERED_PIXEL_SIZE_CONFIG);
+  const totalLogicalPixels = logicalGridCols * logicalGridRows;
 
 
   const handleMapPathLoaded = useCallback((path: Path2D) => {
@@ -79,7 +80,7 @@ export default function PixelGrid() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = 'rgba(180, 180, 180, 0.7)';
     ctx.strokeStyle = 'rgba(30, 30, 30, 0.75)';
-    ctx.lineWidth = 0.2; // This is in SVG/Canvas units after scaling
+    ctx.lineWidth = 0.2; 
     ctx.lineCap = 'butt';
     ctx.lineJoin = 'miter';
 
@@ -88,7 +89,7 @@ export default function PixelGrid() {
 
     const numLogicalColsToProcess = logicalGridCols;
     const numLogicalRowsToProcess = logicalGridRows;
-    const ROWS_PER_CHUNK = 20; 
+    const ROWS_PER_CHUNK = 20;
 
     let rowsProcessed = 0;
 
@@ -156,10 +157,10 @@ export default function PixelGrid() {
     }
 
     setInitialDrawingComplete(true);
-    setDrawingProgress(100); 
+    setDrawingProgress(100);
     console.log('Initial drawing complete');
 
-  }, [mapPath2D, logicalGridCols, logicalGridRows]); // Dependencies updated
+  }, [mapPath2D, logicalGridCols, logicalGridRows]);
 
 
  const handleResetView = useCallback(() => {
@@ -191,29 +192,33 @@ export default function PixelGrid() {
     let timeoutId: NodeJS.Timeout | undefined;
 
     if (isGeneratingDesc) {
-        setAiModalProgressValue(0); 
+        setAiModalProgressValue(0);
         let currentProgress = 0;
         const animate = () => {
-            currentProgress += 2;
+            currentProgress += 2; // Normal increment
             if (currentProgress <= 75) {
                 setAiModalProgressValue(currentProgress);
                 animationFrameId = requestAnimationFrame(animate);
-            } else if (currentProgress < 90) { 
-                setAiModalProgressValue(75 + Math.floor(Math.random() * 15));
+            } else if (currentProgress < 90) { // Simulate slower progress towards the end
+                setAiModalProgressValue(75 + Math.floor(Math.random() * 15)); // Random jump within 75-90
                 animationFrameId = requestAnimationFrame(animate);
             }
+            // No explicit else to stop at 90, will naturally stop if isGeneratingDesc becomes false
         };
         animationFrameId = requestAnimationFrame(animate);
     } else {
-        if (aiModalProgressValue > 0 && aiModalProgressValue < 100) {
-            setAiModalProgressValue(100);
+        // If generation stops or completes
+        if (aiModalProgressValue > 0 && aiModalProgressValue < 100) { // If it was in progress
+            setAiModalProgressValue(100); // Show complete
             timeoutId = setTimeout(() => {
-                setAiModalProgressValue(0);
-            }, 500);
-        } else if (aiModalProgressValue === 100) {
+                setShowAiModal(false); // Close modal after a short delay
+                setAiModalProgressValue(0); // Reset for next time
+            }, 1000); // Close after 1 second
+        } else if (aiModalProgressValue === 100) { // If already complete and modal is still open
              timeoutId = setTimeout(() => {
-                setAiModalProgressValue(0); 
-            }, 500);
+                setShowAiModal(false); // Close modal
+                setAiModalProgressValue(0); // Reset
+            }, 1000);
         }
     }
     return () => {
@@ -224,7 +229,7 @@ export default function PixelGrid() {
             clearTimeout(timeoutId);
         }
     };
-}, [isGeneratingDesc, initialAiProgressTrigger]);
+}, [isGeneratingDesc, initialAiProgressTrigger]); // Removed aiModalProgressValue
 
 
   const handleZoomIn = () => setZoom((prevZoom) => Math.min(prevZoom * 1.2, 10));
@@ -301,6 +306,7 @@ export default function PixelGrid() {
     if (!selectedPixel) return;
     setIsGeneratingDesc(true);
     setPixelDescription(null);
+    setInitialAiProgressTrigger(prev => prev + 1); // Trigger progress animation
     
     try {
         const input: GeneratePixelDescriptionInput = {
@@ -327,7 +333,7 @@ export default function PixelGrid() {
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="outline" size="icon" onClick={handleZoomIn} aria-label="Zoom In" pointerEvents="auto">
+              <Button pointerEvents="auto" variant="outline" size="icon" onClick={handleZoomIn} aria-label="Zoom In">
                 <ZoomIn className="h-5 w-5" />
               </Button>
             </TooltipTrigger>
@@ -335,7 +341,7 @@ export default function PixelGrid() {
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="outline" size="icon" onClick={handleZoomOut} aria-label="Zoom Out" pointerEvents="auto">
+              <Button pointerEvents="auto" variant="outline" size="icon" onClick={handleZoomOut} aria-label="Zoom Out">
                 <ZoomOut className="h-5 w-5" />
               </Button>
             </TooltipTrigger>
@@ -343,7 +349,7 @@ export default function PixelGrid() {
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="outline" size="icon" onClick={handleResetView} aria-label="Reset View" pointerEvents="auto">
+              <Button pointerEvents="auto" variant="outline" size="icon" onClick={handleResetView} aria-label="Reset View">
                 <Expand className="h-5 w-5" />
               </Button>
             </TooltipTrigger>
@@ -351,6 +357,7 @@ export default function PixelGrid() {
           </Tooltip>
         </TooltipProvider>
         <Slider
+          pointerEvents="auto"
           defaultValue={[1]}
           min={0.05}
           max={10}
@@ -359,13 +366,12 @@ export default function PixelGrid() {
           onValueChange={(value) => setZoom(value[0])}
           className="w-32 mt-2"
           aria-label="Zoom Slider"
-          pointerEvents="auto"
         />
         <div className="mt-2 p-2 bg-background/50 rounded-md text-xs font-code">
           <p>Zoom: {zoom.toFixed(2)}x</p>
           <p>X: {Math.round(position.x)}, Y: {Math.round(position.y)}</p>
           {selectedPixel && <p>Pixel Lógico: ({selectedPixel.x}, {selectedPixel.y})</p>}
-          <p>Total Pixels: {(totalLogicalPixels / 1000000).toFixed(2)}M (Pop. PT)</p>
+          <p>Total Pixels: {(totalLogicalPixels / 1000000).toFixed(2)}M</p>
         </div>
       </div>
 
@@ -374,6 +380,7 @@ export default function PixelGrid() {
           if (!isOpen) {
               setPixelDescription(null);
               setIsGeneratingDesc(false);
+              setAiModalProgressValue(0); // Reset progress when modal closes
           }
       }}>
         <DialogContent className="sm:max-w-[425px] bg-card" data-dialog-content pointerEvents="auto">
@@ -386,7 +393,7 @@ export default function PixelGrid() {
               O que gostaria de fazer com este pixel?
             </DialogDescription>
           </DialogHeader>
-          {(isGeneratingDesc || (aiModalProgressValue > 0 && aiModalProgressValue < 100 && initialAiProgressTrigger !== 0 && !pixelDescription)) && (
+          {(isGeneratingDesc || (aiModalProgressValue > 0 && aiModalProgressValue < 100 && !pixelDescription)) && (
             <div className="flex flex-col items-center justify-center my-4">
               <Sparkles className="h-12 w-12 text-primary animate-pulse mb-2" />
               <p className="text-sm font-headline">A IA está a gerar a descrição...</p>
@@ -400,10 +407,10 @@ export default function PixelGrid() {
             </div>
           )}
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={handleGenerateDescription} disabled={isGeneratingDesc || !selectedPixel} pointerEvents="auto">
+            <Button pointerEvents="auto" variant="outline" onClick={handleGenerateDescription} disabled={isGeneratingDesc || !selectedPixel}>
               {isGeneratingDesc ? "A gerar..." : (pixelDescription ? "Gerar Nova Descrição" : "Gerar Descrição com IA")}
             </Button>
-            <Button disabled={!selectedPixel} pointerEvents="auto">Comprar Pixel (Em Breve)</Button>
+            <Button pointerEvents="auto" disabled={!selectedPixel}>Comprar Pixel (Em Breve)</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -434,10 +441,6 @@ export default function PixelGrid() {
             ref={canvasRef}
             onClick={handleCanvasClick}
             className="absolute top-0 left-0 w-full h-full z-10"
-            style={{
-              width: '100%', 
-              height: '100%',
-            }}
           />
         </div>
 
@@ -454,7 +457,7 @@ export default function PixelGrid() {
       <div className="absolute bottom-6 right-6 z-20" pointerEvents="auto">
         <Dialog>
           <DialogTrigger asChild>
-             <Button size="icon" className="rounded-full w-14 h-14 shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground" pointerEvents="auto">
+             <Button pointerEvents="auto" size="icon" className="rounded-full w-14 h-14 shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground">
                 <MousePointer2 className="h-7 w-7" />
             </Button>
           </DialogTrigger>
@@ -466,9 +469,9 @@ export default function PixelGrid() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <Button variant="outline" pointerEvents="auto"><Search className="mr-2 h-4 w-4" />Explorar Pixel</Button>
-              <Button variant="outline" pointerEvents="auto"><Palette className="mr-2 h-4 w-4" />Paleta de Cores</Button>
-              <Button variant="outline" pointerEvents="auto"><Sparkles className="mr-2 h-4 w-4" />Eventos Especiais</Button>
+              <Button pointerEvents="auto" variant="outline"><Search className="mr-2 h-4 w-4" />Explorar Pixel</Button>
+              <Button pointerEvents="auto" variant="outline"><Palette className="mr-2 h-4 w-4" />Paleta de Cores</Button>
+              <Button pointerEvents="auto" variant="outline"><Sparkles className="mr-2 h-4 w-4" />Eventos Especiais</Button>
             </div>
             <DialogFooter>
             </DialogFooter>
