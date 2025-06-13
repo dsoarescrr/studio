@@ -23,11 +23,17 @@ import { Progress } from '@/components/ui/progress';
 const SVG_VIEWBOX_WIDTH = 12969;
 const SVG_VIEWBOX_HEIGHT = 26674;
 
-const LOGICAL_GRID_COLS_CONFIG = 2250; 
-const RENDERED_PIXEL_SIZE_CONFIG = 0.6;
+// Target ~10.4M pixels
+const RENDERED_PIXEL_SIZE_CONFIG = 0.6; // Results in ~10.395M pixels
+const canvasDrawWidth = 1350; // Keep canvas buffer manageable
+const canvasDrawHeight = Math.floor(canvasDrawWidth * (SVG_VIEWBOX_HEIGHT / SVG_VIEWBOX_WIDTH)); // ~2772
+
+const LOGICAL_GRID_COLS_CONFIG = Math.floor(canvasDrawWidth / RENDERED_PIXEL_SIZE_CONFIG); // ~2250
+const logicalGridRows = Math.floor(canvasDrawHeight / RENDERED_PIXEL_SIZE_CONFIG); // ~4620
+const totalLogicalPixels = LOGICAL_GRID_COLS_CONFIG * logicalGridRows; // ~10,395,000
 
 const PLACEHOLDER_IMAGE_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
-const ROWS_PER_DRAW_CHUNK = 100; // For drawing from bitmap
+const ROWS_PER_DRAW_CHUNK = 100; 
 
 export default function PixelGrid() {
   const [zoom, setZoom] = useState(1);
@@ -47,27 +53,17 @@ export default function PixelGrid() {
 
   const [mapData, setMapData] = useState<{ path2D: Path2D | null; pathStrings: string[] }>({ path2D: null, pathStrings: [] });
   const [pixelBitmap, setPixelBitmap] = useState<Uint8Array | null>(null);
-  const [workerStatus, setWorkerStatus] = useState<'idle' | 'processing' | 'done' | 'error'>('idle');
-  const [overallProgress, setOverallProgress] = useState(0); // 0-50 for worker, 50-100 for drawing
+  const [workerStatus, setWorkerStatus] = useState<'idle' | 'processing' | 'drawing' | 'done' | 'error'>('idle');
+  const [overallProgress, setOverallProgress] = useState(0); 
   const [progressMessage, setProgressMessage] = useState("A carregar dados do mapa...");
   
   const workerRef = useRef<Worker | null>(null);
-
-  // Calculate canvas buffer dimensions
-  const canvasDrawWidth = LOGICAL_GRID_COLS_CONFIG * RENDERED_PIXEL_SIZE_CONFIG;
-  const canvasDrawHeight = Math.floor(canvasDrawWidth * (SVG_VIEWBOX_HEIGHT / SVG_VIEWBOX_WIDTH));
-
-  // Calculate logical grid dimensions
-  const logicalGridCols = LOGICAL_GRID_COLS_CONFIG;
-  const logicalGridRows = Math.floor(canvasDrawHeight / RENDERED_PIXEL_SIZE_CONFIG);
-  const totalLogicalPixels = logicalGridCols * logicalGridRows;
 
   const handleMapDataLoaded = useCallback((data: { path2D: Path2D; pathStrings: string[] }) => {
     setMapData(data);
     setProgressMessage("Mapa carregado. A preparar grelha de pixels...");
   }, []);
 
-  // Initialize Web Worker and process bitmap
   useEffect(() => {
     if (mapData.pathStrings.length === 0 || workerStatus !== 'idle') return;
 
@@ -83,7 +79,7 @@ export default function PixelGrid() {
       canvasHeight: canvasDrawHeight,
       svgViewBoxWidth: SVG_VIEWBOX_WIDTH,
       svgViewBoxHeight: SVG_VIEWBOX_HEIGHT,
-      logicalCols: logicalGridCols,
+      logicalCols: LOGICAL_GRID_COLS_CONFIG,
       logicalRows: logicalGridRows,
       pixelSize: RENDERED_PIXEL_SIZE_CONFIG,
     });
@@ -94,9 +90,9 @@ export default function PixelGrid() {
         setOverallProgress(progress * 0.5); // Worker contributes to first 50%
       } else if (type === 'done') {
         setPixelBitmap(new Uint8Array(bitmap));
-        setWorkerStatus('done');
+        setWorkerStatus('drawing'); // Transition to drawing phase
         setProgressMessage("Mapa de pixels gerado. A desenhar...");
-        setOverallProgress(50); // Mark worker phase as complete
+        setOverallProgress(50); 
       } else if (type === 'error') {
         console.error('Worker error:', error);
         setWorkerStatus('error');
@@ -118,7 +114,7 @@ export default function PixelGrid() {
         workerRef.current = null;
       }
     };
-  }, [mapData, workerStatus, canvasDrawWidth, canvasDrawHeight, logicalGridCols, logicalGridRows, toast]);
+  }, [mapData, workerStatus, toast]);
 
 
   const drawPixelsOnCanvas = useCallback(async () => {
@@ -133,7 +129,7 @@ export default function PixelGrid() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = 'rgba(180, 180, 180, 0.7)';
-    if (RENDERED_PIXEL_SIZE_CONFIG > 1) { // Only set stroke if pixels are large enough
+    if (RENDERED_PIXEL_SIZE_CONFIG > 1) { 
         ctx.strokeStyle = 'rgba(30, 30, 30, 0.75)';
         ctx.lineWidth = 0.2;
     }
@@ -145,8 +141,8 @@ export default function PixelGrid() {
         requestAnimationFrame(() => {
           const endRow = Math.min(startRow + ROWS_PER_DRAW_CHUNK, logicalGridRows);
           for (let r = startRow; r < endRow; r++) {
-            for (let c = 0; c < logicalGridCols; c++) {
-              if (pixelBitmap[r * logicalGridCols + c] === 1) {
+            for (let c = 0; c < LOGICAL_GRID_COLS_CONFIG; c++) {
+              if (pixelBitmap[r * LOGICAL_GRID_COLS_CONFIG + c] === 1) {
                 const x = c * RENDERED_PIXEL_SIZE_CONFIG;
                 const y = r * RENDERED_PIXEL_SIZE_CONFIG;
                 ctx.fillRect(x, y, RENDERED_PIXEL_SIZE_CONFIG, RENDERED_PIXEL_SIZE_CONFIG);
@@ -157,7 +153,8 @@ export default function PixelGrid() {
             }
           }
           rowsDrawn += (endRow - startRow);
-          setOverallProgress(50 + (rowsDrawn / totalLogicalPixels) * 50); // Drawing contributes to second 50%
+          // Drawing contributes to second 50% (overall 50% to 100%)
+          setOverallProgress(50 + (rowsDrawn / logicalGridRows) * 50); 
           resolve();
         });
       });
@@ -169,8 +166,9 @@ export default function PixelGrid() {
     
     setProgressMessage("Universo pixel pronto!");
     setOverallProgress(100);
-    console.log(`Drawing from bitmap complete. Canvas buffer: ${canvasDrawWidth}x${canvasDrawHeight}. Logical grid: ${logicalGridCols}x${logicalGridRows}. Total logical pixels: ${totalLogicalPixels.toLocaleString()}`);
-  }, [pixelBitmap, canvasDrawWidth, canvasDrawHeight, logicalGridCols, logicalGridRows, totalLogicalPixels]);
+    setWorkerStatus('done');
+    console.log(`Drawing from bitmap complete. Canvas buffer: ${canvasDrawWidth}x${canvasDrawHeight}. Logical grid: ${LOGICAL_GRID_COLS_CONFIG}x${logicalGridRows}. Total logical pixels: ${totalLogicalPixels.toLocaleString()}`);
+  }, [pixelBitmap]);
 
 
   const handleResetView = useCallback(() => {
@@ -185,7 +183,7 @@ export default function PixelGrid() {
             y: (containerHeight - canvasContentHeight) / 2
         });
     }
-  }, [canvasDrawWidth, canvasDrawHeight]);
+  }, []);
 
   useEffect(() => {
     if (mapData.path2D && canvasRef.current && containerRef.current) {
@@ -196,7 +194,7 @@ export default function PixelGrid() {
   }, [mapData.path2D, handleResetView]);
 
   useEffect(() => {
-    if (workerStatus === 'done' && pixelBitmap) {
+    if (workerStatus === 'drawing' && pixelBitmap) {
       drawPixelsOnCanvas();
     }
   }, [workerStatus, pixelBitmap, drawPixelsOnCanvas]);
@@ -273,7 +271,7 @@ export default function PixelGrid() {
   };
 
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current || !mapData.path2D || overallProgress < 100) return;
+    if (!canvasRef.current || !mapData.path2D || workerStatus !== 'done') return;
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect(); 
 
@@ -289,7 +287,7 @@ export default function PixelGrid() {
     const logicalCol = Math.floor(canvasBufferX / RENDERED_PIXEL_SIZE_CONFIG);
     const logicalRow = Math.floor(canvasBufferY / RENDERED_PIXEL_SIZE_CONFIG);
 
-    if (logicalCol >= 0 && logicalCol < logicalGridCols && logicalRow >= 0 && logicalRow < logicalGridRows) {
+    if (logicalCol >= 0 && logicalCol < LOGICAL_GRID_COLS_CONFIG && logicalRow >= 0 && logicalRow < logicalGridRows) {
       const pixelCenterXCanvasBuffer = (logicalCol + 0.5) * RENDERED_PIXEL_SIZE_CONFIG;
       const pixelCenterYCanvasBuffer = (logicalRow + 0.5) * RENDERED_PIXEL_SIZE_CONFIG;
 
@@ -298,8 +296,8 @@ export default function PixelGrid() {
       const svgCoordX = pixelCenterXCanvasBuffer * scaleXToSvg;
       const svgCoordY = pixelCenterYCanvasBuffer * scaleYToSvg;
       
-      const ctx = canvas.getContext('2d');
-      if (ctx && mapData.path2D && ctx.isPointInPath(mapData.path2D, svgCoordX, svgCoordY)) {
+      const tempCtx = document.createElement('canvas').getContext('2d');
+      if (tempCtx && mapData.path2D && tempCtx.isPointInPath(mapData.path2D, svgCoordX, svgCoordY)) {
         setSelectedPixel({ x: logicalCol, y: logicalRow });
         setShowAiModal(true);
         setPixelDescription(null);
@@ -335,6 +333,7 @@ export default function PixelGrid() {
     }
   }, [selectedPixel, toast]);
 
+  const progressText = overallProgress === 0 ? "0" : overallProgress === 100 ? "100" : overallProgress.toFixed(1);
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden relative">
@@ -384,7 +383,6 @@ export default function PixelGrid() {
         </div>
       </div>
 
-      {/* AI Interaction Modal */}
       <Dialog open={showAiModal} onOpenChange={(isOpen) => {
           setShowAiModal(isOpen);
           if (!isOpen) { 
@@ -425,7 +423,6 @@ export default function PixelGrid() {
         </DialogContent>
       </Dialog>
 
-      {/* Main Grid Area */}
       <div
         ref={containerRef}
         className="flex-grow w-full h-full cursor-grab active:cursor-grabbing overflow-hidden bg-background relative"
@@ -455,18 +452,16 @@ export default function PixelGrid() {
           />
         </div>
 
-        {/* Loading/Progress Overlay */}
-        {(overallProgress < 100 || workerStatus === 'processing') && (
+        {(workerStatus === 'processing' || workerStatus === 'drawing') && overallProgress < 100 && (
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm pointer-events-none">
             <Sparkles className="h-12 w-12 text-primary animate-pulse mb-4" />
             <p className="text-lg font-headline text-foreground mb-2">{progressMessage}</p>
             <Progress value={overallProgress} className="w-1/2 max-w-md" />
-            <p className="text-sm text-muted-foreground mt-1">{Math.round(overallProgress)}%</p>
+            <p className="text-sm text-muted-foreground mt-1">{progressText}%</p>
           </div>
         )}
       </div>
 
-      {/* Floating Action Button Area */}
       <div className="absolute bottom-6 right-6 z-20" pointerEvents="auto">
         <Dialog>
           <DialogTrigger asChild>
@@ -494,4 +489,3 @@ export default function PixelGrid() {
     </div>
   );
 }
-
