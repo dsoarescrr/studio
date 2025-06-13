@@ -46,20 +46,51 @@ const activityLabels = {
   custom: 'Evento',
 };
 
+const FormattedTimestamp: React.FC<{ timestamp: Date }> = ({ timestamp }) => {
+  const [timeString, setTimeString] = useState<string>('');
+  const [dateString, setDateString] = useState<string>('');
+
+  useEffect(() => {
+    setTimeString(timestamp.toLocaleTimeString());
+    setDateString(timestamp.toLocaleDateString());
+  }, [timestamp]);
+
+  if (!timeString || !dateString) {
+    // Render a placeholder or nothing on the server and initial client render
+    // You could return a Skeleton component here or simply an empty span
+    return <span className="text-xs text-muted-foreground/70">Carregando data...</span>;
+  }
+
+  return (
+    <p className="text-xs text-muted-foreground/70">
+      {timeString} - {dateString}
+    </p>
+  );
+};
+
 export default function ActivityFeedPanel() {
   const [isMinimized, setIsMinimized] = useState(false);
   const [activities, setActivities] = useState<ActivityItem[]>(initialActivities);
   const [filter, setFilter] = useState<'all' | ActivityItem['type']>('all');
   const [onlineUsers, setOnlineUsers] = useState(137); // Placeholder
   const panelRef = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState({ x: 0, y: 20 }); // Initial position (top-right default before client-side calc)
+  const [position, setPosition] = useState(() => {
+    // Attempt to set initial position smartly, fallback for SSR
+    if (typeof window !== 'undefined') {
+      return { x: window.innerWidth - 340, y: 20 };
+    }
+    return { x: 10000, y: 20 }; // Default far off-screen for SSR
+  });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
-    // Set initial position based on window size only on client
-    setPosition({ x: window.innerWidth - 340, y: 20 });
-  }, []);
+    // Adjust position on client-side mount if it was default
+    if (position.x === 10000 && typeof window !== 'undefined') {
+      setPosition({ x: window.innerWidth - 340, y: 20 });
+    }
+  }, [position.x]);
+
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!(e.target as HTMLElement).closest('[data-drag-handle="true"]')) return;
@@ -105,7 +136,7 @@ export default function ActivityFeedPanel() {
   useEffect(() => {
     // Simulate new activities and online user count changes
     const interval = setInterval(() => {
-      setOnlineUsers(prev => prev + Math.floor(Math.random() * 11) - 5); // Randomly change user count
+      setOnlineUsers(prev => Math.max(0, prev + Math.floor(Math.random() * 11) - 5)); 
       const newActivity: ActivityItem = {
         id: String(Date.now()),
         type: (['login', 'purchase', 'color_change', 'view'] as ActivityItem['type'][])[Math.floor(Math.random() * 4)],
@@ -113,25 +144,29 @@ export default function ActivityFeedPanel() {
         timestamp: new Date(),
         details: Math.random() > 0.5 ? `Detalhe ${Math.floor(Math.random() * 100)}` : undefined,
       };
-      setActivities(prev => [newActivity, ...prev.slice(0, 19)]); // Keep last 20 activities
+      setActivities(prev => [newActivity, ...prev.slice(0, 19)]); 
     }, 5000);
     return () => clearInterval(interval);
   }, []);
 
 
   return (
-    <Card 
-      ref={panelRef} 
-      className="fixed z-30 w-80 shadow-xl bg-card/80 backdrop-blur-md transition-all duration-300 ease-in-out"
-      style={{ 
-        left: `${position.x}px`, 
+    <Card
+      ref={panelRef}
+      className="fixed z-30 w-80 shadow-xl bg-card/80 backdrop-blur-md transition-all duration-300 ease-in-out pointer-events-none"
+      style={{
+        left: `${position.x}px`,
         top: `${position.y}px`,
-        maxHeight: isMinimized ? '60px' : '600px', // Increased max height
+        maxHeight: isMinimized ? '60px' : '600px',
         overflow: 'hidden'
       }}
       onMouseDown={handleMouseDown}
     >
-      <CardHeader className="py-3 px-4 flex flex-row items-center justify-between" data-drag-handle="true" style={{ cursor: isDragging ? 'grabbing' : 'grab' }}>
+      <CardHeader 
+        className="py-3 px-4 flex flex-row items-center justify-between pointer-events-auto" 
+        data-drag-handle="true" 
+        style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+      >
         <div className="flex items-center">
           <Activity className="h-6 w-6 mr-2 text-primary" />
           <CardTitle className="text-lg font-headline">Atividade Recente</CardTitle>
@@ -141,57 +176,53 @@ export default function ActivityFeedPanel() {
         </Button>
       </CardHeader>
       {!isMinimized && (
-        <>
-          <CardContent className="p-0">
-            <div className="p-4 border-b border-border">
-              <div className="flex justify-between items-center mb-2">
-                <h4 className="text-sm font-medium font-code">Filtros Rápidos:</h4>
-                <Badge variant={filter === 'all' ? "default" : "secondary"} className="cursor-pointer" onClick={() => setFilter('all')}>Todos</Badge>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {(Object.keys(activityIcons) as ActivityItem['type'][]).map(type => (
-                  <Button 
-                    key={type} 
-                    variant={filter === type ? "secondary" : "outline"} 
-                    size="sm" 
-                    className="h-7 px-2 py-1 text-xs"
-                    onClick={() => setFilter(type)}
-                  >
-                    {React.cloneElement(activityIcons[type], { className: `h-3 w-3 mr-1 ${filter === type ? 'text-secondary-foreground' : 'text-muted-foreground'}` })}
-                    {activityLabels[type]}
-                  </Button>
-                ))}
-              </div>
+        <CardContent className="p-0 pointer-events-auto">
+          <div className="p-4 border-b border-border">
+            <div className="flex justify-between items-center mb-2">
+              <h4 className="text-sm font-medium font-code">Filtros Rápidos:</h4>
+              <Badge variant={filter === 'all' ? "default" : "secondary"} className="cursor-pointer" onClick={() => setFilter('all')}>Todos</Badge>
             </div>
-            <ScrollArea className="h-[350px] p-4"> {/* Adjusted height */}
-              <div className="space-y-4">
-                {filteredActivities.map((activity) => (
-                  <div key={activity.id} className="flex items-start space-x-3">
-                    <Avatar className="h-8 w-8 mt-1">
-                      <AvatarImage src={activity.user.avatarUrl || `https://placehold.co/40x40.png?text=${activity.user.name.substring(0,1)}`} alt={activity.user.name} data-ai-hint="avatar user" />
-                      <AvatarFallback>{activity.user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <p className="text-sm">
-                        <span className="font-semibold text-primary">{activity.user.name}</span>
-                        <span className="text-muted-foreground ml-1">{activityLabels[activity.type].toLowerCase()}</span>
-                        {activity.details && <span className="text-muted-foreground text-xs ml-1 font-code">({activity.details})</span>}
-                      </p>
-                      <p className="text-xs text-muted-foreground/70">
-                        {activity.timestamp.toLocaleTimeString()} - {activity.timestamp.toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="mt-1">{activityIcons[activity.type]}</div>
+            <div className="flex flex-wrap gap-2">
+              {(Object.keys(activityIcons) as ActivityItem['type'][]).map(type => (
+                <Button
+                  key={type}
+                  variant={filter === type ? "secondary" : "outline"}
+                  size="sm"
+                  className="h-7 px-2 py-1 text-xs"
+                  onClick={() => setFilter(type)}
+                >
+                  {React.cloneElement(activityIcons[type], { className: `h-3 w-3 mr-1 ${filter === type ? 'text-secondary-foreground' : 'text-muted-foreground'}` })}
+                  {activityLabels[type]}
+                </Button>
+              ))}
+            </div>
+          </div>
+          <ScrollArea className="h-[350px] p-4"> 
+            <div className="space-y-4">
+              {filteredActivities.map((activity) => (
+                <div key={activity.id} className="flex items-start space-x-3">
+                  <Avatar className="h-8 w-8 mt-1">
+                    <AvatarImage src={activity.user.avatarUrl || `https://placehold.co/40x40.png?text=${activity.user.name.substring(0,1)}`} alt={activity.user.name} data-ai-hint="avatar user" />
+                    <AvatarFallback>{activity.user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <p className="text-sm">
+                      <span className="font-semibold text-primary">{activity.user.name}</span>
+                      <span className="text-muted-foreground ml-1">{activityLabels[activity.type].toLowerCase()}</span>
+                      {activity.details && <span className="text-muted-foreground text-xs ml-1 font-code">({activity.details})</span>}
+                    </p>
+                    <FormattedTimestamp timestamp={activity.timestamp} />
                   </div>
-                ))}
-                {filteredActivities.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">Nenhuma atividade encontrada para este filtro.</p>
-                )}
-              </div>
-            </ScrollArea>
-          </CardContent>
+                  <div className="mt-1">{activityIcons[activity.type]}</div>
+                </div>
+              ))}
+              {filteredActivities.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">Nenhuma atividade encontrada para este filtro.</p>
+              )}
+            </div>
+          </ScrollArea>
           <Separator />
-          <CardFooter className="p-3 flex justify-between items-center">
+          <CardFooter className="p-3 flex justify-between items-center pointer-events-auto">
             <div className="flex items-center text-sm">
               <Users className="h-4 w-4 mr-2 text-green-400" />
               <span className="font-semibold mr-1">{onlineUsers}</span>
@@ -199,8 +230,10 @@ export default function ActivityFeedPanel() {
             </div>
             <Button variant="link" size="sm" className="text-xs text-primary">Ver Tudo</Button>
           </CardFooter>
-        </>
+        </CardContent>
       )}
     </Card>
   );
 }
+
+    
