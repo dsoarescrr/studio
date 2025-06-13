@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: 'Pixel Universe',
+  title: 'Dourado',
   description: 'A collaborative pixel art gallery.',
 };
 
