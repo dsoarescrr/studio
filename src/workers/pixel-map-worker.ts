@@ -1,6 +1,7 @@
 
-// Ensure 'use client' is REMOVED from here if it was present.
+// src/workers/pixel-map-worker.ts
 
+// Interface apenas para referência, não usada ativamente neste teste simplificado
 interface WorkerInput {
   pathStrings: string[];
   canvasWidth: number;
@@ -12,98 +13,39 @@ interface WorkerInput {
   pixelSize: number;
 }
 
-self.onmessage = (event: MessageEvent<any>) => { // Alterado para any para o teste
+// Teste: Enviar uma mensagem assim que o script do worker é carregado e executado.
+// Isto não depende de um 'onmessage' handler.
+try {
+  self.postMessage({ type: 'test_init', payload: 'Worker Script Loaded and Executed Top Level' });
+} catch (e: any) {
+  // Se houver um erro mesmo ao tentar enviar esta mensagem, tentamos reportar.
+  // Isto pode não funcionar se o próprio postMessage estiver quebrado no contexto do worker.
+  self.postMessage({ type: 'error', error: `Worker top-level postMessage failed: ${e.message || String(e)}` });
+}
+
+// O handler onmessage está intencionalmente ausente ou comentado para este teste específico.
+/*
+self.onmessage = (event: MessageEvent<any>) => {
   try {
-    // Enviar um progresso fixo assim que onmessage é chamado, ignorando event.data por agora
-    self.postMessage({ type: 'progress', progress: 5.0 }); // Progresso de teste
+    // Tentativa de enviar um progresso fixo muito pequeno para indicar que onmessage foi chamado.
+    self.postMessage({ type: 'progress', progress: 0.5 }); // Ex: 0.5% do progresso do worker
 
-    // A lógica original está comentada para este teste
-    /*
-    const {
-      pathStrings,
-      canvasWidth,
-      canvasHeight,
-      svgViewBoxWidth,
-      svgViewBoxHeight,
-      logicalCols,
-      logicalRows,
-      pixelSize,
-    } = event.data as WorkerInput;
+    // A lógica original de processamento de dados está comentada.
+    // const {
+    //   pathStrings,
+    //   // ...outras props
+    // } = event.data as WorkerInput;
 
-    if (!pathStrings || pathStrings.length === 0) {
-      self.postMessage({ type: 'error', error: 'Worker Error: pathStrings array is empty or undefined.' });
-      return;
-    }
+    // if (!pathStrings || pathStrings.length === 0) {
+    //   self.postMessage({ type: 'error', error: 'Worker Error: pathStrings array is empty or undefined.' });
+    //   return;
+    // }
+    // self.postMessage({ type: 'progress', progress: 10 }); // Simula algum progresso
 
-    if (canvasWidth === 0 || canvasHeight === 0 || logicalCols === 0 || logicalRows === 0 || pixelSize === 0) {
-      self.postMessage({ type: 'error', error: 'Worker Error: One or more input dimensions (canvas, logical, pixelSize) are zero.' });
-      return;
-    }
-
-    const offscreenCanvas = new OffscreenCanvas(1, 1);
-    const ctx = offscreenCanvas.getContext('2d');
-
-    if (!ctx) {
-      self.postMessage({ type: 'error', error: 'Worker Error: Failed to get OffscreenCanvas 2D context.' });
-      return;
-    }
-
-    const combinedPath = new Path2D();
-    try {
-      pathStrings.forEach(d => {
-        if (d && typeof d === 'string') {
-          combinedPath.addPath(new Path2D(d));
-        }
-      });
-    } catch (e: any) {
-      self.postMessage({ type: 'error', error: `Worker Error: Failed to construct Path2D from pathStrings. Message: ${e.message || String(e)}` });
-      return;
-    }
-
-    const pixelBitmap = new Uint8Array(logicalCols * logicalRows);
-    const scaleXToSvg = svgViewBoxWidth / canvasWidth;
-    const scaleYToSvg = svgViewBoxHeight / canvasHeight;
-
-    let processedPixels = 0;
-    const totalPixelsToProcess = logicalCols * logicalRows;
-
-    if (totalPixelsToProcess === 0) {
-      self.postMessage({ type: 'error', error: 'Worker Error: Total pixels to process is zero (logicalCols or logicalRows is 0).' });
-      return;
-    }
-    
-    const progressUpdateInterval = Math.max(1, Math.floor(logicalRows / 100)); 
-
-    for (let r = 0; r < logicalRows; r++) {
-      for (let c = 0; c < logicalCols; c++) {
-        const pixelCanvasX = c * pixelSize;
-        const pixelCanvasY = r * pixelSize;
-        const pixelCenterXCanvas = pixelCanvasX + pixelSize / 2;
-        const pixelCenterYCanvas = pixelCanvasY + pixelSize / 2;
-
-        const svgCoordX = pixelCenterXCanvas * scaleXToSvg;
-        const svgCoordY = pixelCenterYCanvas * scaleYToSvg;
-
-        if (ctx.isPointInPath(combinedPath, svgCoordX, svgCoordY)) {
-          pixelBitmap[r * logicalCols + c] = 1;
-        } else {
-          pixelBitmap[r * logicalCols + c] = 0;
-        }
-        processedPixels++;
-      }
-
-      if (r < 5 || r % progressUpdateInterval === 0 || r === logicalRows - 1) {
-        const currentProgress = (processedPixels / totalPixelsToProcess) * 100;
-        if (Number.isFinite(currentProgress)) {
-          self.postMessage({ type: 'progress', progress: currentProgress });
-        }
-      }
-    }
-    
-    self.postMessage({ type: 'done', bitmap: pixelBitmap.buffer }, [pixelBitmap.buffer]);
-    */
+    // self.postMessage({ type: 'done', bitmap: new Uint8Array(10).buffer }, [new Uint8Array(10).buffer]);
 
   } catch (e: any) {
     self.postMessage({ type: 'error', error: `Worker uncaught error in onmessage: ${e.message || String(e)}` });
   }
 };
+*/
