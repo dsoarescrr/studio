@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ZoomIn, ZoomOut, Expand, Search, Sparkles, MousePointer2, Palette, Info, User, CalendarDays, History as HistoryIcon, DollarSign, ShoppingCart, Edit3, Paintbrush, FileText, Upload, Save, Image as ImageIcon, XCircle, Type as TypeIcon, Tags as TagsIcon, Link as LinkIcon } from 'lucide-react';
+import { ZoomIn, ZoomOut, Expand, Search, Sparkles, MousePointer2, Palette, Info, User, CalendarDays, History as HistoryIcon, DollarSign, ShoppingCart, Edit3, Paintbrush, FileText, Upload, Save, Image as ImageIcon, XCircle, Type as TypeIcon, Tags as TagsIcon, Link as LinkIcon, Pencil, Eraser, PaintBucket, Trash2 } from 'lucide-react';
 import PortugalMapSvg, { type MapData } from './PortugalMapSvg';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -67,20 +67,20 @@ interface SelectedPixelDetails {
   x: number;
   y: number;
   owner?: string;
-  price?: number; // Price if unowned and for sale by system
+  price?: number; 
   acquisitionDate?: string;
   lastModifiedDate?: string;
   color?: string;
   history?: Array<{ owner: string; date: string; price?: number }>;
   isOwnedByCurrentUser?: boolean;
-  isForSaleBySystem?: boolean; // True if unowned and available for purchase from the "system"
+  isForSaleBySystem?: boolean; 
   manualDescription?: string;
   pixelImageUrl?: string;
   title?: string;
   tags?: string[];
   linkUrl?: string;
-  isForSaleByOwner?: boolean; // True if owned by current user and they marked it for sale
-  salePrice?: number; // Price set by owner if isForSaleByOwner is true
+  isForSaleByOwner?: boolean; 
+  salePrice?: number; 
 }
 
 export default function PixelGrid() {
@@ -111,14 +111,13 @@ export default function PixelGrid() {
   
   const workerRef = useRef<Worker | null>(null);
 
-  // Edit mode states
   const [editMode, setEditMode] = useState(false);
   const [editableColor, setEditableColor] = useState('#FFFFFF');
   const [editableManualDescription, setEditableManualDescription] = useState('');
   const [editablePixelImageFile, setEditablePixelImageFile] = useState<File | null>(null);
   const [editablePixelImagePreview, setEditablePixelImagePreview] = useState<string | null>(null);
   const [editableTitle, setEditableTitle] = useState('');
-  const [editableTags, setEditableTags] = useState(''); // Comma-separated string
+  const [editableTags, setEditableTags] = useState('');
   const [editableLinkUrl, setEditableLinkUrl] = useState('');
   const [editableIsForSaleByOwner, setEditableIsForSaleByOwner] = useState(false);
   const [editableSalePrice, setEditableSalePrice] = useState<number | string>('');
@@ -368,7 +367,7 @@ export default function PixelGrid() {
  const handleMouseDown = (e: React.MouseEvent) => {
     const targetElement = e.target as HTMLElement;
     if (
-      targetElement.closest('button, input, [role="slider"], [data-dialog-content], [role="dialog"], label') // Added label
+      targetElement.closest('button, input, [role="slider"], [data-dialog-content], [role="dialog"], label') 
     ) {
       return; 
     }
@@ -856,7 +855,7 @@ export default function PixelGrid() {
                   <Card className="bg-background/50">
                     <CardHeader className="pb-2 pt-3 px-4">
                       <CardTitle className="text-md font-headline flex items-center text-primary">
-                        <Upload className="h-4 w-4 mr-2" /> Imagem do Pixel
+                        <ImageIcon className="h-4 w-4 mr-2" /> Imagem do Pixel (Upload)
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="px-4 pb-3 space-y-2">
@@ -889,6 +888,41 @@ export default function PixelGrid() {
                        <p className="text-xs text-muted-foreground">Envie uma imagem para associar a este pixel (simulado).</p>
                     </CardContent>
                   </Card>
+                  
+                  <Card className="bg-background/50">
+                     <CardHeader className="pb-2 pt-3 px-4">
+                        <CardTitle className="text-md font-headline flex items-center text-primary">
+                           <Paintbrush className="h-4 w-4 mr-2" /> Desenhar Imagem (Experimental)
+                        </CardTitle>
+                     </CardHeader>
+                     <CardContent className="px-4 pb-3 space-y-2">
+                        <div className="w-full h-40 bg-muted/30 border border-dashed border-border rounded-md flex items-center justify-center">
+                           <p className="text-xs text-muted-foreground">Área de desenho (em breve)</p>
+                        </div>
+                        <div className="flex items-center justify-center gap-2">
+                           <TooltipProvider>
+                              <Tooltip>
+                                 <TooltipTrigger asChild><Button variant="outline" size="icon" disabled><Pencil className="h-4 w-4"/></Button></TooltipTrigger>
+                                 <TooltipContent><p>Lápis (Em breve)</p></TooltipContent>
+                              </Tooltip>
+                              <Tooltip>
+                                 <TooltipTrigger asChild><Button variant="outline" size="icon" disabled><Eraser className="h-4 w-4"/></Button></TooltipTrigger>
+                                 <TooltipContent><p>Borracha (Em breve)</p></TooltipContent>
+                              </Tooltip>
+                              <Tooltip>
+                                 <TooltipTrigger asChild><Button variant="outline" size="icon" disabled><PaintBucket className="h-4 w-4"/></Button></TooltipTrigger>
+                                 <TooltipContent><p>Preencher (Em breve)</p></TooltipContent>
+                              </Tooltip>
+                               <Tooltip>
+                                 <TooltipTrigger asChild><Button variant="outline" size="icon" disabled><Trash2 className="h-4 w-4"/></Button></TooltipTrigger>
+                                 <TooltipContent><p>Limpar (Em breve)</p></TooltipContent>
+                              </Tooltip>
+                           </TooltipProvider>
+                        </div>
+                        <p className="text-xs text-muted-foreground text-center">Esta funcionalidade de desenho é experimental e será implementada futuramente.</p>
+                     </CardContent>
+                  </Card>
+
 
                   <Card className="bg-background/50">
                     <CardHeader className="pb-2 pt-3 px-4">
