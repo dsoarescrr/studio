@@ -18,7 +18,7 @@ type AchievementTier = {
 
 type AchievementCategory = 'pixel' | 'community' | 'exploration' | 'collection' | 'moderation' | 'social';
 
-type Achievement = {
+export type Achievement = {
   id: string;
   name: string;
   overallDescription: string;
@@ -27,7 +27,7 @@ type Achievement = {
   tiers: AchievementTier[];
 };
 
-const achievementsData: Achievement[] = [
+export const achievementsData: Achievement[] = [
   {
     id: "pixel_initiate",
     name: "Iniciado dos Píxeis",

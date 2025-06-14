@@ -5,11 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { ArrowUpRight, Award, Camera, CreditCard, Gem, MapPin, Settings, User as UserIcon, Edit3, Gift, Coins, Globe, Link as LinkIcon, Twitter, Instagram, Github, BookImage, FolderPlus } from "lucide-react";
+import { ArrowUpRight, Award, Camera, CreditCard, Gem, MapPin, Settings, User as UserIcon, Edit3, Gift, Coins, Globe, Link as LinkIcon, Twitter, Instagram, Github, BookImage, FolderPlus, Trophy } from "lucide-react";
 import Image from "next/image";
 import React from 'react';
-import { achievementsData, type Achievement } from '@/app/(main)/achievements/page'; // Import achievement data and type
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'; // Import Tooltip components
+import { achievementsData, type Achievement } from '@/app/(main)/achievements/page'; 
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'; 
 
 export default function MemberPage() {
   const user = {
@@ -24,8 +24,8 @@ export default function MemberPage() {
     specialCredits: 120, 
     bio: "Artista digital e explorador apaixonado por pixel art. Criando universos pixelizados, um quadrado de cada vez! 🇵🇹",
     pixelsOwned: 42,
-    achievementsUnlocked: 5, // This can remain for a general count if desired elsewhere
-    unlockedAchievementIds: ['pixel_initiate', 'color_master', 'community_star', 'time_virtuoso'], // Specific unlocked achievements
+    achievementsUnlocked: 5, 
+    unlockedAchievementIds: ['pixel_initiate', 'color_master', 'community_star', 'time_virtuoso'], 
     rank: 1, 
     primaryColor: "#FFD700",
     location: "Lisboa, Portugal",
@@ -79,7 +79,7 @@ export default function MemberPage() {
                       </Tooltip>
                     </TooltipProvider>
                   )}
-                  {displayedAchievements.slice(0, 3).map(ach => ( // Display up to 3 achievement icons
+                  {displayedAchievements.slice(0, 3).map(ach => ( 
                     <TooltipProvider key={ach.id}>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -140,7 +140,6 @@ export default function MemberPage() {
                 <p className="text-xs text-muted-foreground">Pixels Adquiridos</p>
               </Card>
               <Card className="bg-accent/20 p-4 flex flex-col items-center justify-center text-center aspect-square rounded-lg shadow hover:shadow-accent/30 transition-shadow border-accent">
-                 {/* Use achievementsUnlocked for the count from user object */}
                 <Trophy className="h-8 w-8 text-accent-foreground mb-2" />
                 <p className="text-3xl font-bold font-code text-accent-foreground">{user.achievementsUnlocked}</p>
                 <p className="text-xs text-accent-foreground/80">Conquistas Únicas</p>
