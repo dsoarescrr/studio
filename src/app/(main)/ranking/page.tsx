@@ -62,11 +62,11 @@ const regionalDistributionData = [
 ];
 
 const userRankingData = [
-  { rank: 1, user: "PixelGod", pixels: 5032, score: 125000, avatar: "https://placehold.co/40x40.png?text=PG", dataAiHint: "avatar user" },
-  { rank: 2, user: "ArtMaster", pixels: 4500, score: 110000, avatar: "https://placehold.co/40x40.png?text=AM", dataAiHint: "avatar user" },
-  { rank: 3, user: "ColorQueen", pixels: 3800, score: 95000, avatar: "https://placehold.co/40x40.png?text=CQ", dataAiHint: "avatar user" },
-  { rank: 4, user: "PixelPioneer", pixels: 3200, score: 80000, avatar: "https://placehold.co/40x40.png?text=PP", dataAiHint: "avatar user" },
-  { rank: 5, user: "GridGuardian", pixels: 2800, score: 70000, avatar: "https://placehold.co/40x40.png?text=GG", dataAiHint: "avatar user" },
+  { rank: 1, user: "PixelGod", pixels: 5032, score: 125000, avatar: "https://placehold.co/40x40.png", dataAiHint: "avatar user" },
+  { rank: 2, user: "ArtMaster", pixels: 4500, score: 110000, avatar: "https://placehold.co/40x40.png", dataAiHint: "avatar user" },
+  { rank: 3, user: "ColorQueen", pixels: 3800, score: 95000, avatar: "https://placehold.co/40x40.png", dataAiHint: "avatar user" },
+  { rank: 4, user: "PixelPioneer", pixels: 3200, score: 80000, avatar: "https://placehold.co/40x40.png", dataAiHint: "avatar user" },
+  { rank: 5, user: "GridGuardian", pixels: 2800, score: 70000, avatar: "https://placehold.co/40x40.png", dataAiHint: "avatar user" },
 ];
 
 const StatDisplayCard: React.FC<StatCardData> = ({ title, value, icon, trend, footer, tooltip }) => (
@@ -252,7 +252,7 @@ export default function StatisticsPage() {
                   <TableCell>
                     <div className="flex items-center">
                       <Avatar className="h-8 w-8 mr-3 border-2 border-border">
-                        <AvatarImage src={entry.avatar} alt={entry.user} data-ai-hint={entry.dataAiHint} />
+                        <AvatarImage src={entry.avatar} alt={entry.user} data-ai-hint={entry.dataAiHint || 'avatar user'} />
                         <AvatarFallback>{entry.user.substring(0,2).toUpperCase()}</AvatarFallback>
                       </Avatar>
                       <span className="font-medium text-foreground">{entry.user}</span>
@@ -269,3 +269,5 @@ export default function StatisticsPage() {
     </div>
   );
 }
+
+    
