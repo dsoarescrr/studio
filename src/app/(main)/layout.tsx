@@ -1,5 +1,6 @@
 
 import BottomNavBar from '@/components/layout/BottomNavBar';
+import UserProfileHeader from '@/components/layout/UserProfileHeader'; // Added UserProfileHeader import
 
 export default function MainLayout({
   children,
@@ -8,7 +9,8 @@ export default function MainLayout({
 }) {
   return (
     <div className="flex flex-col min-h-screen">
-      <main className="flex-1 flex flex-col pb-[var(--bottom-nav-height)]"> {/* Add padding for bottom nav */}
+      <UserProfileHeader /> {/* Added UserProfileHeader here */}
+      <main className="flex-1 flex flex-col pt-16 pb-[var(--bottom-nav-height)]"> {/* Added pt-16 for UserProfileHeader */}
         {children}
       </main>
       <BottomNavBar />

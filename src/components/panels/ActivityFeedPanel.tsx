@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Activity, Minimize2, Maximize2, LogIn, LogOut, ShoppingCart, Palette, Eye, Users, Filter, ArrowRightCircle } from 'lucide-react';
+import { Activity, Minimize2, Maximize2, LogIn, LogOut, ShoppingCart, Palette, Eye, Users, Filter, ArrowRightCircle, Trophy } from 'lucide-react'; // Added Trophy
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -247,3 +247,4 @@ export default function ActivityFeedPanel() {
     </Card>
   );
 }
+
