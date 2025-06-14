@@ -7,11 +7,10 @@ import {
   ZoomIn, ZoomOut, Expand, Search, Sparkles, MousePointer2, Palette, Info, User, CalendarDays,
   History as HistoryIcon, DollarSign, ShoppingCart, Edit3, Paintbrush, FileText, Upload, Save,
   Image as ImageIcon, XCircle, Type as TypeIcon, Tags as TagsIcon, Link as LinkIcon, Pencil,
-  Eraser, PaintBucket, Trash2, Heart, Flag, BadgePercent, Star, AlertTriangle, MapPin as MapPinIconLucide // Renamed MapPin to avoid conflict
+  Eraser, PaintBucket, Trash2, Heart, Flag, BadgePercent, Star, AlertTriangle, MapPin as MapPinIconLucide
 } from 'lucide-react';
 import PortugalMapSvg, { type MapData } from './PortugalMapSvg';
 import { Button } from '@/components/ui/button';
-// import { Slider } from '@/components/ui/slider'; // Slider removed
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { generatePixelDescription, type GeneratePixelDescriptionInput } from '@/ai/flows/generate-pixel-description';
 import { useToast } from '@/hooks/use-toast';
@@ -384,20 +383,28 @@ export default function PixelGrid() {
   const handleZoomOut = () => setZoom((prevZoom) => Math.max(prevZoom / 1.2, MIN_ZOOM));
 
 
- const handleMouseDown = (e: React.MouseEvent) => {
+  const handleMouseDown = (e: React.MouseEvent) => {
     const targetElement = e.target as HTMLElement;
+
+    // 1. If the click is on the canvas itself, let handleCanvasClick manage it. Do not pan.
+    if (targetElement === canvasRef.current) {
+      return;
+    }
+
+    // 2. If the click is on a known interactive UI element (buttons, inputs, dialogs, tooltips, etc.), do not pan.
+    //    This includes the zoom/reset buttons and the quick action button trigger.
+    //    Also, ensure clicks inside an open dialog do not trigger panning.
     if (
-      targetElement.closest('button, input, [role="slider"], [data-dialog-content], [role="dialog"], label')
+      targetElement.closest(
+        'button, input, [data-dialog-content], [data-tooltip-content], [data-popover-content], label, a, [role="menuitem"], [role="tab"]'
+      )
     ) {
       return;
     }
-    if (targetElement !== canvasRef.current && containerRef.current?.contains(targetElement)) {
-      const transformedDiv = canvasRef.current?.parentElement;
-      if (targetElement === containerRef.current || targetElement === transformedDiv) {
-        setIsDragging(true);
-        setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
-      }
-    }
+
+    // 3. If none of the above, it's a mousedown on the pannable background area. Start dragging.
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
   };
 
 
@@ -591,7 +598,7 @@ export default function PixelGrid() {
   const handleToggleForSaleByOwner = () => {
     if (!selectedPixelDetails || !selectedPixelDetails.isOwnedByCurrentUser) return;
 
-    const currentlyForSale = selectedPixelDetails.isForSaleByOwner; // Use current details to avoid stale state
+    const currentlyForSale = selectedPixelDetails.isForSaleByOwner;
     
     setSelectedPixelDetails(prev => {
         if (!prev) return null;
@@ -603,12 +610,11 @@ export default function PixelGrid() {
         };
     });
 
-    // Update editable state if in edit mode to reflect this change immediately
     if (editMode) {
         setEditableIsForSaleByOwner(prev => !prev);
-        if (selectedPixelDetails.isForSaleByOwner) { // If it *was* for sale
+        if (selectedPixelDetails.isForSaleByOwner) { 
             setEditableSalePrice('');
-        } else { // If it was *not* for sale
+        } else { 
             setEditableSalePrice(selectedPixelDetails.salePrice || 50);
         }
     }
@@ -629,19 +635,17 @@ export default function PixelGrid() {
     const mouseYInContainer = event.clientY - containerRect.top;
 
     let newZoom;
-    if (event.deltaY < 0) { // Zoom in
+    if (event.deltaY < 0) { 
       newZoom = Math.min(zoom * ZOOM_SENSITIVITY_FACTOR, MAX_ZOOM);
-    } else { // Zoom out
+    } else { 
       newZoom = Math.max(zoom / ZOOM_SENSITIVITY_FACTOR, MIN_ZOOM);
     }
 
-    if (newZoom === zoom) return; // No change if at min/max zoom
+    if (newZoom === zoom) return;
 
-    // Calculate mouse position on the unzoomed/unpanned canvas
     const currentCanvasX = (mouseXInContainer - position.x) / zoom;
     const currentCanvasY = (mouseYInContainer - position.y) / zoom;
 
-    // Calculate new position to keep the mouse point fixed
     const newPosX = mouseXInContainer - currentCanvasX * newZoom;
     const newPosY = mouseYInContainer - currentCanvasY * newZoom;
 
@@ -652,7 +656,7 @@ export default function PixelGrid() {
 
   useEffect(() => {
     const currentContainer = containerRef.current;
-    if (currentContainer && workerStatus === 'done') { // Only add listener if map is ready
+    if (currentContainer && workerStatus === 'done') { 
       currentContainer.addEventListener('wheel', handleWheelZoom, { passive: false });
       return () => {
         currentContainer.removeEventListener('wheel', handleWheelZoom);
@@ -666,10 +670,10 @@ export default function PixelGrid() {
       clearTimeout(autoResetTimeoutRef.current);
     }
 
-    if (workerStatus !== 'done') return; // Don't run timer if map isn't ready
+    if (workerStatus !== 'done') return;
 
     const defaultPos = getDefaultPosition();
-    const isDefaultZoom = Math.abs(zoom - 1) < 0.001; // Compare with tolerance
+    const isDefaultZoom = Math.abs(zoom - 1) < 0.001; 
     const isDefaultPosition =
       Math.abs(position.x - defaultPos.x) < 0.5 &&
       Math.abs(position.y - defaultPos.y) < 0.5;
@@ -677,7 +681,7 @@ export default function PixelGrid() {
     if (!isDefaultZoom || !isDefaultPosition) {
       autoResetTimeoutRef.current = setTimeout(() => {
         handleResetView();
-      }, 5000); // 5 seconds
+      }, 5000); 
     }
 
     return () => {
@@ -699,7 +703,7 @@ export default function PixelGrid() {
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden relative">
-      <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 bg-card/80 p-2 rounded-md shadow-lg backdrop-blur-sm pointer-events-auto"> {/* Changed pointer-events to auto */}
+      <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 bg-card/80 p-2 rounded-md shadow-lg backdrop-blur-sm pointer-events-auto">
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
