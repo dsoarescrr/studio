@@ -4,50 +4,50 @@
 
 @layer base {
   :root {
-    --background: 0 0% 20%; /* Dark Gray #333333 */
+    --background: 220 15% 10%; /* Very dark, slightly desaturated blue */
     --foreground: 0 0% 95%; /* Light Gray/White for text */
 
-    --card: 0 0% 25%;
+    --card: 220 15% 15%; /* Slightly lighter than background */
     --card-foreground: 0 0% 95%;
 
-    --popover: 0 0% 25%;
+    --popover: 220 15% 13%; /* Similar to card */
     --popover-foreground: 0 0% 95%;
 
-    --primary: 39 62% 58%; /* Burnt Yellow #D4A757 */
-    --primary-foreground: 39 60% 15%; /* Darker color for text on primary */
+    --primary: 39 70% 50%; /* Burnt Yellow #D4A237 */
+    --primary-foreground: 39 70% 10%; /* Darker color for text on primary */
 
-    --secondary: 0 0% 30%; /* A slightly lighter gray for secondary elements */
-    --secondary-foreground: 0 0% 95%;
+    --secondary: 220 10% 25%; /* Muted dark blue/gray */
+    --secondary-foreground: 0 0% 80%;
 
-    --muted: 0 0% 30%;
+    --muted: 220 10% 20%;
     --muted-foreground: 0 0% 60%; /* Lighter gray for muted text */
 
-    --accent: 182 100% 74%; /* Electric Blue #7DF9FF */
-    --accent-foreground: 182 100% 20%; /* Darker color for text on accent */
+    --accent: 45 80% 60%; /* Vibrant Yellow for retro game highlight #E6B800 */
+    --accent-foreground: 45 80% 10%; /* Darker color for text on accent */
 
-    --destructive: 0 70% 50%; /* Standard destructive red */
+    --destructive: 0 60% 50%; /* Standard destructive red */
     --destructive-foreground: 0 0% 95%;
 
-    --border: 0 0% 35%;
-    --input: 0 0% 35%;
-    --ring: 182 100% 74%; /* Electric blue for focus rings */
+    --border: 220 15% 20%; /* Dark border */
+    --input: 220 15% 20%; /* Dark input */
+    --ring: 39 70% 55%; /* Ring based on primary */
 
     --radius: 0.5rem;
 
-    --chart-1: 39 62% 58%; /* Burnt Yellow */
-    --chart-2: 182 100% 74%; /* Electric Blue */
-    --chart-3: 0 0% 60%; /* A neutral gray */
-    --chart-4: 39 62% 70%; /* Lighter Yellow */
-    --chart-5: 182 100% 85%; /* Lighter Blue */
+    --chart-1: 39 70% 50%; /* Primary - Burnt Yellow */
+    --chart-2: 45 80% 60%; /* Accent - Vibrant Yellow */
+    --chart-3: 0 0% 50%; /* A neutral gray, slightly lighter for dark theme */
+    --chart-4: 39 70% 65%; /* Lighter Primary */
+    --chart-5: 45 80% 75%; /* Lighter Accent */
 
-    --sidebar-background: 0 0% 15%;
+    --sidebar-background: 220 15% 8%;      /* Even darker for sidebar */
     --sidebar-foreground: 0 0% 85%;
-    --sidebar-primary: 39 62% 58%;
-    --sidebar-primary-foreground: 39 60% 15%;
-    --sidebar-accent: 182 100% 74%;
-    --sidebar-accent-foreground: 182 100% 20%;
-    --sidebar-border: 0 0% 25%;
-    --sidebar-ring: 182 100% 74%;
+    --sidebar-primary: 39 70% 50%;        /* Primary */
+    --sidebar-primary-foreground: 39 70% 10%;
+    --sidebar-accent: 45 80% 60%;         /* Accent */
+    --sidebar-accent-foreground: 45 80% 10%;
+    --sidebar-border: 220 15% 15%;
+    --sidebar-ring: 39 70% 55%;
   }
 
   /* Since the app is dark by default, :root contains the dark theme.
