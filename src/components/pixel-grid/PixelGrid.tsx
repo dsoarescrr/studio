@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ZoomIn, ZoomOut, Expand, Search, Sparkles, MousePointer2, Palette } from 'lucide-react';
+import { ZoomIn, ZoomOut, Expand, Search, Sparkles, MousePointer2, Palette, Info, User, CalendarDays, History as HistoryIcon, DollarSign, ShoppingCart, Edit3 } from 'lucide-react';
 import PortugalMapSvg, { type MapData } from './PortugalMapSvg';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -20,6 +20,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Progress } from '@/components/ui/progress';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const SVG_VIEWBOX_WIDTH = 12969;
 const SVG_VIEWBOX_HEIGHT = 26674;
@@ -36,13 +39,11 @@ const totalLogicalPixels = LOGICAL_GRID_COLS_CONFIG * logicalGridRows; // ~10,39
 const PLACEHOLDER_IMAGE_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 const ROWS_PER_DRAW_CHUNK = 100;
 
-// Define types for worker messages
 type WorkerProgressMessage = { type: 'progress'; progress: number };
 type WorkerDoneMessage = { type: 'done'; bitmap: ArrayBuffer };
 type WorkerErrorMessage = { type: 'error'; error: string };
 type WorkerMessage = WorkerProgressMessage | WorkerDoneMessage | WorkerErrorMessage;
 
-// Define type for data sent to worker
 interface WorkerInput {
   pathStrings: string[];
   canvasWidth: number;
@@ -54,16 +55,33 @@ interface WorkerInput {
   pixelSize: number;
 }
 
+const MOCK_CURRENT_USER_ID = 'currentUserPixelMaster';
+
+interface SelectedPixelDetails {
+  x: number;
+  y: number;
+  owner?: string;
+  price?: number;
+  acquisitionDate?: string;
+  lastModifiedDate?: string;
+  color?: string;
+  history?: Array<{ owner: string; date: string; price?: number }>;
+  isOwnedByCurrentUser?: boolean;
+  isForSale?: boolean;
+}
 
 export default function PixelGrid() {
   const [zoom, setZoom] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [selectedPixel, setSelectedPixel] = useState<{ x: number; y: number } | null>(null);
+  
+  const [selectedPixelCoordsForDisplay, setSelectedPixelCoordsForDisplay] = useState<{ x: number; y: number } | null>(null);
+  const [selectedPixelDetails, setSelectedPixelDetails] = useState<SelectedPixelDetails | null>(null);
+
   const [pixelDescription, setPixelDescription] = useState<string | null>(null);
   const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
-  const [showAiModal, setShowAiModal] = useState(false);
+  const [showPixelModal, setShowPixelModal] = useState(false);
   const [aiModalProgressValue, setAiModalProgressValue] = useState(0);
   const [initialAiProgressTrigger, setInitialAiProgressTrigger] = useState(0);
 
@@ -268,7 +286,7 @@ export default function PixelGrid() {
     let animationFrameId: number | undefined;
     let timeoutId: NodeJS.Timeout | undefined;
 
-    if (isGeneratingDesc && showAiModal) {
+    if (isGeneratingDesc && showPixelModal) {
         setAiModalProgressValue(0); 
         let currentProgress = 0;
         const animate = () => {
@@ -283,15 +301,16 @@ export default function PixelGrid() {
         };
         animationFrameId = requestAnimationFrame(animate);
     } else {
-        if (!isGeneratingDesc && showAiModal) {
+        if (!isGeneratingDesc && showPixelModal) {
              if (pixelDescription) {
                 setAiModalProgressValue(100); 
                 timeoutId = setTimeout(() => {
-                    if (showAiModal) setShowAiModal(false);
+                    // Do not close modal here, let user decide
+                    // if (showPixelModal) setShowPixelModal(false); 
                     setAiModalProgressValue(0); 
                 }, 1000); 
              }
-        } else if (!showAiModal) {
+        } else if (!showPixelModal) {
             setAiModalProgressValue(0);
         }
     }
@@ -299,7 +318,7 @@ export default function PixelGrid() {
         if (animationFrameId) cancelAnimationFrame(animationFrameId);
         if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [isGeneratingDesc, showAiModal, pixelDescription, initialAiProgressTrigger]); 
+  }, [isGeneratingDesc, showPixelModal, pixelDescription, initialAiProgressTrigger]); 
 
   useEffect(() => {
     if (workerStatus === 'error') {
@@ -378,27 +397,53 @@ export default function PixelGrid() {
       
       const tempCtx = document.createElement('canvas').getContext('2d');
       if (tempCtx && mapData.path2D && tempCtx.isPointInPath(mapData.path2D, svgCoordX, svgCoordY)) {
-        setSelectedPixel({ x: logicalCol, y: logicalRow });
-        setShowAiModal(true);
+        setSelectedPixelCoordsForDisplay({ x: logicalCol, y: logicalRow });
+
+        const MOCK_OWNERS = ['User123', 'ArtistaPT', 'PixelFan', 'MatrixLord', MOCK_CURRENT_USER_ID, null, null];
+        const randomOwnerIndex = Math.floor(Math.random() * MOCK_OWNERS.length);
+        const randomOwner = MOCK_OWNERS[randomOwnerIndex];
+        const isOwned = randomOwner !== null;
+        const isOwnedByMe = isOwned && randomOwner === MOCK_CURRENT_USER_ID;
+        const isForSale = !isOwned;
+
+        const mockDetails: SelectedPixelDetails = {
+          x: logicalCol,
+          y: logicalRow,
+          owner: isOwned ? randomOwner : 'Disponível',
+          price: isForSale ? Math.floor(Math.random() * 50) + 10 : undefined,
+          acquisitionDate: isOwned ? new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 30).toLocaleDateString('pt-PT') : undefined,
+          lastModifiedDate: isOwned ? new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 7).toLocaleDateString('pt-PT') : undefined,
+          color: `#${Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')}`,
+          history: isOwned ? [
+            { owner: randomOwner as string, date: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 30).toLocaleDateString('pt-PT'), price: Math.floor(Math.random() * 40) + 5 },
+            { owner: 'DonoAnterior', date: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 60).toLocaleDateString('pt-PT'), price: Math.floor(Math.random() * 30) + 5 }
+          ] : [],
+          isOwnedByCurrentUser: isOwnedByMe,
+          isForSale: isForSale,
+        };
+        setSelectedPixelDetails(mockDetails);
+        setShowPixelModal(true);
         setPixelDescription(null);
         setInitialAiProgressTrigger(prev => prev + 1);
       } else {
-        setSelectedPixel(null);
+        setSelectedPixelCoordsForDisplay(null);
+        setSelectedPixelDetails(null);
       }
     } else {
-      setSelectedPixel(null);
+      setSelectedPixelCoordsForDisplay(null);
+      setSelectedPixelDetails(null);
     }
   };
 
   const handleGenerateDescription = useCallback(async () => {
-    if (!selectedPixel) return;
+    if (!selectedPixelDetails) return;
     setIsGeneratingDesc(true);
     setPixelDescription(null);
     
     try {
         const input: GeneratePixelDescriptionInput = {
-            x: selectedPixel.x,
-            y: selectedPixel.y,
+            x: selectedPixelDetails.x,
+            y: selectedPixelDetails.y,
             surroundingAreaImageDataUri: PLACEHOLDER_IMAGE_DATA_URI,
         };
         const result = await generatePixelDescription(input);
@@ -411,7 +456,7 @@ export default function PixelGrid() {
     } finally {
         setIsGeneratingDesc(false);
     }
-  }, [selectedPixel, toast]);
+  }, [selectedPixelDetails, toast]);
 
   const progressText = 
     workerStatus === 'error' ? "Erro" : 
@@ -465,47 +510,122 @@ export default function PixelGrid() {
         <div className="mt-2 p-2 bg-background/50 rounded-md text-xs font-code">
           <p>Zoom: {zoom.toFixed(2)}x</p>
           <p>X: {Math.round(position.x)}, Y: {Math.round(position.y)}</p>
-          {selectedPixel && <p>Pixel Lógico: ({selectedPixel.x}, {selectedPixel.y})</p>}
+          {selectedPixelCoordsForDisplay && <p>Pixel Lógico: ({selectedPixelCoordsForDisplay.x}, {selectedPixelCoordsForDisplay.y})</p>}
           <p>Pixels: {(totalLogicalPixels / 1000000).toFixed(2)}M (Pop. PT aprox.)</p>
         </div>
       </div>
 
-      <Dialog open={showAiModal} onOpenChange={(isOpen) => {
-          setShowAiModal(isOpen);
+      <Dialog open={showPixelModal} onOpenChange={(isOpen) => {
+          setShowPixelModal(isOpen);
           if (!isOpen) { 
+              setSelectedPixelDetails(null);
               setPixelDescription(null); 
               setIsGeneratingDesc(false); 
               setAiModalProgressValue(0);
           }
       }}>
-        <DialogContent className="sm:max-w-[425px] bg-card" data-dialog-content pointerEvents="auto">
+        <DialogContent className="sm:max-w-md bg-card text-card-foreground" data-dialog-content pointerEvents="auto">
           <DialogHeader>
-            <DialogTitle className="font-headline flex items-center">
-                <Sparkles className="h-5 w-5 mr-2 text-primary" />
-                Interagir com Pixel ({selectedPixel?.x}, {selectedPixel?.y})
+            <DialogTitle className="font-headline flex items-center text-xl">
+                Pixel ({selectedPixelDetails?.x}, {selectedPixelDetails?.y})
             </DialogTitle>
             <DialogDescription>
-              O que gostaria de fazer com este pixel?
+              Informações detalhadas e ações disponíveis para este pixel.
             </DialogDescription>
           </DialogHeader>
-          {(isGeneratingDesc || (aiModalProgressValue > 0 && aiModalProgressValue < 100 && !pixelDescription && showAiModal)) && (
-            <div className="flex flex-col items-center justify-center my-4">
-              <Sparkles className="h-12 w-12 text-primary animate-pulse mb-2" />
-              <p className="text-sm font-headline">A IA está a gerar a descrição...</p>
-              <Progress value={aiModalProgressValue} className="w-full mt-2" />
+          
+          {selectedPixelDetails && (
+            <ScrollArea className="max-h-[calc(100vh-250px)] pr-3">
+            <div className="space-y-3 py-2">
+              <Card className="bg-background/50">
+                <CardHeader className="pb-2 pt-3 px-4">
+                    <CardTitle className="text-md font-headline flex items-center text-primary">
+                        <Info className="h-4 w-4 mr-2" /> Informações do Pixel
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm space-y-1.5 px-4 pb-3">
+                  <div className="flex justify-between"><span>Proprietário:</span> <Badge variant={selectedPixelDetails.owner === 'Disponível' ? "secondary" : "outline"} className="font-code">{selectedPixelDetails.owner}</Badge></div>
+                  {selectedPixelDetails.isForSale && selectedPixelDetails.price && (
+                    <div className="flex justify-between items-center"><span>Preço:</span> <span className="font-code flex items-center">{selectedPixelDetails.price} Créditos <DollarSign className="inline h-3.5 w-3.5 ml-1" /></span></div>
+                  )}
+                  {selectedPixelDetails.acquisitionDate && <div className="flex justify-between"><span>Adquirido em:</span> <span className="font-code">{selectedPixelDetails.acquisitionDate}</span></div>}
+                  {selectedPixelDetails.lastModifiedDate && <div className="flex justify-between"><span>Modificado em:</span> <span className="font-code">{selectedPixelDetails.lastModifiedDate}</span></div>}
+                  <div className="flex justify-between items-center">
+                    <span>Cor Atual:</span>
+                    <div className="flex items-center">
+                      <div style={{ backgroundColor: selectedPixelDetails.color }} className="w-4 h-4 rounded-sm mr-1.5 border border-border"></div>
+                      <span className="font-code">{selectedPixelDetails.color}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {(isGeneratingDesc || pixelDescription || (aiModalProgressValue > 0 && aiModalProgressValue < 100 && !pixelDescription && showPixelModal)) && (
+                <Card className="bg-background/50">
+                  <CardHeader className="pb-2 pt-3 px-4">
+                    <CardTitle className="text-md font-headline flex items-center text-primary">
+                        <Sparkles className="h-4 w-4 mr-2" /> Descrição por IA
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-3">
+                    {(isGeneratingDesc || (aiModalProgressValue > 0 && aiModalProgressValue < 100 && !pixelDescription && showPixelModal)) && (
+                      <div className="flex flex-col items-center justify-center my-2">
+                        <Sparkles className="h-6 w-6 text-primary animate-pulse mb-1" />
+                        <p className="text-xs font-headline">A IA está a gerar a descrição...</p>
+                        <Progress value={aiModalProgressValue} className="w-full mt-1 h-1.5" />
+                      </div>
+                    )}
+                    {pixelDescription && (aiModalProgressValue === 0 || aiModalProgressValue === 100) && showPixelModal && (
+                      <p className="text-xs text-foreground italic">&quot;{pixelDescription}&quot;</p>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {selectedPixelDetails.history && selectedPixelDetails.history.length > 0 && (
+                <Card className="bg-background/50">
+                  <CardHeader className="pb-2 pt-3 px-4">
+                    <CardTitle className="text-md font-headline flex items-center text-primary">
+                        <HistoryIcon className="h-4 w-4 mr-2" /> Histórico de Proprietários
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-3">
+                    <ScrollArea className="h-20">
+                      <ul className="text-xs space-y-1 font-code">
+                        {selectedPixelDetails.history.map((entry, index) => (
+                          <li key={index} className="flex justify-between">
+                            <span>{entry.owner} ({entry.date})</span>
+                            <span>{entry.price ? `${entry.price}c` : ''}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+              )}
             </div>
+            </ScrollArea>
           )}
-          {pixelDescription && (aiModalProgressValue === 0 || aiModalProgressValue === 100) && showAiModal && ( 
-            <div className="my-4 p-3 bg-background/50 rounded-md">
-                <p className="text-sm font-semibold mb-1 text-primary">Descrição da IA:</p>
-                <p className="text-sm text-foreground">{pixelDescription}</p>
-            </div>
-          )}
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button pointerEvents="auto" variant="outline" onClick={handleGenerateDescription} disabled={isGeneratingDesc || !selectedPixel}>
-              {isGeneratingDesc ? "A gerar..." : (pixelDescription ? "Gerar Nova Descrição" : "Gerar Descrição com IA")}
+
+          <DialogFooter className="gap-2 sm:gap-1.5 flex-wrap justify-center pt-3 sm:justify-end">
+            <Button variant="outline" size="sm" onClick={handleGenerateDescription} disabled={isGeneratingDesc || !selectedPixelDetails}>
+              <Sparkles className="mr-1.5 h-3.5 w-3.5"/>
+              {isGeneratingDesc ? "A gerar..." : (pixelDescription ? "Nova Descrição" : "Descrição IA")}
             </Button>
-            <Button pointerEvents="auto" disabled={!selectedPixel}>Comprar Pixel (Em Breve)</Button>
+            {selectedPixelDetails?.isForSale && !selectedPixelDetails.isOwnedByCurrentUser && (
+              <Button size="sm" disabled={!selectedPixelDetails} className="bg-green-600 hover:bg-green-700 text-white">
+                <ShoppingCart className="mr-1.5 h-3.5 w-3.5" /> Comprar ({selectedPixelDetails.price} Créditos)
+              </Button>
+            )}
+            {selectedPixelDetails?.isOwnedByCurrentUser && (
+              <Button size="sm" disabled={!selectedPixelDetails} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                  <Edit3 className="mr-1.5 h-3.5 w-3.5" /> Editar Pixel
+              </Button>
+            )}
+            {/* Example for other owner */}
+            {selectedPixelDetails && !selectedPixelDetails.isForSale && !selectedPixelDetails.isOwnedByCurrentUser && selectedPixelDetails.owner !== 'Disponível' && (
+                 <Button variant="secondary" size="sm" disabled={!selectedPixelDetails}>Fazer Oferta</Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -579,3 +699,4 @@ export default function PixelGrid() {
     </div>
   );
 }
+
