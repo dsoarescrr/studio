@@ -1,4 +1,5 @@
-import AppHeader from '@/components/layout/AppHeader';
+
+import BottomNavBar from '@/components/layout/BottomNavBar';
 
 export default function MainLayout({
   children,
@@ -7,8 +8,10 @@ export default function MainLayout({
 }) {
   return (
     <div className="flex flex-col min-h-screen">
-      <AppHeader />
-      <main className="flex-1 flex flex-col">{children}</main>
+      <main className="flex-1 flex flex-col pb-[var(--bottom-nav-height)]"> {/* Add padding for bottom nav */}
+        {children}
+      </main>
+      <BottomNavBar />
     </div>
   );
 }

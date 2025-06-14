@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -48,6 +49,9 @@
     --sidebar-accent-foreground: 45 80% 10%;
     --sidebar-border: 220 15% 15%;
     --sidebar-ring: 39 70% 55%;
+
+    /* Variable for bottom navigation height if needed elsewhere in CSS, though primarily set in JS/TSX */
+    --bottom-nav-height: 64px; 
   }
 
   /* Since the app is dark by default, :root contains the dark theme.
@@ -62,3 +66,4 @@
     @apply bg-background text-foreground;
   }
 }
+
