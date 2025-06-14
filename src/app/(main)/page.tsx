@@ -7,7 +7,7 @@ import MinimapPanel from '@/components/panels/MinimapPanel';
 
 export default function HomePage() {
   return (
-    <div className="relative flex-1 w-full h-full">
+    <div className="relative flex-1 w-full h-full overflow-hidden"> {/* Added overflow-hidden */}
       {/* UserProfileHeader is now in MainLayout.tsx */}
       <PixelGrid />
       <MinimapPanel />

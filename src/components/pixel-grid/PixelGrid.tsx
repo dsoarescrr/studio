@@ -319,16 +319,15 @@ export default function PixelGrid() {
       if (containerWidth > 0 && effectiveContainerHeight > 0 && canvasDrawWidth > 0 && canvasDrawHeight > 0) {
         const fitZoomX = containerWidth / canvasDrawWidth;
         const fitZoomY = effectiveContainerHeight / canvasDrawHeight;
-        const zoomToFit = Math.min(fitZoomX, fitZoomY); 
+        let zoomToFit = Math.min(fitZoomX, fitZoomY); 
 
         let targetInitialZoom = 0.25; 
-        let calculatedZoom = Math.max(MIN_ZOOM, targetInitialZoom);
-
-        if (calculatedZoom > zoomToFit) {
-          calculatedZoom = zoomToFit * 0.95; 
+        // If 0.25 is too large to fit the map, use the fitZoom instead, with some padding
+        if (targetInitialZoom > zoomToFit) {
+          targetInitialZoom = zoomToFit * 0.95; // 5% padding
         }
         
-        calculatedZoom = Math.max(MIN_ZOOM, Math.min(calculatedZoom, MAX_ZOOM));
+        const calculatedZoom = Math.max(MIN_ZOOM, Math.min(targetInitialZoom, MAX_ZOOM));
 
         const canvasContentWidth = canvasDrawWidth * calculatedZoom;
         const canvasContentHeight = canvasDrawHeight * calculatedZoom;
@@ -360,7 +359,7 @@ export default function PixelGrid() {
         if (containerWidth > 0 && effectiveContainerHeight > 0 && canvasDrawWidth > 0 && canvasDrawHeight > 0) {
             const fitZoomX = containerWidth / canvasDrawWidth;
             const fitZoomY = effectiveContainerHeight / canvasDrawHeight;
-            const zoomToFit = Math.min(fitZoomX, fitZoomY);
+            let zoomToFit = Math.min(fitZoomX, fitZoomY);
             
             let fallbackZoom = 0.25;
             if (fallbackZoom > zoomToFit) {
@@ -441,15 +440,12 @@ export default function PixelGrid() {
 
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    // Allow drag initiation on the container or the canvas itself.
+    // No need to check for specific interactive elements here as the main check is if it's NOT a button etc.
+    // If clicking on the canvas, it's fine to initiate drag. Pixel selection will be handled by onClick + didDragRef.
     const targetElement = e.target as HTMLElement;
-    // Allow drag initiation if clicking on the container or the canvas itself.
-    // Prevent drag if clicking on known interactive elements inside the grid controls or modals.
-    if (
-      targetElement.closest(
-        'button, [data-dialog-content], [data-tooltip-content], [data-popover-content], label, a, [role="menuitem"], [role="tab"], input, textarea'
-      ) && targetElement !== canvasRef.current // Allow drag on canvas
-    ) {
-      return;
+    if (targetElement.closest('button, [data-dialog-content], [data-tooltip-content], [data-popover-content], label, a, [role="menuitem"], [role="tab"], input, textarea') && targetElement !== canvasRef.current) {
+        return; // Don't drag if clicking on specific UI controls inside the grid container (but not the canvas)
     }
     
     setIsDragging(true);
@@ -465,7 +461,7 @@ export default function PixelGrid() {
     const currentY = e.clientY - dragStart.y;
     
     if (!didDragRef.current) {
-        const dx = Math.abs(currentX - position.x); // Compare with initial position at drag start for threshold
+        const dx = Math.abs(currentX - position.x); 
         const dy = Math.abs(currentY - position.y);
         if (dx > dragThreshold || dy > dragThreshold) {
             didDragRef.current = true;
@@ -476,12 +472,12 @@ export default function PixelGrid() {
 
   const handleMouseUpOrLeave = () => {
     setIsDragging(false);
-    // didDragRef is reset in handleCanvasClick if a click occurs after a drag
+    // didDragRef is reset in handleCanvasClick if a click occurs, or on next mousedown
   };
 
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
-    if (didDragRef.current) {
-        didDragRef.current = false; // Reset for the next interaction
+    if (didDragRef.current) { // If a drag just happened, don't open modal
+        didDragRef.current = false; 
         return;
     }
     if (!canvasRef.current || !mapData?.path2D || workerStatus !== 'done') return;
@@ -840,7 +836,7 @@ export default function PixelGrid() {
                   Informações detalhadas e ações disponíveis para este pixel.
                 </CardDescriptionElement>
               </DialogHeader>
-              <ScrollArea className="max-h-[calc(100vh-250px)] pr-3">
+              <ScrollArea className="max-h-[calc(100vh-250px)] pr-4">
               <div className="space-y-3 py-2">
                 <Card className="bg-background/50">
                   <CardHeader className="pb-2 pt-3 px-4">
@@ -1010,7 +1006,7 @@ export default function PixelGrid() {
                   Modifique as propriedades do seu pixel.
                 </CardDescriptionElement>
               </DialogHeader>
-              <ScrollArea className="max-h-[calc(100vh-250px)] pr-3">
+              <ScrollArea className="max-h-[calc(100vh-250px)] pr-4">
                 <div className="space-y-4 py-2">
 
                   <Card className="bg-background/50">
