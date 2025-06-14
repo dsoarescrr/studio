@@ -225,7 +225,7 @@ export default function AchievementsPage() {
     activeFilter === 'all'
       ? achievementsData
       : activeFilter === 'completed'
-        ? achievementsData.filter(ach => ach.tiers.every(t => t.isUnlocked))
+        ? achievementsData.filter(ach => ach.tiers.some(t => t.isUnlocked))
         : achievementsData.filter(ach => ach.category === activeFilter);
 
   return (
