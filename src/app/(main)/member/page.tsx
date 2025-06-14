@@ -1,4 +1,6 @@
 
+'use client';
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { ArrowUpRight, Award, Camera, CreditCard, Gem, MapPin, Settings, User as UserIcon, Edit3, Gift, Coins, Globe, Link as LinkIcon, Twitter, Instagram, Github, BookImage, FolderPlus, Trophy } from "lucide-react";
 import Image from "next/image";
 import React from 'react';
-import { achievementsData, type Achievement } from '@/app/(main)/achievements/page'; 
+import { achievementsData, type Achievement } from '@/data/achievements-data'; // Updated import
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'; 
 
 export default function MemberPage() {
@@ -224,4 +226,3 @@ export default function MemberPage() {
     </div>
   );
 }
-

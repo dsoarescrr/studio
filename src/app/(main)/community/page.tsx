@@ -22,9 +22,9 @@ import {
   Flag,
   MapPin as MapPinIcon,
   MessageSquareText,
-  LayoutGrid, // Icon for Feed Tab
-  MessagesSquare as ChatIcon, // Icon for Chat Tab (renamed to avoid conflict)
-  NotebookText // Icon for Forums Tab
+  LayoutGrid, 
+  MessagesSquare as ChatIcon, 
+  NotebookText 
 } from "lucide-react";
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
@@ -33,7 +33,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { UserProfileSheet } from '@/components/user/UserProfileSheet';
 import type { UserProfileData } from '@/components/user/UserProfileDisplay'; 
-import { achievementsData } from '@/app/(main)/achievements/page';
+import { achievementsData } from '@/data/achievements-data'; // Corrected import
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 
@@ -112,7 +112,7 @@ const initialPosts: Post[] = [
   },
 ];
 
-const currentUser: UserProfileData = { // Updated to UserProfileData
+const currentUser: UserProfileData = { 
   id: 'currentUser',
   name: 'UtilizadorAtual',
   username: '@EuMesmo',
