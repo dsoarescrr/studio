@@ -312,10 +312,23 @@ export default function PixelGrid() {
       const containerHeight = containerRef.current.offsetHeight;
 
       if (containerWidth > 0 && containerHeight > 0 && canvasDrawWidth > 0 && canvasDrawHeight > 0) {
-        const zoomX = containerWidth / canvasDrawWidth;
-        const zoomY = containerHeight / canvasDrawHeight;
-        let calculatedZoom = Math.min(zoomX, zoomY) * 0.95; // * 0.95 for a little padding
-        calculatedZoom = Math.max(MIN_ZOOM, Math.min(calculatedZoom, MAX_ZOOM));
+        const fitZoomX = containerWidth / canvasDrawWidth;
+        const fitZoomY = containerHeight / canvasDrawHeight;
+        const zoomToFit = Math.min(fitZoomX, fitZoomY); // Zoom level to make map fill the smaller dimension
+
+        let targetInitialZoom = 0.25; // Target a 0.25x zoom level feel
+
+        // Ensure the target zoom is not smaller than MIN_ZOOM
+        let calculatedZoom = Math.max(MIN_ZOOM, targetInitialZoom);
+
+        // If the targetInitialZoom (or MIN_ZOOM if target was smaller) makes the map overflow the container,
+        // then reduce it to fit with some padding.
+        if (calculatedZoom > zoomToFit) {
+          calculatedZoom = zoomToFit * 0.95; // Fit with 5% padding
+        }
+        
+        // Final clamp with MAX_ZOOM (though unlikely to be hit for initial view)
+        calculatedZoom = Math.min(calculatedZoom, MAX_ZOOM);
 
         const canvasContentWidth = canvasDrawWidth * calculatedZoom;
         const canvasContentHeight = canvasDrawHeight * calculatedZoom;
@@ -336,11 +349,17 @@ export default function PixelGrid() {
     if (defaultView) {
       setZoom(defaultView.zoom);
       setPosition(defaultView.position);
-    } else if (containerRef.current && canvasRef.current) { // Fallback if defaultView isn't set yet
+    } else if (containerRef.current && canvasRef.current) { 
         const containerWidth = containerRef.current.offsetWidth;
         const containerHeight = containerRef.current.offsetHeight;
         if (containerWidth > 0 && containerHeight > 0 && canvasDrawWidth > 0 && canvasDrawHeight > 0) {
-            let fallbackZoom = Math.min(containerWidth / canvasDrawWidth, containerHeight / canvasDrawHeight) * 0.95;
+            const fitZoomX = containerWidth / canvasDrawWidth;
+            const fitZoomY = containerHeight / canvasDrawHeight;
+            const zoomToFit = Math.min(fitZoomX, fitZoomY);
+            let fallbackZoom = 0.25;
+            if (fallbackZoom > zoomToFit) {
+              fallbackZoom = zoomToFit * 0.95;
+            }
             fallbackZoom = Math.max(MIN_ZOOM, Math.min(fallbackZoom, MAX_ZOOM));
 
             const canvasContentWidth = canvasDrawWidth * fallbackZoom;
@@ -414,40 +433,42 @@ export default function PixelGrid() {
 
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    // Allow dragging if clicking on the container or the canvas itself.
     const targetElement = e.target as HTMLElement;
     if (
       targetElement.closest(
         'button, [data-dialog-content], [data-tooltip-content], [data-popover-content], label, a, [role="menuitem"], [role="tab"], input, textarea'
-      ) && targetElement !== canvasRef.current
+      ) && targetElement !== canvasRef.current // Allow drag on canvas
     ) {
       return;
     }
-
-    setIsDragging(true);
-    setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
-    didDragRef.current = false; // Reset drag flag on new mousedown
+    // Allow dragging if clicking on the container or the canvas itself.
+    if (targetElement === containerRef.current || targetElement === canvasRef.current || (containerRef.current && containerRef.current.contains(targetElement) && !targetElement.closest('button, input, textarea, [role="button"], [data-dialog-content]'))) {
+        setIsDragging(true);
+        setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+        didDragRef.current = false; 
+    }
   };
 
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging || !containerRef.current) return;
 
-    const newX = e.clientX - dragStart.x;
-    const newY = e.clientY - dragStart.y;
-    setPosition({ x: newX, y: newY });
-
-    // Check if it's a significant drag
-    const dx = Math.abs(e.clientX - (dragStart.x + position.x));
-    const dy = Math.abs(e.clientY - (dragStart.y + position.y));
-    if (dx > dragThreshold || dy > dragThreshold) {
-        didDragRef.current = true;
+    const currentX = e.clientX - dragStart.x;
+    const currentY = e.clientY - dragStart.y;
+    
+    if (!didDragRef.current) {
+        const dx = Math.abs(currentX - position.x);
+        const dy = Math.abs(currentY - position.y);
+        if (dx > dragThreshold || dy > dragThreshold) {
+            didDragRef.current = true;
+        }
     }
+    setPosition({ x: currentX, y: currentY });
   };
 
   const handleMouseUpOrLeave = () => {
     setIsDragging(false);
-    // Note: We don't reset didDragRef here. It's reset on the next mousedown or after a click.
+    // didDragRef is reset in handleCanvasClick if a click occurs after a drag
   };
 
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
@@ -710,7 +731,7 @@ export default function PixelGrid() {
 
     const isDefaultZoom = Math.abs(zoom - defaultView.zoom) < 0.001;
     const isDefaultPosition =
-      defaultView.position && // Ensure defaultView.position is not null
+      defaultView.position && 
       Math.abs(position.x - defaultView.position.x) < 0.5 &&
       Math.abs(position.y - defaultView.position.y) < 0.5;
 
