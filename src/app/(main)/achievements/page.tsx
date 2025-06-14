@@ -1,4 +1,5 @@
 
+import React from 'react'; // Added React import
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -47,7 +48,7 @@ const achievementsData: Achievement[] = [
     id: "regional_explorer",
     name: "Explorador Regional",
     overallDescription: "Aventure-se e visite diferentes regiões do mapa.",
-    icon: <Zap className="h-7 w-7" />, // Changed from Award
+    icon: <Zap className="h-7 w-7" />, 
     tiers: [
       { level: 1, description: "Visitou 3 regiões diferentes", xpReward: 60, creditsReward: 15, isUnlocked: true },
       { level: 2, description: "Visitou 7 regiões diferentes", xpReward: 120, creditsReward: 35, isUnlocked: false },
