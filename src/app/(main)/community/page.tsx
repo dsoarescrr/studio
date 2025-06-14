@@ -210,10 +210,12 @@ export default function CommunityPage() {
 
   const handleLikeChatMessage = (messageId: string) => {
     setChatMessages(msgs => msgs.map(msg => msg.id === messageId ? { ...msg, likes: msg.likes + 1} : msg));
-  }
+  };
 
   const displayedChatMessages = chatMessages.filter(msg => msg.roomId === selectedChatRoomId);
   const selectedChatRoom = initialChatRooms.find(room => room.id === selectedChatRoomId);
+  const uniqueUsersInRoom = new Set(displayedChatMessages.map(msg => msg.user.id)).size;
+
 
   return (
     <div className="container mx-auto py-8 px-4 space-y-8 mb-20">
@@ -292,7 +294,7 @@ export default function CommunityPage() {
                         {React.cloneElement(selectedChatRoom.icon as React.ReactElement, {className: "h-5 w-5 mr-2 text-primary"})}
                         <CardTitle className="text-lg font-headline">{selectedChatRoom.name}</CardTitle>
                      </div>
-                     <Badge variant="outline" className="font-code text-xs">{displayedChatMessages.length} online</Badge>
+                     <Badge variant="outline" className="font-code text-xs">{uniqueUsersInRoom} online</Badge>
                   </div>
                 </CardHeader>
               )}
@@ -435,11 +437,11 @@ export default function CommunityPage() {
                     <div className="flex items-center space-x-2">
                         <Avatar className="h-7 w-7 border border-border">
                             <AvatarImage src={currentUser.avatarUrl} alt="Seu Avatar" data-ai-hint={currentUser.dataAiHint} />
-                            <AvatarFallback className="text-[10px]"><UserCircle /></AvatarFallback>
+                            <AvatarFallback className="text-[10px]"><UserCircle className="h-4 w-4" /></AvatarFallback>
                         </Avatar>
                         <Input 
                             placeholder="Adicionar um comentário..." 
-                            className="h-8 text-xs bg-background/50 focus:border-primary rounded-full px-3"
+                            className="h-8 text-xs bg-background/50 focus:border-primary rounded-full px-3 flex-1"
                         />
                         <Button variant="ghost" size="icon" className="h-7 w-7 text-primary hover:bg-primary/10">
                             <Send className="h-3.5 w-3.5"/>
