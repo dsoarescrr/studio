@@ -190,9 +190,12 @@ export default function ActivityFeedPanel() {
             </div>
           </div>
           <ScrollArea className="h-[350px] p-4"> 
-            <div className="space-y-4">
+            <div className="space-y-2"> {/* Reduced space-y for tighter packing with padded items */}
               {filteredActivities.map((activity) => (
-                <div key={activity.id} className="flex items-start space-x-3">
+                <div 
+                  key={activity.id} 
+                  className="flex items-start space-x-3 p-2 rounded-lg hover:bg-muted/70 transition-colors duration-150 cursor-default"
+                >
                   <Avatar className="h-8 w-8 mt-1">
                     <AvatarImage src={activity.user.avatarUrl || `https://placehold.co/40x40.png?text=${activity.user.name.substring(0,1)}`} alt={activity.user.name} data-ai-hint="avatar user"/>
                     <AvatarFallback>{activity.user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
@@ -227,3 +230,4 @@ export default function ActivityFeedPanel() {
     </Card>
   );
 }
+
