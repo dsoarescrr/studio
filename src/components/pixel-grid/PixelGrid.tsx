@@ -7,7 +7,7 @@ import {
   ZoomIn, ZoomOut, Expand, Search, Sparkles, MousePointer2, Palette, Info, User, CalendarDays,
   History as HistoryIcon, DollarSign, ShoppingCart, Edit3, Paintbrush, FileText, Upload, Save,
   Image as ImageIcon, XCircle, Type as TypeIcon, Tags as TagsIcon, Link as LinkIcon, Pencil,
-  Eraser, PaintBucket, Trash2, Heart, Flag, BadgePercent, Star, AlertTriangle, MapPin
+  Eraser, PaintBucket, Trash2, Heart, Flag, BadgePercent, Star, AlertTriangle, MapPin as MapPinIconLucide // Renamed MapPin to avoid conflict
 } from 'lucide-react';
 import PortugalMapSvg, { type MapData } from './PortugalMapSvg';
 import { Button } from '@/components/ui/button';
@@ -90,6 +90,11 @@ interface SelectedPixelDetails {
   salePrice?: number;
   isFavorited?: boolean;
 }
+
+const MIN_ZOOM = 0.05;
+const MAX_ZOOM = 10;
+const ZOOM_SENSITIVITY_FACTOR = 1.1;
+
 
 export default function PixelGrid() {
   const [zoom, setZoom] = useState(1);
@@ -375,8 +380,8 @@ export default function PixelGrid() {
   }, [workerStatus, overallProgress, mapData, workerErrorMessage]);
 
 
-  const handleZoomIn = () => setZoom((prevZoom) => Math.min(prevZoom * 1.2, 10));
-  const handleZoomOut = () => setZoom((prevZoom) => Math.max(prevZoom / 1.2, 0.05));
+  const handleZoomIn = () => setZoom((prevZoom) => Math.min(prevZoom * 1.2, MAX_ZOOM));
+  const handleZoomOut = () => setZoom((prevZoom) => Math.max(prevZoom / 1.2, MIN_ZOOM));
 
 
  const handleMouseDown = (e: React.MouseEvent) => {
@@ -586,18 +591,75 @@ export default function PixelGrid() {
   const handleToggleForSaleByOwner = () => {
     if (!selectedPixelDetails || !selectedPixelDetails.isOwnedByCurrentUser) return;
 
-    const currentlyForSale = selectedPixelDetails.isForSaleByOwner;
-    setSelectedPixelDetails(prev => prev ? ({
-        ...prev,
-        isForSaleByOwner: !currentlyForSale,
-        salePrice: !currentlyForSale ? prev.salePrice || 50 : undefined,
-    }) : null);
+    const currentlyForSale = selectedPixelDetails.isForSaleByOwner; // Use current details to avoid stale state
+    
+    setSelectedPixelDetails(prev => {
+        if (!prev) return null;
+        const newSaleStatus = !prev.isForSaleByOwner;
+        return {
+            ...prev,
+            isForSaleByOwner: newSaleStatus,
+            salePrice: newSaleStatus ? (prev.salePrice || 50) : undefined,
+        };
+    });
 
+    // Update editable state if in edit mode to reflect this change immediately
+    if (editMode) {
+        setEditableIsForSaleByOwner(prev => !prev);
+        if (selectedPixelDetails.isForSaleByOwner) { // If it *was* for sale
+            setEditableSalePrice('');
+        } else { // If it was *not* for sale
+            setEditableSalePrice(selectedPixelDetails.salePrice || 50);
+        }
+    }
+    
     toast({
         title: !currentlyForSale ? "Pixel Colocado à Venda" : "Pixel Retirado da Venda",
         description: `O seu pixel (${selectedPixelDetails.x}, ${selectedPixelDetails.y}) foi ${!currentlyForSale ? 'colocado à venda.' : 'retirado da venda.'}`,
     });
   };
+
+
+  const handleWheelZoom = useCallback((event: WheelEvent) => {
+    if (!containerRef.current) return;
+    event.preventDefault();
+
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const mouseXInContainer = event.clientX - containerRect.left;
+    const mouseYInContainer = event.clientY - containerRect.top;
+
+    let newZoom;
+    if (event.deltaY < 0) { // Zoom in
+      newZoom = Math.min(zoom * ZOOM_SENSITIVITY_FACTOR, MAX_ZOOM);
+    } else { // Zoom out
+      newZoom = Math.max(zoom / ZOOM_SENSITIVITY_FACTOR, MIN_ZOOM);
+    }
+
+    if (newZoom === zoom) return; // No change if at min/max zoom
+
+    // Calculate mouse position on the unzoomed/unpanned canvas
+    const currentCanvasX = (mouseXInContainer - position.x) / zoom;
+    const currentCanvasY = (mouseYInContainer - position.y) / zoom;
+
+    // Calculate new position to keep the mouse point fixed
+    const newPosX = mouseXInContainer - currentCanvasX * newZoom;
+    const newPosY = mouseYInContainer - currentCanvasY * newZoom;
+
+    setZoom(newZoom);
+    setPosition({ x: newPosX, y: newPosY });
+
+  }, [zoom, position, setZoom, setPosition]);
+
+  useEffect(() => {
+    const currentContainer = containerRef.current;
+    if (currentContainer && workerStatus === 'done') { // Only add listener if map is ready
+      currentContainer.addEventListener('wheel', handleWheelZoom, { passive: false });
+      return () => {
+        currentContainer.removeEventListener('wheel', handleWheelZoom);
+      };
+    }
+  }, [handleWheelZoom, workerStatus]);
+
 
   useEffect(() => {
     if (autoResetTimeoutRef.current) {
@@ -664,7 +726,6 @@ export default function PixelGrid() {
             <TooltipContent><p>Resetar Vista</p></TooltipContent>
           </Tooltip>
         </TooltipProvider>
-        {/* Slider removed */}
         <div className="mt-2 p-2 bg-background/50 rounded-md text-xs font-code">
           <p>Zoom: {zoom.toFixed(2)}x</p>
           <p>X: {Math.round(position.x)}, Y: {Math.round(position.y)}</p>
@@ -1122,7 +1183,7 @@ export default function PixelGrid() {
               <Button pointerEvents="auto" variant="outline"><Search className="mr-2 h-4 w-4" />Explorar Pixel por Coordenadas</Button>
               <Button pointerEvents="auto" variant="outline"><Palette className="mr-2 h-4 w-4" />Filtros de Visualização</Button>
               <Button pointerEvents="auto" variant="outline"><Sparkles className="mr-2 h-4 w-4" />Ver Eventos Atuais</Button>
-               <Button pointerEvents="auto" variant="outline"><MapPin className="mr-2 h-4 w-4" />Ir para Minha Localização</Button>
+               <Button pointerEvents="auto" variant="outline"><MapPinIconLucide className="mr-2 h-4 w-4" />Ir para Minha Localização</Button>
             </div>
             <DialogFooter>
             </DialogFooter>
