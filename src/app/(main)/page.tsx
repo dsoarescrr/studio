@@ -2,8 +2,8 @@
 // Removed UserProfileHeader from here as it's now in MainLayout
 import PixelGrid from '@/components/pixel-grid/PixelGrid';
 import MinimapPanel from '@/components/panels/MinimapPanel';
-import StatisticsPanel from '@/components/panels/StatisticsPanel'; // Added back StatisticsPanel
-// import ActivityFeedPanel from '@/components/panels/ActivityFeedPanel'; // Removed ActivityFeedPanel import
+// import StatisticsPanel from '@/components/panels/StatisticsPanel'; // Removed StatisticsPanel import
+// import ActivityFeedPanel from '@/components/panels/ActivityFeedPanel'; // ActivityFeedPanel was already removed
 
 export default function HomePage() {
   return (
@@ -11,9 +11,10 @@ export default function HomePage() {
       {/* UserProfileHeader is now in MainLayout.tsx */}
       <PixelGrid />
       <MinimapPanel />
-      {/* <ActivityFeedPanel /> */} {/* Removed ActivityFeedPanel instance */}
-      <StatisticsPanel /> {/* Added StatisticsPanel back */}
+      {/* <ActivityFeedPanel /> */} {/* ActivityFeedPanel instance was already removed */}
+      {/* <StatisticsPanel /> */} {/* Removed StatisticsPanel instance */}
       {/* Other floating panels can be added here */}
     </div>
   );
 }
+
