@@ -5,8 +5,8 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Button } from '@/components/ui/button'; // Added Button import
-import { CheckCircle2, Lock, Award, Star, Sparkles, Palette, MapPin, Crown, Edit3, MessageSquare, Rocket, ShieldCheck, Compass, Puzzle, Users, Eye } from "lucide-react"; // Added Puzzle, Users, Eye
+import { Button } from '@/components/ui/button';
+import { CheckCircle2, Lock, Award, Star, Sparkles, Palette, MapPin, Crown, Edit3, MessageSquare, Rocket, ShieldCheck, Compass, Puzzle, Users, Eye, Map } from "lucide-react"; // Added Map icon
 
 type AchievementTier = {
   level: number;
@@ -78,6 +78,19 @@ const achievementsData: Achievement[] = [
       { level: 2, description: "Interagiu com pixels em 3 regiões", xpReward: 120, creditsReward: 35, isUnlocked: false },
       { level: 3, description: "Visitou 7 regiões diferentes", xpReward: 200, creditsReward: 60, isUnlocked: false },
       { level: 4, description: "Interagiu com pixels em todas as regiões principais", xpReward: 400, creditsReward: 120, isUnlocked: false },
+    ],
+  },
+  {
+    id: "pixel_cartographer",
+    name: "Cartógrafo Pixelizado",
+    overallDescription: "Deixe a sua marca possuindo territórios pixelizados por todo o mapa de Portugal.",
+    icon: <Map className="h-7 w-7" />,
+    category: 'exploration',
+    tiers: [
+      { level: 1, description: "Explorador Regional - Possui píxeis em pelo menos 2 regiões distintas.", xpReward: 75, creditsReward: 20, isUnlocked: false },
+      { level: 2, description: "Conhecedor Territorial - Possui píxeis em pelo menos 3 regiões distintas.", xpReward: 150, creditsReward: 45, isUnlocked: false },
+      { level: 3, description: "Dominador Continental - Possui píxeis em 5 regiões continentais distintas.", xpReward: 300, creditsReward: 100, isUnlocked: false },
+      { level: 4, description: "Mestre do Atlas - Possui píxeis em todas as regiões principais (continente e ilhas).", xpReward: 600, creditsReward: 200, isUnlocked: false },
     ],
   },
   {
@@ -275,6 +288,3 @@ export default function AchievementsPage() {
     </div>
   );
 }
-
-
-    
