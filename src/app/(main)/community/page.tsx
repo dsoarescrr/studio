@@ -26,6 +26,8 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 
 type Comment = {
@@ -274,7 +276,7 @@ export default function CommunityPage() {
                     className="w-full justify-start text-sm"
                     onClick={() => setSelectedChatRoomId(room.id)}
                   >
-                    {React.cloneElement(room.icon, { className: cn("h-4 w-4 mr-2", selectedChatRoomId === room.id ? 'text-secondary-foreground' : 'text-muted-foreground') })}
+                    {React.cloneElement(room.icon as React.ReactElement, { className: cn("h-4 w-4 mr-2", selectedChatRoomId === room.id ? 'text-secondary-foreground' : 'text-muted-foreground') })}
                     {room.name}
                   </Button>
                 ))}
@@ -287,7 +289,7 @@ export default function CommunityPage() {
                 <CardHeader className="py-3 px-4 border-b border-border bg-card/50">
                   <div className="flex items-center justify-between">
                      <div className="flex items-center">
-                        {React.cloneElement(selectedChatRoom.icon, {className: "h-5 w-5 mr-2 text-primary"})}
+                        {React.cloneElement(selectedChatRoom.icon as React.ReactElement, {className: "h-5 w-5 mr-2 text-primary"})}
                         <CardTitle className="text-lg font-headline">{selectedChatRoom.name}</CardTitle>
                      </div>
                      <Badge variant="outline" className="font-code text-xs">{displayedChatMessages.length} online</Badge>
