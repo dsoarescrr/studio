@@ -96,10 +96,12 @@ const ZOOM_SENSITIVITY_FACTOR = 1.1;
 
 
 export default function PixelGrid() {
-  const [zoom, setZoom] = useState(1);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1); // Initial zoom, will be updated
+  const [position, setPosition] = useState({ x: 0, y: 0 }); // Initial position, will be updated
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [defaultView, setDefaultView] = useState<{ zoom: number; position: { x: number; y: number } } | null>(null);
+
 
   const [selectedPixelCoordsForDisplay, setSelectedPixelCoordsForDisplay] = useState<{ x: number; y: number } | null>(null);
   const [selectedPixelDetails, setSelectedPixelDetails] = useState<SelectedPixelDetails | null>(null);
@@ -292,38 +294,63 @@ export default function PixelGrid() {
     setWorkerStatus('done');
   }, [pixelBitmap, overallProgress]);
 
-  const getDefaultPosition = useCallback(() => {
-    if (containerRef.current && canvasRef.current) {
-      const { offsetWidth: containerWidth, offsetHeight: containerHeight } = containerRef.current;
-      const canvasContentWidth = canvasDrawWidth * 1; // Default zoom is 1
-      const canvasContentHeight = canvasDrawHeight * 1;
-      return {
-        x: (containerWidth - canvasContentWidth) / 2,
-        y: (containerHeight - canvasContentHeight) / 2,
-      };
-    }
-    return { x: 0, y: 0 }; // Fallback
-  }, []);
-
-  const handleResetView = useCallback(() => {
-    setZoom(1);
-    setPosition(getDefaultPosition());
-  }, [getDefaultPosition]);
-
-
-  useEffect(() => {
-    if (mapData?.path2D && canvasRef.current && containerRef.current) {
-        requestAnimationFrame(() => {
-            handleResetView();
-        });
-    }
-  }, [mapData, handleResetView]);
 
   useEffect(() => {
     if (workerStatus === 'drawing-canvas' && pixelBitmap) {
       drawPixelsOnCanvas();
     }
   }, [workerStatus, pixelBitmap, drawPixelsOnCanvas]);
+
+
+  // Effect to set initial zoom and position to fit the map
+  useEffect(() => {
+    if (containerRef.current && canvasRef.current && mapData?.path2D && workerStatus === 'done' && !defaultView) {
+      const containerWidth = containerRef.current.offsetWidth;
+      const containerHeight = containerRef.current.offsetHeight;
+
+      if (containerWidth > 0 && containerHeight > 0 && canvasDrawWidth > 0 && canvasDrawHeight > 0) {
+        const zoomX = containerWidth / canvasDrawWidth;
+        const zoomY = containerHeight / canvasDrawHeight;
+        let calculatedZoom = Math.min(zoomX, zoomY) * 0.95; // * 0.95 for a little padding
+        calculatedZoom = Math.max(MIN_ZOOM, Math.min(calculatedZoom, MAX_ZOOM));
+
+        const canvasContentWidth = canvasDrawWidth * calculatedZoom;
+        const canvasContentHeight = canvasDrawHeight * calculatedZoom;
+        const calculatedPosition = {
+          x: (containerWidth - canvasContentWidth) / 2,
+          y: (containerHeight - canvasContentHeight) / 2,
+        };
+
+        setDefaultView({ zoom: calculatedZoom, position: calculatedPosition });
+        setZoom(calculatedZoom);
+        setPosition(calculatedPosition);
+      }
+    }
+  }, [mapData, workerStatus, defaultView, canvasDrawWidth, canvasDrawHeight]);
+
+
+ const handleResetView = useCallback(() => {
+    if (defaultView) {
+      setZoom(defaultView.zoom);
+      setPosition(defaultView.position);
+    } else if (containerRef.current && canvasRef.current) { // Fallback if defaultView isn't set yet
+        const containerWidth = containerRef.current.offsetWidth;
+        const containerHeight = containerRef.current.offsetHeight;
+        if (containerWidth > 0 && containerHeight > 0 && canvasDrawWidth > 0 && canvasDrawHeight > 0) {
+            let fallbackZoom = Math.min(containerWidth / canvasDrawWidth, containerHeight / canvasDrawHeight) * 0.95;
+            fallbackZoom = Math.max(MIN_ZOOM, Math.min(fallbackZoom, MAX_ZOOM));
+
+            const canvasContentWidth = canvasDrawWidth * fallbackZoom;
+            const canvasContentHeight = canvasDrawHeight * fallbackZoom;
+            const fallbackPosition = {
+                x: (containerWidth - canvasContentWidth) / 2,
+                y: (containerHeight - canvasContentHeight) / 2,
+            };
+            setZoom(fallbackZoom);
+            setPosition(fallbackPosition);
+        }
+    }
+  }, [defaultView, canvasDrawWidth, canvasDrawHeight]);
 
 
  useEffect(() => {
@@ -385,24 +412,16 @@ export default function PixelGrid() {
 
   const handleMouseDown = (e: React.MouseEvent) => {
     const targetElement = e.target as HTMLElement;
-
-    // 1. If the click is on the canvas itself, let handleCanvasClick manage it. Do not pan.
-    if (targetElement === canvasRef.current) {
-      return;
-    }
-
-    // 2. If the click is on a known interactive UI element (buttons, inputs, dialogs, tooltips, etc.), do not pan.
-    //    This includes the zoom/reset buttons and the quick action button trigger.
-    //    Also, ensure clicks inside an open dialog do not trigger panning.
+    // Allow dragging if clicking on the container or the canvas itself.
+    // Prevent dragging if clicking on specific UI elements (buttons, dialogs etc.)
     if (
       targetElement.closest(
-        'button, input, [data-dialog-content], [data-tooltip-content], [data-popover-content], label, a, [role="menuitem"], [role="tab"]'
+        'button, [data-dialog-content], [data-tooltip-content], [data-popover-content], label, a, [role="menuitem"], [role="tab"], input, textarea'
       )
     ) {
       return;
     }
 
-    // 3. If none of the above, it's a mousedown on the pannable background area. Start dragging.
     setIsDragging(true);
     setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
   };
@@ -665,23 +684,23 @@ export default function PixelGrid() {
   }, [handleWheelZoom, workerStatus]);
 
 
-  useEffect(() => {
+ useEffect(() => {
     if (autoResetTimeoutRef.current) {
       clearTimeout(autoResetTimeoutRef.current);
     }
 
-    if (workerStatus !== 'done') return;
+    if (workerStatus !== 'done' || !defaultView) return;
 
-    const defaultPos = getDefaultPosition();
-    const isDefaultZoom = Math.abs(zoom - 1) < 0.001; 
+    const isDefaultZoom = Math.abs(zoom - defaultView.zoom) < 0.001;
     const isDefaultPosition =
-      Math.abs(position.x - defaultPos.x) < 0.5 &&
-      Math.abs(position.y - defaultPos.y) < 0.5;
+      defaultView.position && // Ensure defaultView.position is not null
+      Math.abs(position.x - defaultView.position.x) < 0.5 &&
+      Math.abs(position.y - defaultView.position.y) < 0.5;
 
     if (!isDefaultZoom || !isDefaultPosition) {
       autoResetTimeoutRef.current = setTimeout(() => {
         handleResetView();
-      }, 5000); 
+      }, 5000);
     }
 
     return () => {
@@ -689,7 +708,7 @@ export default function PixelGrid() {
         clearTimeout(autoResetTimeoutRef.current);
       }
     };
-  }, [zoom, position, handleResetView, getDefaultPosition, workerStatus]);
+  }, [zoom, position, handleResetView, workerStatus, defaultView]);
 
 
   const progressText =
