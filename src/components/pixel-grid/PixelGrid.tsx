@@ -3,15 +3,15 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { 
-  ZoomIn, ZoomOut, Expand, Search, Sparkles, MousePointer2, Palette, Info, User, CalendarDays, 
-  History as HistoryIcon, DollarSign, ShoppingCart, Edit3, Paintbrush, FileText, Upload, Save, 
-  Image as ImageIcon, XCircle, Type as TypeIcon, Tags as TagsIcon, Link as LinkIcon, Pencil, 
-  Eraser, PaintBucket, Trash2, Heart, Flag, BadgePercent, Star, AlertTriangle, MapPin // Added MapPin
+import {
+  ZoomIn, ZoomOut, Expand, Search, Sparkles, MousePointer2, Palette, Info, User, CalendarDays,
+  History as HistoryIcon, DollarSign, ShoppingCart, Edit3, Paintbrush, FileText, Upload, Save,
+  Image as ImageIcon, XCircle, Type as TypeIcon, Tags as TagsIcon, Link as LinkIcon, Pencil,
+  Eraser, PaintBucket, Trash2, Heart, Flag, BadgePercent, Star, AlertTriangle, MapPin
 } from 'lucide-react';
 import PortugalMapSvg, { type MapData } from './PortugalMapSvg';
 import { Button } from '@/components/ui/button';
-import { Slider } from '@/components/ui/slider';
+// import { Slider } from '@/components/ui/slider'; // Slider removed
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { generatePixelDescription, type GeneratePixelDescriptionInput } from '@/ai/flows/generate-pixel-description';
 import { useToast } from '@/hooks/use-toast';
@@ -73,22 +73,22 @@ interface SelectedPixelDetails {
   x: number;
   y: number;
   owner?: string;
-  price?: number; 
+  price?: number;
   acquisitionDate?: string;
   lastModifiedDate?: string;
   color?: string;
   history?: Array<{ owner: string; date: string; price?: number }>;
   isOwnedByCurrentUser?: boolean;
-  isForSaleBySystem?: boolean; 
+  isForSaleBySystem?: boolean;
   manualDescription?: string;
   pixelImageUrl?: string;
   dataAiHint?: string;
   title?: string;
   tags?: string[];
   linkUrl?: string;
-  isForSaleByOwner?: boolean; 
-  salePrice?: number; 
-  isFavorited?: boolean; 
+  isForSaleByOwner?: boolean;
+  salePrice?: number;
+  isFavorited?: boolean;
 }
 
 export default function PixelGrid() {
@@ -96,7 +96,7 @@ export default function PixelGrid() {
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  
+
   const [selectedPixelCoordsForDisplay, setSelectedPixelCoordsForDisplay] = useState<{ x: number; y: number } | null>(null);
   const [selectedPixelDetails, setSelectedPixelDetails] = useState<SelectedPixelDetails | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
@@ -117,7 +117,7 @@ export default function PixelGrid() {
   const [overallProgress, setOverallProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState("A carregar dados do mapa...");
   const [workerErrorMessage, setWorkerErrorMessage] = useState<string | null>(null);
-  
+
   const workerRef = useRef<Worker | null>(null);
 
   const [editMode, setEditMode] = useState(false);
@@ -131,12 +131,14 @@ export default function PixelGrid() {
   const [editableIsForSaleByOwner, setEditableIsForSaleByOwner] = useState(false);
   const [editableSalePrice, setEditableSalePrice] = useState<number | string>('');
 
+  const autoResetTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
 
   const handleMapDataLoaded = useCallback((data: MapData) => {
     if (data && data.pathStrings && data.pathStrings.length > 0 && data.path2D) {
       setMapData(data);
       setProgressMessage("Mapa carregado. A preparar grelha de pixels...");
-      setWorkerStatus('idle'); 
+      setWorkerStatus('idle');
       setWorkerErrorMessage(null);
     } else {
       setWorkerStatus('error');
@@ -156,7 +158,7 @@ export default function PixelGrid() {
       try {
         workerInstance = new Worker(new URL('../../workers/pixel-map-worker.ts', import.meta.url));
         workerRef.current = workerInstance;
-        
+
         workerRef.current.postMessage({
           pathStrings: mapData.pathStrings,
           canvasWidth: canvasDrawWidth,
@@ -167,8 +169,8 @@ export default function PixelGrid() {
           logicalRows: logicalGridRows,
           pixelSize: RENDERED_PIXEL_SIZE_CONFIG,
         } as WorkerInput);
-        
-        setWorkerStatus('processing-worker'); 
+
+        setWorkerStatus('processing-worker');
 
         workerRef.current.onmessage = (event: MessageEvent<WorkerMessage>) => {
           if (!event.data || typeof event.data.type === 'undefined') {
@@ -178,27 +180,27 @@ export default function PixelGrid() {
             setOverallProgress(0);
             return;
           }
-          
+
           const { type } = event.data;
-          
+
           if (type === 'progress') {
             const workerProgress = Math.max(0, Math.min(100, Number((event.data as WorkerProgressMessage).progress) || 0));
-            setOverallProgress(workerProgress * 0.5); 
+            setOverallProgress(workerProgress * 0.5);
             setProgressMessage(`A gerar mapa de pixels... ${(workerProgress * 0.5).toFixed(1)}%`);
           } else if (type === 'done') {
             setPixelBitmap(new Uint8Array((event.data as WorkerDoneMessage).bitmap));
-            setWorkerStatus('drawing-canvas'); 
+            setWorkerStatus('drawing-canvas');
             setProgressMessage("Mapa de pixels gerado. A desenhar no canvas...");
-            setOverallProgress(50); 
+            setOverallProgress(50);
           } else if (type === 'error') {
             const errorMessage = (event.data as WorkerErrorMessage).error || 'Erro desconhecido no worker.';
             setWorkerStatus('error');
             setWorkerErrorMessage(errorMessage);
             setProgressMessage(`Erro do Worker: ${errorMessage}`);
-            setOverallProgress(0); 
+            setOverallProgress(0);
           }
         };
-        
+
         workerRef.current.onerror = (err: ErrorEvent) => {
           const errorMessage = `WORKER SCRIPT ERROR: ${err.message || "Ocorreu um erro crítico e inesperado no worker."}`;
           setWorkerStatus('error');
@@ -216,7 +218,7 @@ export default function PixelGrid() {
         setWorkerErrorMessage(`Falha ao criar Worker: ${errorMsg}`);
         setProgressMessage(`Falha ao criar Worker: ${errorMsg}`);
         setOverallProgress(0);
-        if (workerRef.current) { 
+        if (workerRef.current) {
             workerRef.current.terminate();
             workerRef.current = null;
         }
@@ -244,8 +246,8 @@ export default function PixelGrid() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = 'rgba(180, 180, 180, 0.7)';
-    
-    if (RENDERED_PIXEL_SIZE_CONFIG > 1) { 
+
+    if (RENDERED_PIXEL_SIZE_CONFIG > 1) {
         ctx.strokeStyle = 'rgba(30, 30, 30, 0.75)';
         ctx.lineWidth = 0.2;
     }
@@ -269,8 +271,8 @@ export default function PixelGrid() {
             }
           }
           rowsDrawn += (endRow - startRow);
-          const drawingProgress = (rowsDrawn / logicalGridRows) * 50; 
-          setOverallProgress(50 + drawingProgress); 
+          const drawingProgress = (rowsDrawn / logicalGridRows) * 50;
+          setOverallProgress(50 + drawingProgress);
           setProgressMessage(`A desenhar pixels no canvas... ${(50 + drawingProgress).toFixed(1)}%`);
           resolve();
         });
@@ -280,26 +282,30 @@ export default function PixelGrid() {
     for (let r = 0; r < logicalGridRows; r += ROWS_PER_DRAW_CHUNK) {
       await drawChunk(r);
     }
-    
+
     setProgressMessage("Universo pixel pronto!");
-    setOverallProgress(100); 
+    setOverallProgress(100);
     setWorkerStatus('done');
   }, [pixelBitmap, overallProgress]);
 
+  const getDefaultPosition = useCallback(() => {
+    if (containerRef.current && canvasRef.current) {
+      const { offsetWidth: containerWidth, offsetHeight: containerHeight } = containerRef.current;
+      const canvasContentWidth = canvasDrawWidth * 1; // Default zoom is 1
+      const canvasContentHeight = canvasDrawHeight * 1;
+      return {
+        x: (containerWidth - canvasContentWidth) / 2,
+        y: (containerHeight - canvasContentHeight) / 2,
+      };
+    }
+    return { x: 0, y: 0 }; // Fallback
+  }, []);
 
   const handleResetView = useCallback(() => {
-    const currentZoom = 1;
-    setZoom(currentZoom);
-     if (containerRef.current && canvasRef.current) {
-        const { offsetWidth: containerWidth, offsetHeight: containerHeight } = containerRef.current;
-        const canvasContentWidth = canvasDrawWidth * currentZoom; 
-        const canvasContentHeight = canvasDrawHeight * currentZoom;
-        setPosition({
-            x: (containerWidth - canvasContentWidth) / 2,
-            y: (containerHeight - canvasContentHeight) / 2
-        });
-    }
-  }, []);
+    setZoom(1);
+    setPosition(getDefaultPosition());
+  }, [getDefaultPosition]);
+
 
   useEffect(() => {
     if (mapData?.path2D && canvasRef.current && containerRef.current) {
@@ -321,15 +327,15 @@ export default function PixelGrid() {
     let timeoutId: NodeJS.Timeout | undefined;
 
     if (isGeneratingDesc && showPixelModal && !editMode) {
-        setAiModalProgressValue(0); 
+        setAiModalProgressValue(0);
         let currentProgress = 0;
         const animate = () => {
-            currentProgress += 2; 
+            currentProgress += 2;
             if (currentProgress <= 75) {
                 setAiModalProgressValue(currentProgress);
                 animationFrameId = requestAnimationFrame(animate);
-            } else if (currentProgress < 90) { 
-                setAiModalProgressValue(75 + Math.floor(Math.random() * 15)); 
+            } else if (currentProgress < 90) {
+                setAiModalProgressValue(75 + Math.floor(Math.random() * 15));
                 animationFrameId = requestAnimationFrame(animate);
             }
         };
@@ -337,10 +343,10 @@ export default function PixelGrid() {
     } else {
         if (!isGeneratingDesc && showPixelModal && !editMode) {
              if (pixelDescription) {
-                setAiModalProgressValue(100); 
+                setAiModalProgressValue(100);
                 timeoutId = setTimeout(() => {
-                    setAiModalProgressValue(0); 
-                }, 1000); 
+                    setAiModalProgressValue(0);
+                }, 1000);
              }
         } else if (!showPixelModal || editMode) {
             setAiModalProgressValue(0);
@@ -350,7 +356,7 @@ export default function PixelGrid() {
         if (animationFrameId) cancelAnimationFrame(animationFrameId);
         if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [isGeneratingDesc, showPixelModal, pixelDescription, initialAiProgressTrigger, editMode]); 
+  }, [isGeneratingDesc, showPixelModal, pixelDescription, initialAiProgressTrigger, editMode]);
 
   useEffect(() => {
     if (workerStatus === 'error') {
@@ -376,9 +382,9 @@ export default function PixelGrid() {
  const handleMouseDown = (e: React.MouseEvent) => {
     const targetElement = e.target as HTMLElement;
     if (
-      targetElement.closest('button, input, [role="slider"], [data-dialog-content], [role="dialog"], label') 
+      targetElement.closest('button, input, [role="slider"], [data-dialog-content], [role="dialog"], label')
     ) {
-      return; 
+      return;
     }
     if (targetElement !== canvasRef.current && containerRef.current?.contains(targetElement)) {
       const transformedDiv = canvasRef.current?.parentElement;
@@ -404,7 +410,7 @@ export default function PixelGrid() {
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current || !mapData?.path2D || workerStatus !== 'done') return;
     const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect(); 
+    const rect = canvas.getBoundingClientRect();
 
     const clickXInCanvasElement = event.clientX - rect.left;
     const clickYInCanvasElement = event.clientY - rect.top;
@@ -422,11 +428,11 @@ export default function PixelGrid() {
       const pixelCenterXCanvasBuffer = (logicalCol + 0.5) * RENDERED_PIXEL_SIZE_CONFIG;
       const pixelCenterYCanvasBuffer = (logicalRow + 0.5) * RENDERED_PIXEL_SIZE_CONFIG;
 
-      const scaleXToSvg = SVG_VIEWBOX_WIDTH / canvas.width; 
+      const scaleXToSvg = SVG_VIEWBOX_WIDTH / canvas.width;
       const scaleYToSvg = SVG_VIEWBOX_HEIGHT / canvas.height;
       const svgCoordX = pixelCenterXCanvasBuffer * scaleXToSvg;
       const svgCoordY = pixelCenterYCanvasBuffer * scaleYToSvg;
-      
+
       const tempCtx = document.createElement('canvas').getContext('2d');
       if (tempCtx && mapData.path2D && tempCtx.isPointInPath(mapData.path2D, svgCoordX, svgCoordY)) {
         setSelectedPixelCoordsForDisplay({ x: logicalCol, y: logicalRow });
@@ -466,7 +472,7 @@ export default function PixelGrid() {
         };
         setSelectedPixelDetails(mockDetails);
         setIsFavorite(mockDetails.isFavorited || false);
-        
+
         setEditableColor(mockDetails.color || '#FFFFFF');
         setEditableManualDescription(mockDetails.manualDescription || '');
         setEditablePixelImagePreview(mockDetails.pixelImageUrl || null);
@@ -479,8 +485,8 @@ export default function PixelGrid() {
 
 
         setShowPixelModal(true);
-        setPixelDescription(null); 
-        setEditMode(false); 
+        setPixelDescription(null);
+        setEditMode(false);
         setInitialAiProgressTrigger(prev => prev + 1);
       } else {
         setSelectedPixelCoordsForDisplay(null);
@@ -496,7 +502,7 @@ export default function PixelGrid() {
     if (!selectedPixelDetails) return;
     setIsGeneratingDesc(true);
     setPixelDescription(null);
-    
+
     try {
         const input: GeneratePixelDescriptionInput = {
             x: selectedPixelDetails.x,
@@ -530,14 +536,13 @@ export default function PixelGrid() {
   const handleRemovePixelImage = () => {
     setEditablePixelImageFile(null);
     setEditablePixelImagePreview(null);
-    // Se o input de ficheiro ainda estiver a mostrar o nome do ficheiro, limpa-o
     const fileInput = document.getElementById('pixelImageUpload') as HTMLInputElement;
     if (fileInput) fileInput.value = '';
   }
 
   const handleSaveChanges = () => {
     if (!selectedPixelDetails) return;
-    
+
     const updatedTags = editableTags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
     const salePriceNum = parseFloat(String(editableSalePrice));
 
@@ -545,7 +550,7 @@ export default function PixelGrid() {
       ...prev,
       color: editableColor,
       manualDescription: editableManualDescription,
-      pixelImageUrl: editablePixelImagePreview || undefined, // Manter undefined se null
+      pixelImageUrl: editablePixelImagePreview || undefined,
       dataAiHint: editablePixelImagePreview ? 'pixel custom image' : undefined,
       title: editableTitle,
       tags: updatedTags,
@@ -568,7 +573,7 @@ export default function PixelGrid() {
       description: `O pixel (${selectedPixelDetails.x}, ${selectedPixelDetails.y}) foi ${newFavStatus ? 'adicionado aos' : 'removido dos'} seus favoritos.`,
     });
   };
-  
+
   const handleReportPixel = () => {
     if (!selectedPixelDetails) return;
     toast({
@@ -585,7 +590,7 @@ export default function PixelGrid() {
     setSelectedPixelDetails(prev => prev ? ({
         ...prev,
         isForSaleByOwner: !currentlyForSale,
-        salePrice: !currentlyForSale ? prev.salePrice || 50 : undefined, // Keep price or set default if putting up for sale
+        salePrice: !currentlyForSale ? prev.salePrice || 50 : undefined,
     }) : null);
 
     toast({
@@ -594,19 +599,45 @@ export default function PixelGrid() {
     });
   };
 
+  useEffect(() => {
+    if (autoResetTimeoutRef.current) {
+      clearTimeout(autoResetTimeoutRef.current);
+    }
 
-  const progressText = 
-    workerStatus === 'error' ? "Erro" : 
-    (overallProgress === 0 && workerStatus !== 'processing-worker' && workerStatus !== 'drawing-canvas' && workerStatus !== 'idle' && workerStatus !== 'error') ? "0.0" : 
-    (overallProgress >= 99.9 && workerStatus === 'done') ? "100" : 
+    if (workerStatus !== 'done') return; // Don't run timer if map isn't ready
+
+    const defaultPos = getDefaultPosition();
+    const isDefaultZoom = Math.abs(zoom - 1) < 0.001; // Compare with tolerance
+    const isDefaultPosition =
+      Math.abs(position.x - defaultPos.x) < 0.5 &&
+      Math.abs(position.y - defaultPos.y) < 0.5;
+
+    if (!isDefaultZoom || !isDefaultPosition) {
+      autoResetTimeoutRef.current = setTimeout(() => {
+        handleResetView();
+      }, 5000); // 5 seconds
+    }
+
+    return () => {
+      if (autoResetTimeoutRef.current) {
+        clearTimeout(autoResetTimeoutRef.current);
+      }
+    };
+  }, [zoom, position, handleResetView, getDefaultPosition, workerStatus]);
+
+
+  const progressText =
+    workerStatus === 'error' ? "Erro" :
+    (overallProgress === 0 && workerStatus !== 'processing-worker' && workerStatus !== 'drawing-canvas' && workerStatus !== 'idle' && workerStatus !== 'error') ? "0.0" :
+    (overallProgress >= 99.9 && workerStatus === 'done') ? "100" :
     overallProgress.toFixed(1);
 
   const showLoadingOverlay = workerStatus !== 'done' || overallProgress < 100;
-  
+
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden relative">
-      <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 bg-card/80 p-2 rounded-md shadow-lg backdrop-blur-sm pointer-events-none">
+      <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 bg-card/80 p-2 rounded-md shadow-lg backdrop-blur-sm pointer-events-auto"> {/* Changed pointer-events to auto */}
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -633,17 +664,7 @@ export default function PixelGrid() {
             <TooltipContent><p>Resetar Vista</p></TooltipContent>
           </Tooltip>
         </TooltipProvider>
-        <Slider
-          pointerEvents="auto"
-          defaultValue={[1]}
-          min={0.05}
-          max={10}
-          step={0.01}
-          value={[zoom]}
-          onValueChange={(value) => setZoom(value[0])}
-          className="w-32 mt-2"
-          aria-label="Zoom Slider"
-        />
+        {/* Slider removed */}
         <div className="mt-2 p-2 bg-background/50 rounded-md text-xs font-code">
           <p>Zoom: {zoom.toFixed(2)}x</p>
           <p>X: {Math.round(position.x)}, Y: {Math.round(position.y)}</p>
@@ -654,12 +675,12 @@ export default function PixelGrid() {
 
       <Dialog open={showPixelModal} onOpenChange={(isOpen) => {
           setShowPixelModal(isOpen);
-          if (!isOpen) { 
+          if (!isOpen) {
               setSelectedPixelDetails(null);
-              setPixelDescription(null); 
-              setIsGeneratingDesc(false); 
+              setPixelDescription(null);
+              setIsGeneratingDesc(false);
               setAiModalProgressValue(0);
-              setEditMode(false); 
+              setEditMode(false);
           }
       }}>
         <DialogContent className="sm:max-w-md bg-card text-card-foreground" data-dialog-content pointerEvents="auto">
@@ -698,7 +719,7 @@ export default function PixelGrid() {
                   </CardHeader>
                   <CardContent className="text-sm space-y-1.5 px-4 pb-3">
                     <div className="flex justify-between"><span>Proprietário:</span> <Badge variant={selectedPixelDetails.owner === 'Disponível (Sistema)' ? "secondary" : "outline"} className="font-code">{selectedPixelDetails.owner}</Badge></div>
-                    
+
                     {selectedPixelDetails.isForSaleBySystem && selectedPixelDetails.price && (
                       <div className="flex justify-between items-center"><span>Preço (Sistema):</span> <span className="font-code flex items-center">{selectedPixelDetails.price} Créditos <DollarSign className="inline h-3.5 w-3.5 ml-1" /></span></div>
                     )}
@@ -851,7 +872,7 @@ export default function PixelGrid() {
               </DialogHeader>
               <ScrollArea className="max-h-[calc(100vh-250px)] pr-3">
                 <div className="space-y-4 py-2">
-                  
+
                   <Card className="bg-background/50">
                     <CardHeader className="pb-2 pt-3 px-4">
                       <CardTitle className="text-md font-headline flex items-center text-primary">
@@ -971,7 +992,7 @@ export default function PixelGrid() {
                         </div>
                      </CardContent>
                   </Card>
-                  
+
                   <Card className="bg-background/50">
                     <CardHeader className="pb-2 pt-3 px-4">
                       <CardTitle className="text-md font-headline flex items-center text-primary">
@@ -1053,10 +1074,10 @@ export default function PixelGrid() {
           style={{
             transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`,
             transition: isDragging ? 'none' : 'transform 0.05s ease-out',
-            width: `${canvasDrawWidth}px`, 
-            height: `${canvasDrawHeight}px`, 
+            width: `${canvasDrawWidth}px`,
+            height: `${canvasDrawHeight}px`,
             transformOrigin: 'top left',
-            position: 'relative', 
+            position: 'relative',
           }}
         >
           <PortugalMapSvg
@@ -1070,7 +1091,7 @@ export default function PixelGrid() {
             style={{ imageRendering: 'pixelated' }}
           />
         </div>
-        
+
         {showLoadingOverlay && (
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm pointer-events-none">
             {workerStatus !== 'error' && <Sparkles className="h-12 w-12 text-primary animate-pulse mb-4" />}
