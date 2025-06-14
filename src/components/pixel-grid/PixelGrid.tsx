@@ -3,7 +3,12 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ZoomIn, ZoomOut, Expand, Search, Sparkles, MousePointer2, Palette, Info, User, CalendarDays, History as HistoryIcon, DollarSign, ShoppingCart, Edit3, Paintbrush, FileText, Upload, Save, Image as ImageIcon, XCircle, Type as TypeIcon, Tags as TagsIcon, Link as LinkIcon, Pencil, Eraser, PaintBucket, Trash2 } from 'lucide-react';
+import { 
+  ZoomIn, ZoomOut, Expand, Search, Sparkles, MousePointer2, Palette, Info, User, CalendarDays, 
+  History as HistoryIcon, DollarSign, ShoppingCart, Edit3, Paintbrush, FileText, Upload, Save, 
+  Image as ImageIcon, XCircle, Type as TypeIcon, Tags as TagsIcon, Link as LinkIcon, Pencil, 
+  Eraser, PaintBucket, Trash2, Heart, Flag, BadgePercent, Star, AlertTriangle, MapPin // Added MapPin
+} from 'lucide-react';
 import PortugalMapSvg, { type MapData } from './PortugalMapSvg';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -28,6 +33,7 @@ import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Separator } from '../ui/separator';
 
 
 const SVG_VIEWBOX_WIDTH = 12969;
@@ -76,11 +82,13 @@ interface SelectedPixelDetails {
   isForSaleBySystem?: boolean; 
   manualDescription?: string;
   pixelImageUrl?: string;
+  dataAiHint?: string;
   title?: string;
   tags?: string[];
   linkUrl?: string;
   isForSaleByOwner?: boolean; 
   salePrice?: number; 
+  isFavorited?: boolean; 
 }
 
 export default function PixelGrid() {
@@ -91,6 +99,7 @@ export default function PixelGrid() {
   
   const [selectedPixelCoordsForDisplay, setSelectedPixelCoordsForDisplay] = useState<{ x: number; y: number } | null>(null);
   const [selectedPixelDetails, setSelectedPixelDetails] = useState<SelectedPixelDetails | null>(null);
+  const [isFavorite, setIsFavorite] = useState(false);
 
   const [pixelDescription, setPixelDescription] = useState<string | null>(null);
   const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
@@ -447,13 +456,16 @@ export default function PixelGrid() {
           isForSaleBySystem: isForSaleSystem,
           manualDescription: isOwnedByMe ? 'Este é uma descrição de exemplo do meu pixel.' : '',
           pixelImageUrl: isOwnedByMe && Math.random() > 0.5 ? 'https://placehold.co/150x150.png' : undefined,
+          dataAiHint: 'pixel image',
           title: isOwnedByMe ? `Pixel de ${randomOwner}` : undefined,
           tags: isOwnedByMe ? ['arte', 'exemplo'] : [],
           linkUrl: isOwnedByMe && Math.random() > 0.2 ? 'https://example.com' : undefined,
           isForSaleByOwner: mockIsForSaleByOwner,
           salePrice: mockIsForSaleByOwner ? Math.floor(Math.random() * 100) + 20 : undefined,
+          isFavorited: Math.random() > 0.7,
         };
         setSelectedPixelDetails(mockDetails);
+        setIsFavorite(mockDetails.isFavorited || false);
         
         setEditableColor(mockDetails.color || '#FFFFFF');
         setEditableManualDescription(mockDetails.manualDescription || '');
@@ -515,6 +527,14 @@ export default function PixelGrid() {
     }
   };
 
+  const handleRemovePixelImage = () => {
+    setEditablePixelImageFile(null);
+    setEditablePixelImagePreview(null);
+    // Se o input de ficheiro ainda estiver a mostrar o nome do ficheiro, limpa-o
+    const fileInput = document.getElementById('pixelImageUpload') as HTMLInputElement;
+    if (fileInput) fileInput.value = '';
+  }
+
   const handleSaveChanges = () => {
     if (!selectedPixelDetails) return;
     
@@ -525,7 +545,8 @@ export default function PixelGrid() {
       ...prev,
       color: editableColor,
       manualDescription: editableManualDescription,
-      pixelImageUrl: editablePixelImagePreview || prev.pixelImageUrl,
+      pixelImageUrl: editablePixelImagePreview || undefined, // Manter undefined se null
+      dataAiHint: editablePixelImagePreview ? 'pixel custom image' : undefined,
       title: editableTitle,
       tags: updatedTags,
       linkUrl: editableLinkUrl,
@@ -536,6 +557,43 @@ export default function PixelGrid() {
     toast({ title: "Alterações Guardadas", description: "As alterações ao seu pixel foram (simuladamente) guardadas." });
     setEditMode(false);
   };
+
+  const handleToggleFavorite = () => {
+    if (!selectedPixelDetails) return;
+    const newFavStatus = !isFavorite;
+    setIsFavorite(newFavStatus);
+    setSelectedPixelDetails(prev => prev ? ({ ...prev, isFavorited: newFavStatus }) : null);
+    toast({
+      title: newFavStatus ? "Adicionado aos Favoritos" : "Removido dos Favoritos",
+      description: `O pixel (${selectedPixelDetails.x}, ${selectedPixelDetails.y}) foi ${newFavStatus ? 'adicionado aos' : 'removido dos'} seus favoritos.`,
+    });
+  };
+  
+  const handleReportPixel = () => {
+    if (!selectedPixelDetails) return;
+    toast({
+      title: "Pixel Reportado",
+      description: `O pixel (${selectedPixelDetails.x}, ${selectedPixelDetails.y}) foi reportado para revisão (simulado).`,
+      variant: "default",
+    });
+  };
+
+  const handleToggleForSaleByOwner = () => {
+    if (!selectedPixelDetails || !selectedPixelDetails.isOwnedByCurrentUser) return;
+
+    const currentlyForSale = selectedPixelDetails.isForSaleByOwner;
+    setSelectedPixelDetails(prev => prev ? ({
+        ...prev,
+        isForSaleByOwner: !currentlyForSale,
+        salePrice: !currentlyForSale ? prev.salePrice || 50 : undefined, // Keep price or set default if putting up for sale
+    }) : null);
+
+    toast({
+        title: !currentlyForSale ? "Pixel Colocado à Venda" : "Pixel Retirado da Venda",
+        description: `O seu pixel (${selectedPixelDetails.x}, ${selectedPixelDetails.y}) foi ${!currentlyForSale ? 'colocado à venda.' : 'retirado da venda.'}`,
+    });
+  };
+
 
   const progressText = 
     workerStatus === 'error' ? "Erro" : 
@@ -608,11 +666,25 @@ export default function PixelGrid() {
           {!editMode && selectedPixelDetails && (
             <>
               <DialogHeader>
-                <DialogTitle className="font-headline flex items-center text-xl">
-                    Pixel ({selectedPixelDetails.x}, {selectedPixelDetails.y})
-                    {selectedPixelDetails.title && <span className="text-base text-muted-foreground ml-2"> - &quot;{selectedPixelDetails.title}&quot;</span>}
-                </DialogTitle>
-                <CardDescriptionElement>
+                <div className="flex items-start justify-between">
+                    <div>
+                        <DialogTitle className="font-headline flex items-center text-xl">
+                            Pixel ({selectedPixelDetails.x}, {selectedPixelDetails.y})
+                        </DialogTitle>
+                        {selectedPixelDetails.title && <CardDescriptionElement className="text-base text-muted-foreground -mt-1">&quot;{selectedPixelDetails.title}&quot;</CardDescriptionElement>}
+                    </div>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" onClick={handleToggleFavorite} className="text-muted-foreground hover:text-rose-500 h-8 w-8">
+                                    <Heart className={`h-5 w-5 ${isFavorite ? 'fill-rose-500 text-rose-500' : ''}`} />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent><p>{isFavorite ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos'}</p></TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                </div>
+                <CardDescriptionElement className="pt-1">
                   Informações detalhadas e ações disponíveis para este pixel.
                 </CardDescriptionElement>
               </DialogHeader>
@@ -670,7 +742,7 @@ export default function PixelGrid() {
                       <div className="pt-1">
                         <span className="font-semibold">Imagem do Pixel:</span>
                         <div className="mt-1 relative w-24 h-24 rounded border border-border overflow-hidden">
-                          <Image src={selectedPixelDetails.pixelImageUrl} alt="Imagem do Pixel" layout="fill" objectFit="cover" data-ai-hint="pixel custom image"/>
+                          <Image src={selectedPixelDetails.pixelImageUrl} alt="Imagem do Pixel" layout="fill" objectFit="cover" data-ai-hint={selectedPixelDetails.dataAiHint || 'pixel image'}/>
                         </div>
                       </div>
                     )}
@@ -728,25 +800,42 @@ export default function PixelGrid() {
                 )}
               </div>
               </ScrollArea>
-              <DialogFooter className="gap-2 sm:gap-1.5 flex-wrap justify-center pt-3 sm:justify-end">
-                {selectedPixelDetails.isForSaleBySystem && !selectedPixelDetails.isOwnedByCurrentUser && (
-                  <Button size="sm" disabled={!selectedPixelDetails.price} className="bg-green-600 hover:bg-green-700 text-white">
-                    <ShoppingCart className="mr-1.5 h-3.5 w-3.5" /> Comprar ({selectedPixelDetails.price} Créditos)
-                  </Button>
-                )}
-                 {selectedPixelDetails.isOwnedByCurrentUser && selectedPixelDetails.isForSaleByOwner && selectedPixelDetails.salePrice && (
-                  <Button size="sm" variant="outline" className="border-green-500 text-green-500 hover:bg-green-500/10">
-                     À Venda por {selectedPixelDetails.salePrice} Créditos
-                  </Button>
-                )}
-                {selectedPixelDetails.isOwnedByCurrentUser && (
-                  <Button size="sm" onClick={() => setEditMode(true)} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                      <Edit3 className="mr-1.5 h-3.5 w-3.5" /> Editar Pixel
-                  </Button>
-                )}
-                {!selectedPixelDetails.isForSaleBySystem && !selectedPixelDetails.isOwnedByCurrentUser && selectedPixelDetails.owner !== 'Disponível (Sistema)' && !selectedPixelDetails.isForSaleByOwner && (
-                     <Button variant="secondary" size="sm" disabled={!selectedPixelDetails}>Fazer Oferta</Button>
-                )}
+              <DialogFooter className="gap-2 sm:gap-1.5 flex-wrap justify-center pt-3 sm:justify-between">
+                 <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={handleReportPixel} className="text-muted-foreground hover:text-destructive h-8 w-8">
+                                <Flag className="h-4 w-4" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top"><p>Reportar Pixel</p></TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+                <div className="flex gap-2 sm:gap-1.5 flex-wrap justify-center sm:justify-end">
+                    {selectedPixelDetails.isForSaleBySystem && !selectedPixelDetails.isOwnedByCurrentUser && (
+                      <Button size="sm" disabled={!selectedPixelDetails.price} className="bg-green-600 hover:bg-green-700 text-white">
+                        <ShoppingCart className="mr-1.5 h-3.5 w-3.5" /> Comprar ({selectedPixelDetails.price} Créditos)
+                      </Button>
+                    )}
+                    {selectedPixelDetails.isOwnedByCurrentUser && selectedPixelDetails.isForSaleByOwner && (
+                      <Button size="sm" variant="outline" onClick={handleToggleForSaleByOwner} className="border-red-500 text-red-500 hover:bg-red-500/10">
+                         <BadgePercent className="mr-1.5 h-3.5 w-3.5" /> Retirar da Venda
+                      </Button>
+                    )}
+                     {selectedPixelDetails.isOwnedByCurrentUser && !selectedPixelDetails.isForSaleByOwner && (
+                      <Button size="sm" variant="outline" onClick={handleToggleForSaleByOwner} className="border-green-500 text-green-500 hover:bg-green-500/10">
+                         <BadgePercent className="mr-1.5 h-3.5 w-3.5" /> Colocar à Venda
+                      </Button>
+                    )}
+                    {selectedPixelDetails.isOwnedByCurrentUser && (
+                      <Button size="sm" onClick={() => setEditMode(true)} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                          <Edit3 className="mr-1.5 h-3.5 w-3.5" /> Editar Pixel
+                      </Button>
+                    )}
+                    {!selectedPixelDetails.isForSaleBySystem && !selectedPixelDetails.isOwnedByCurrentUser && selectedPixelDetails.owner !== 'Disponível (Sistema)' && !selectedPixelDetails.isForSaleByOwner && (
+                        <Button variant="secondary" size="sm" disabled={!selectedPixelDetails}>Fazer Oferta</Button>
+                    )}
+                </div>
               </DialogFooter>
             </>
           )}
@@ -762,197 +851,180 @@ export default function PixelGrid() {
               </DialogHeader>
               <ScrollArea className="max-h-[calc(100vh-250px)] pr-3">
                 <div className="space-y-4 py-2">
-                  <Card className="bg-background/50">
-                    <CardHeader className="pb-2 pt-3 px-4">
-                      <CardTitle className="text-md font-headline flex items-center text-primary">
-                        <Paintbrush className="h-4 w-4 mr-2" /> Nova Cor
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="px-4 pb-3 flex items-center gap-2">
-                      <Input
-                        id="pixelColorEdit"
-                        type="color"
-                        value={editableColor}
-                        onChange={(e) => setEditableColor(e.target.value)}
-                        className="w-16 h-10 p-1"
-                      />
-                      <Input
-                        type="text"
-                        placeholder="#RRGGBB"
-                        value={editableColor}
-                        onChange={(e) => setEditableColor(e.target.value)}
-                        className="font-code flex-1 h-10"
-                        aria-label="Código Hex da Cor"
-                      />
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-background/50">
-                    <CardHeader className="pb-2 pt-3 px-4">
-                      <CardTitle className="text-md font-headline flex items-center text-primary">
-                        <TypeIcon className="h-4 w-4 mr-2" /> Título do Pixel
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="px-4 pb-3">
-                      <Input
-                        type="text"
-                        placeholder="Ex: Meu Pôr do Sol Pixelizado"
-                        value={editableTitle}
-                        onChange={(e) => setEditableTitle(e.target.value)}
-                      />
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-background/50">
-                    <CardHeader className="pb-2 pt-3 px-4">
-                      <CardTitle className="text-md font-headline flex items-center text-primary">
-                        <FileText className="h-4 w-4 mr-2" /> Descrição Manual
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="px-4 pb-3">
-                      <Textarea
-                        placeholder="Descreva o seu pixel..."
-                        value={editableManualDescription}
-                        onChange={(e) => setEditableManualDescription(e.target.value)}
-                        rows={3}
-                      />
-                    </CardContent>
-                  </Card>
                   
                   <Card className="bg-background/50">
                     <CardHeader className="pb-2 pt-3 px-4">
                       <CardTitle className="text-md font-headline flex items-center text-primary">
-                        <TagsIcon className="h-4 w-4 mr-2" /> Tags
+                        <Palette className="h-4 w-4 mr-2" /> Aparência
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="px-4 pb-3">
-                      <Input
-                        type="text"
-                        placeholder="Ex: paisagem, lisboa, arte"
-                        value={editableTags}
-                        onChange={(e) => setEditableTags(e.target.value)}
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">Separadas por vírgula.</p>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-background/50">
-                    <CardHeader className="pb-2 pt-3 px-4">
-                      <CardTitle className="text-md font-headline flex items-center text-primary">
-                        <LinkIcon className="h-4 w-4 mr-2" /> Link Associado
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="px-4 pb-3">
-                      <Input
-                        type="url"
-                        placeholder="https://exemplo.com"
-                        value={editableLinkUrl}
-                        onChange={(e) => setEditableLinkUrl(e.target.value)}
-                      />
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-background/50">
-                    <CardHeader className="pb-2 pt-3 px-4">
-                      <CardTitle className="text-md font-headline flex items-center text-primary">
-                        <ImageIcon className="h-4 w-4 mr-2" /> Imagem do Pixel (Upload)
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="px-4 pb-3 space-y-2">
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        onChange={handlePixelImageUpload}
-                        className="text-xs"
-                      />
-                      {editablePixelImagePreview && (
-                        <div className="mt-2 relative w-24 h-24 rounded border border-border overflow-hidden group">
-                          <Image src={editablePixelImagePreview} alt="Pré-visualização da Imagem" layout="fill" objectFit="cover" data-ai-hint="pixel image preview"/>
-                          <Button
-                            variant="destructive"
-                            size="icon"
-                            className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={() => {
-                              setEditablePixelImageFile(null);
-                              setEditablePixelImagePreview(null);
-                              if (canvasRef.current) { 
-                                const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-                                if (fileInput) fileInput.value = '';
-                              }
-                            }}
-                          >
-                            <XCircle className="h-4 w-4" />
-                          </Button>
+                    <CardContent className="px-4 pb-3 space-y-3">
+                        <div>
+                            <Label htmlFor="pixelColorEdit" className="text-xs text-muted-foreground">Cor</Label>
+                            <div className="flex items-center gap-2 mt-1">
+                            <Input
+                                id="pixelColorEdit"
+                                type="color"
+                                value={editableColor}
+                                onChange={(e) => setEditableColor(e.target.value)}
+                                className="w-12 h-10 p-1"
+                            />
+                            <Input
+                                type="text"
+                                placeholder="#RRGGBB"
+                                value={editableColor}
+                                onChange={(e) => setEditableColor(e.target.value)}
+                                className="font-code flex-1 h-10 text-sm"
+                                aria-label="Código Hex da Cor"
+                            />
+                            </div>
                         </div>
-                      )}
-                       <p className="text-xs text-muted-foreground">Envie uma imagem para associar a este pixel (simulado).</p>
+                        <div>
+                            <Label htmlFor="pixelTitleEdit" className="text-xs text-muted-foreground">Título do Pixel</Label>
+                            <Input
+                                id="pixelTitleEdit"
+                                type="text"
+                                placeholder="Ex: Meu Pôr do Sol Pixelizado"
+                                value={editableTitle}
+                                onChange={(e) => setEditableTitle(e.target.value)}
+                                className="mt-1 h-10 text-sm"
+                            />
+                        </div>
+                         <div>
+                            <Label htmlFor="pixelDescEdit" className="text-xs text-muted-foreground">Descrição Manual</Label>
+                            <Textarea
+                                id="pixelDescEdit"
+                                placeholder="Descreva o seu pixel..."
+                                value={editableManualDescription}
+                                onChange={(e) => setEditableManualDescription(e.target.value)}
+                                rows={3}
+                                className="mt-1 text-sm"
+                            />
+                        </div>
+                         <div>
+                            <Label htmlFor="pixelImageUpload" className="text-xs text-muted-foreground">Imagem do Pixel (Upload)</Label>
+                            <div className="flex items-center gap-2 mt-1">
+                                <Input
+                                    id="pixelImageUpload"
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handlePixelImageUpload}
+                                    className="text-xs flex-1"
+                                />
+                                {editablePixelImagePreview && (
+                                    <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-destructive"
+                                            onClick={handleRemovePixelImage}
+                                        >
+                                            <XCircle className="h-4 w-4" />
+                                        </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent><p>Remover Imagem</p></TooltipContent>
+                                    </Tooltip>
+                                    </TooltipProvider>
+                                )}
+                            </div>
+                            {editablePixelImagePreview && (
+                                <div className="mt-2 relative w-24 h-24 rounded border border-border overflow-hidden group">
+                                <Image src={editablePixelImagePreview} alt="Pré-visualização da Imagem" layout="fill" objectFit="cover" data-ai-hint="pixel image preview"/>
+                                </div>
+                            )}
+                            <p className="text-xs text-muted-foreground mt-1">Envie uma imagem para associar a este pixel.</p>
+                        </div>
                     </CardContent>
                   </Card>
-                  
+
                   <Card className="bg-background/50">
                      <CardHeader className="pb-2 pt-3 px-4">
                         <CardTitle className="text-md font-headline flex items-center text-primary">
-                           <Paintbrush className="h-4 w-4 mr-2" /> Desenhar Imagem (Experimental)
+                           <Paintbrush className="h-4 w-4 mr-2" /> Desenhar Imagem <Badge variant="outline" className="ml-2 text-xs">Experimental</Badge>
                         </CardTitle>
                      </CardHeader>
                      <CardContent className="px-4 pb-3 space-y-2">
-                        <div className="w-full h-40 bg-muted/30 border border-dashed border-border rounded-md flex items-center justify-center">
+                        <div className="w-full h-32 bg-muted/30 border border-dashed border-border rounded-md flex items-center justify-center">
                            <p className="text-xs text-muted-foreground">Área de desenho (em breve)</p>
                         </div>
                         <div className="flex items-center justify-center gap-2">
                            <TooltipProvider>
                               <Tooltip>
-                                 <TooltipTrigger asChild><Button variant="outline" size="icon" disabled><Pencil className="h-4 w-4"/></Button></TooltipTrigger>
+                                 <TooltipTrigger asChild><Button variant="outline" size="icon" disabled className="h-8 w-8"><Pencil className="h-4 w-4"/></Button></TooltipTrigger>
                                  <TooltipContent><p>Lápis (Em breve)</p></TooltipContent>
                               </Tooltip>
                               <Tooltip>
-                                 <TooltipTrigger asChild><Button variant="outline" size="icon" disabled><Eraser className="h-4 w-4"/></Button></TooltipTrigger>
+                                 <TooltipTrigger asChild><Button variant="outline" size="icon" disabled className="h-8 w-8"><Eraser className="h-4 w-4"/></Button></TooltipTrigger>
                                  <TooltipContent><p>Borracha (Em breve)</p></TooltipContent>
                               </Tooltip>
                               <Tooltip>
-                                 <TooltipTrigger asChild><Button variant="outline" size="icon" disabled><PaintBucket className="h-4 w-4"/></Button></TooltipTrigger>
+                                 <TooltipTrigger asChild><Button variant="outline" size="icon" disabled className="h-8 w-8"><PaintBucket className="h-4 w-4"/></Button></TooltipTrigger>
                                  <TooltipContent><p>Preencher (Em breve)</p></TooltipContent>
                               </Tooltip>
                                <Tooltip>
-                                 <TooltipTrigger asChild><Button variant="outline" size="icon" disabled><Trash2 className="h-4 w-4"/></Button></TooltipTrigger>
+                                 <TooltipTrigger asChild><Button variant="outline" size="icon" disabled className="h-8 w-8"><Trash2 className="h-4 w-4"/></Button></TooltipTrigger>
                                  <TooltipContent><p>Limpar (Em breve)</p></TooltipContent>
                               </Tooltip>
                            </TooltipProvider>
                         </div>
-                        <p className="text-xs text-muted-foreground text-center">Esta funcionalidade de desenho é experimental e será implementada futuramente.</p>
                      </CardContent>
                   </Card>
-
-
+                  
                   <Card className="bg-background/50">
                     <CardHeader className="pb-2 pt-3 px-4">
                       <CardTitle className="text-md font-headline flex items-center text-primary">
-                        <DollarSign className="h-4 w-4 mr-2" /> Vender Pixel
+                        <TagsIcon className="h-4 w-4 mr-2" /> Detalhes Adicionais & Venda
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="px-4 pb-3 space-y-3">
-                      <div className="flex items-center space-x-2">
-                        <Switch
-                          id="for-sale-switch"
-                          checked={editableIsForSaleByOwner}
-                          onCheckedChange={setEditableIsForSaleByOwner}
-                        />
-                        <Label htmlFor="for-sale-switch" className="text-sm">Colocar à venda</Label>
-                      </div>
-                      {editableIsForSaleByOwner && (
                         <div>
-                          <Label htmlFor="sale-price" className="text-xs text-muted-foreground">Preço de Venda (Créditos)</Label>
-                          <Input
-                            id="sale-price"
-                            type="number"
-                            placeholder="Ex: 100"
-                            value={editableSalePrice}
-                            onChange={(e) => setEditableSalePrice(e.target.value)}
-                            className="mt-1"
-                            min="0"
-                          />
+                            <Label htmlFor="pixelTagsEdit" className="text-xs text-muted-foreground">Tags</Label>
+                            <Input
+                                id="pixelTagsEdit"
+                                type="text"
+                                placeholder="Ex: paisagem, lisboa, arte"
+                                value={editableTags}
+                                onChange={(e) => setEditableTags(e.target.value)}
+                                className="mt-1 h-10 text-sm"
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">Separadas por vírgula.</p>
                         </div>
-                      )}
+                        <div>
+                            <Label htmlFor="pixelLinkEdit" className="text-xs text-muted-foreground">Link Associado</Label>
+                            <Input
+                                id="pixelLinkEdit"
+                                type="url"
+                                placeholder="https://exemplo.com"
+                                value={editableLinkUrl}
+                                onChange={(e) => setEditableLinkUrl(e.target.value)}
+                                className="mt-1 h-10 text-sm"
+                            />
+                        </div>
+                        <Separator />
+                        <div className="flex items-center space-x-2 pt-1">
+                            <Switch
+                            id="for-sale-switch"
+                            checked={editableIsForSaleByOwner}
+                            onCheckedChange={setEditableIsForSaleByOwner}
+                            />
+                            <Label htmlFor="for-sale-switch" className="text-sm cursor-pointer">Colocar pixel à venda</Label>
+                        </div>
+                        {editableIsForSaleByOwner && (
+                            <div>
+                            <Label htmlFor="sale-price" className="text-xs text-muted-foreground">Preço de Venda (Créditos)</Label>
+                            <Input
+                                id="sale-price"
+                                type="number"
+                                placeholder="Ex: 100"
+                                value={editableSalePrice}
+                                onChange={(e) => setEditableSalePrice(e.target.value)}
+                                className="mt-1 h-10 text-sm"
+                                min="0"
+                            />
+                            </div>
+                        )}
                     </CardContent>
                   </Card>
 
@@ -1002,7 +1074,7 @@ export default function PixelGrid() {
         {showLoadingOverlay && (
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm pointer-events-none">
             {workerStatus !== 'error' && <Sparkles className="h-12 w-12 text-primary animate-pulse mb-4" />}
-            {workerStatus === 'error' && <div className="h-12 w-12 text-destructive flex items-center justify-center mb-4"><ZoomOut className="h-10 w-10"/></div>}
+            {workerStatus === 'error' && <div className="h-12 w-12 text-destructive flex items-center justify-center mb-4"><AlertTriangle className="h-10 w-10"/></div>}
             <p className={`text-lg font-headline mb-2 ${workerStatus === 'error' ? 'text-destructive' : 'text-foreground'}`}>{progressMessage}</p>
             {workerStatus !== 'error' && <Progress value={overallProgress} className="w-1/2 max-w-md" />}
             {workerStatus !== 'error' && <p className="text-sm text-muted-foreground mt-1">{progressText}%</p>}
@@ -1015,20 +1087,21 @@ export default function PixelGrid() {
         <Dialog>
           <DialogTrigger asChild>
              <Button pointerEvents="auto" size="icon" className="rounded-full w-14 h-14 shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground">
-                <MousePointer2 className="h-7 w-7" />
+                <Star className="h-7 w-7" />
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md bg-card" data-dialog-content pointerEvents="auto">
             <DialogHeader>
-              <DialogTitle className="font-headline">Ações Rápidas</DialogTitle>
+              <DialogTitle className="font-headline">Ações Rápidas do Universo</DialogTitle>
               <CardDescriptionElement>
-                Selecione uma ação para interagir com o universo pixel.
+                Explore, filtre e interaja com o mapa de pixels.
               </CardDescriptionElement>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <Button pointerEvents="auto" variant="outline"><Search className="mr-2 h-4 w-4" />Explorar Pixel</Button>
-              <Button pointerEvents="auto" variant="outline"><Palette className="mr-2 h-4 w-4" />Paleta de Cores</Button>
-              <Button pointerEvents="auto" variant="outline"><Sparkles className="mr-2 h-4 w-4" />Eventos Especiais</Button>
+            <div className="grid gap-3 py-4">
+              <Button pointerEvents="auto" variant="outline"><Search className="mr-2 h-4 w-4" />Explorar Pixel por Coordenadas</Button>
+              <Button pointerEvents="auto" variant="outline"><Palette className="mr-2 h-4 w-4" />Filtros de Visualização</Button>
+              <Button pointerEvents="auto" variant="outline"><Sparkles className="mr-2 h-4 w-4" />Ver Eventos Atuais</Button>
+               <Button pointerEvents="auto" variant="outline"><MapPin className="mr-2 h-4 w-4" />Ir para Minha Localização</Button>
             </div>
             <DialogFooter>
             </DialogFooter>
