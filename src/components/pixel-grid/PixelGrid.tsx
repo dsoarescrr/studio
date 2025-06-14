@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ZoomIn, ZoomOut, Expand, Search, Sparkles, MousePointer2, Palette, Info, User, CalendarDays, History as HistoryIcon, DollarSign, ShoppingCart, Edit3, Paintbrush, FileText, Upload, Save, Image as ImageIcon, XCircle } from 'lucide-react';
+import { ZoomIn, ZoomOut, Expand, Search, Sparkles, MousePointer2, Palette, Info, User, CalendarDays, History as HistoryIcon, DollarSign, ShoppingCart, Edit3, Paintbrush, FileText, Upload, Save, Image as ImageIcon, XCircle, Type as TypeIcon, Tags as TagsIcon, Link as LinkIcon } from 'lucide-react';
 import PortugalMapSvg, { type MapData } from './PortugalMapSvg';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -20,12 +20,14 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Progress } from '@/components/ui/progress';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription as CardDescriptionElement } from "@/components/ui/card"; // Renamed CardDescription
+import { Card, CardContent, CardHeader, CardTitle, CardDescription as CardDescriptionElement } from "@/components/ui/card";
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 
 const SVG_VIEWBOX_WIDTH = 12969;
@@ -65,15 +67,20 @@ interface SelectedPixelDetails {
   x: number;
   y: number;
   owner?: string;
-  price?: number;
+  price?: number; // Price if unowned and for sale by system
   acquisitionDate?: string;
   lastModifiedDate?: string;
   color?: string;
   history?: Array<{ owner: string; date: string; price?: number }>;
   isOwnedByCurrentUser?: boolean;
-  isForSale?: boolean;
+  isForSaleBySystem?: boolean; // True if unowned and available for purchase from the "system"
   manualDescription?: string;
   pixelImageUrl?: string;
+  title?: string;
+  tags?: string[];
+  linkUrl?: string;
+  isForSaleByOwner?: boolean; // True if owned by current user and they marked it for sale
+  salePrice?: number; // Price set by owner if isForSaleByOwner is true
 }
 
 export default function PixelGrid() {
@@ -106,10 +113,15 @@ export default function PixelGrid() {
 
   // Edit mode states
   const [editMode, setEditMode] = useState(false);
-  const [editableColor, setEditableColor] = useState('');
+  const [editableColor, setEditableColor] = useState('#FFFFFF');
   const [editableManualDescription, setEditableManualDescription] = useState('');
   const [editablePixelImageFile, setEditablePixelImageFile] = useState<File | null>(null);
   const [editablePixelImagePreview, setEditablePixelImagePreview] = useState<string | null>(null);
+  const [editableTitle, setEditableTitle] = useState('');
+  const [editableTags, setEditableTags] = useState(''); // Comma-separated string
+  const [editableLinkUrl, setEditableLinkUrl] = useState('');
+  const [editableIsForSaleByOwner, setEditableIsForSaleByOwner] = useState(false);
+  const [editableSalePrice, setEditableSalePrice] = useState<number | string>('');
 
 
   const handleMapDataLoaded = useCallback((data: MapData) => {
@@ -356,7 +368,7 @@ export default function PixelGrid() {
  const handleMouseDown = (e: React.MouseEvent) => {
     const targetElement = e.target as HTMLElement;
     if (
-      targetElement.closest('button, input, [role="slider"], [data-dialog-content], [role="dialog"]')
+      targetElement.closest('button, input, [role="slider"], [data-dialog-content], [role="dialog"], label') // Added label
     ) {
       return; 
     }
@@ -416,14 +428,15 @@ export default function PixelGrid() {
         const randomOwner = MOCK_OWNERS[randomOwnerIndex];
         const isOwned = randomOwner !== null;
         const isOwnedByMe = isOwned && randomOwner === MOCK_CURRENT_USER_ID;
-        const isForSale = !isOwned;
+        const isForSaleSystem = !isOwned;
         const defaultColor = `#${Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')}`;
+        const mockIsForSaleByOwner = isOwnedByMe && Math.random() > 0.3;
 
         const mockDetails: SelectedPixelDetails = {
           x: logicalCol,
           y: logicalRow,
-          owner: isOwned ? randomOwner : 'Disponível',
-          price: isForSale ? Math.floor(Math.random() * 50) + 10 : undefined,
+          owner: isOwned ? randomOwner : 'Disponível (Sistema)',
+          price: isForSaleSystem ? Math.floor(Math.random() * 50) + 10 : undefined,
           acquisitionDate: isOwned ? new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 30).toLocaleDateString('pt-PT') : undefined,
           lastModifiedDate: isOwned ? new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 7).toLocaleDateString('pt-PT') : undefined,
           color: defaultColor,
@@ -432,21 +445,31 @@ export default function PixelGrid() {
             { owner: 'DonoAnterior', date: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 60).toLocaleDateString('pt-PT'), price: Math.floor(Math.random() * 30) + 5 }
           ] : [],
           isOwnedByCurrentUser: isOwnedByMe,
-          isForSale: isForSale,
-          manualDescription: isOwnedByMe ? 'Esta é uma descrição de exemplo do meu pixel.' : '',
+          isForSaleBySystem: isForSaleSystem,
+          manualDescription: isOwnedByMe ? 'Este é uma descrição de exemplo do meu pixel.' : '',
           pixelImageUrl: isOwnedByMe && Math.random() > 0.5 ? 'https://placehold.co/150x150.png' : undefined,
+          title: isOwnedByMe ? `Pixel de ${randomOwner}` : undefined,
+          tags: isOwnedByMe ? ['arte', 'exemplo'] : [],
+          linkUrl: isOwnedByMe && Math.random() > 0.2 ? 'https://example.com' : undefined,
+          isForSaleByOwner: mockIsForSaleByOwner,
+          salePrice: mockIsForSaleByOwner ? Math.floor(Math.random() * 100) + 20 : undefined,
         };
         setSelectedPixelDetails(mockDetails);
         
-        // Initialize editable states if owned by current user
         setEditableColor(mockDetails.color || '#FFFFFF');
         setEditableManualDescription(mockDetails.manualDescription || '');
         setEditablePixelImagePreview(mockDetails.pixelImageUrl || null);
         setEditablePixelImageFile(null);
+        setEditableTitle(mockDetails.title || '');
+        setEditableTags(mockDetails.tags ? mockDetails.tags.join(', ') : '');
+        setEditableLinkUrl(mockDetails.linkUrl || '');
+        setEditableIsForSaleByOwner(mockDetails.isForSaleByOwner || false);
+        setEditableSalePrice(mockDetails.salePrice || '');
+
 
         setShowPixelModal(true);
-        setPixelDescription(null); // Reset AI description
-        setEditMode(false); // Start in info mode
+        setPixelDescription(null); 
+        setEditMode(false); 
         setInitialAiProgressTrigger(prev => prev + 1);
       } else {
         setSelectedPixelCoordsForDisplay(null);
@@ -495,18 +518,22 @@ export default function PixelGrid() {
 
   const handleSaveChanges = () => {
     if (!selectedPixelDetails) return;
-    // Simulate saving
-    console.log("Saving changes:", {
-      color: editableColor,
-      manualDescription: editableManualDescription,
-      imageFile: editablePixelImageFile ? editablePixelImageFile.name : null,
-    });
+    
+    const updatedTags = editableTags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+    const salePriceNum = parseFloat(String(editableSalePrice));
+
     setSelectedPixelDetails(prev => prev ? ({
       ...prev,
       color: editableColor,
       manualDescription: editableManualDescription,
       pixelImageUrl: editablePixelImagePreview || prev.pixelImageUrl,
+      title: editableTitle,
+      tags: updatedTags,
+      linkUrl: editableLinkUrl,
+      isForSaleByOwner: editableIsForSaleByOwner,
+      salePrice: editableIsForSaleByOwner && !isNaN(salePriceNum) ? salePriceNum : undefined,
     }) : null);
+
     toast({ title: "Alterações Guardadas", description: "As alterações ao seu pixel foram (simuladamente) guardadas." });
     setEditMode(false);
   };
@@ -575,7 +602,7 @@ export default function PixelGrid() {
               setPixelDescription(null); 
               setIsGeneratingDesc(false); 
               setAiModalProgressValue(0);
-              setEditMode(false); // Ensure edit mode is reset
+              setEditMode(false); 
           }
       }}>
         <DialogContent className="sm:max-w-md bg-card text-card-foreground" data-dialog-content pointerEvents="auto">
@@ -584,6 +611,7 @@ export default function PixelGrid() {
               <DialogHeader>
                 <DialogTitle className="font-headline flex items-center text-xl">
                     Pixel ({selectedPixelDetails.x}, {selectedPixelDetails.y})
+                    {selectedPixelDetails.title && <span className="text-base text-muted-foreground ml-2"> - &quot;{selectedPixelDetails.title}&quot;</span>}
                 </DialogTitle>
                 <CardDescriptionElement>
                   Informações detalhadas e ações disponíveis para este pixel.
@@ -598,10 +626,15 @@ export default function PixelGrid() {
                       </CardTitle>
                   </CardHeader>
                   <CardContent className="text-sm space-y-1.5 px-4 pb-3">
-                    <div className="flex justify-between"><span>Proprietário:</span> <Badge variant={selectedPixelDetails.owner === 'Disponível' ? "secondary" : "outline"} className="font-code">{selectedPixelDetails.owner}</Badge></div>
-                    {selectedPixelDetails.isForSale && selectedPixelDetails.price && (
-                      <div className="flex justify-between items-center"><span>Preço:</span> <span className="font-code flex items-center">{selectedPixelDetails.price} Créditos <DollarSign className="inline h-3.5 w-3.5 ml-1" /></span></div>
+                    <div className="flex justify-between"><span>Proprietário:</span> <Badge variant={selectedPixelDetails.owner === 'Disponível (Sistema)' ? "secondary" : "outline"} className="font-code">{selectedPixelDetails.owner}</Badge></div>
+                    
+                    {selectedPixelDetails.isForSaleBySystem && selectedPixelDetails.price && (
+                      <div className="flex justify-between items-center"><span>Preço (Sistema):</span> <span className="font-code flex items-center">{selectedPixelDetails.price} Créditos <DollarSign className="inline h-3.5 w-3.5 ml-1" /></span></div>
                     )}
+                     {selectedPixelDetails.isOwnedByCurrentUser && selectedPixelDetails.isForSaleByOwner && selectedPixelDetails.salePrice && (
+                      <div className="flex justify-between items-center"><span>À Venda por:</span> <Badge variant="destructive" className="font-code">{selectedPixelDetails.salePrice} Créditos</Badge></div>
+                    )}
+
                     {selectedPixelDetails.acquisitionDate && <div className="flex justify-between"><span>Adquirido em:</span> <span className="font-code">{selectedPixelDetails.acquisitionDate}</span></div>}
                     {selectedPixelDetails.lastModifiedDate && <div className="flex justify-between"><span>Modificado em:</span> <span className="font-code">{selectedPixelDetails.lastModifiedDate}</span></div>}
                     <div className="flex justify-between items-center">
@@ -617,11 +650,28 @@ export default function PixelGrid() {
                           <p className="text-xs text-muted-foreground italic">&quot;{selectedPixelDetails.manualDescription}&quot;</p>
                        </div>
                     )}
+                    {selectedPixelDetails.tags && selectedPixelDetails.tags.length > 0 && (
+                        <div className="pt-1">
+                            <span className="font-semibold">Tags:</span>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                                {selectedPixelDetails.tags.map(tag => <Badge key={tag} variant="secondary" className="text-xs font-code">{tag}</Badge>)}
+                            </div>
+                        </div>
+                    )}
+                    {selectedPixelDetails.linkUrl && (
+                        <div className="pt-1">
+                            <span className="font-semibold">Link:</span>
+                            <a href={selectedPixelDetails.linkUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline ml-1 flex items-center font-code">
+                                {selectedPixelDetails.linkUrl.length > 30 ? `${selectedPixelDetails.linkUrl.substring(0,30)}...` : selectedPixelDetails.linkUrl}
+                                <LinkIcon className="h-3 w-3 ml-1" />
+                            </a>
+                        </div>
+                    )}
                     {selectedPixelDetails.pixelImageUrl && (
                       <div className="pt-1">
                         <span className="font-semibold">Imagem do Pixel:</span>
                         <div className="mt-1 relative w-24 h-24 rounded border border-border overflow-hidden">
-                          <Image src={selectedPixelDetails.pixelImageUrl} alt="Imagem do Pixel" layout="fill" objectFit="cover" data-ai-hint="pixel image"/>
+                          <Image src={selectedPixelDetails.pixelImageUrl} alt="Imagem do Pixel" layout="fill" objectFit="cover" data-ai-hint="pixel custom image"/>
                         </div>
                       </div>
                     )}
@@ -680,9 +730,14 @@ export default function PixelGrid() {
               </div>
               </ScrollArea>
               <DialogFooter className="gap-2 sm:gap-1.5 flex-wrap justify-center pt-3 sm:justify-end">
-                {selectedPixelDetails.isForSale && !selectedPixelDetails.isOwnedByCurrentUser && (
-                  <Button size="sm" disabled={!selectedPixelDetails} className="bg-green-600 hover:bg-green-700 text-white">
+                {selectedPixelDetails.isForSaleBySystem && !selectedPixelDetails.isOwnedByCurrentUser && (
+                  <Button size="sm" disabled={!selectedPixelDetails.price} className="bg-green-600 hover:bg-green-700 text-white">
                     <ShoppingCart className="mr-1.5 h-3.5 w-3.5" /> Comprar ({selectedPixelDetails.price} Créditos)
+                  </Button>
+                )}
+                 {selectedPixelDetails.isOwnedByCurrentUser && selectedPixelDetails.isForSaleByOwner && selectedPixelDetails.salePrice && (
+                  <Button size="sm" variant="outline" className="border-green-500 text-green-500 hover:bg-green-500/10">
+                     À Venda por {selectedPixelDetails.salePrice} Créditos
                   </Button>
                 )}
                 {selectedPixelDetails.isOwnedByCurrentUser && (
@@ -690,7 +745,7 @@ export default function PixelGrid() {
                       <Edit3 className="mr-1.5 h-3.5 w-3.5" /> Editar Pixel
                   </Button>
                 )}
-                {selectedPixelDetails && !selectedPixelDetails.isForSale && !selectedPixelDetails.isOwnedByCurrentUser && selectedPixelDetails.owner !== 'Disponível' && (
+                {!selectedPixelDetails.isForSaleBySystem && !selectedPixelDetails.isOwnedByCurrentUser && selectedPixelDetails.owner !== 'Disponível (Sistema)' && !selectedPixelDetails.isForSaleByOwner && (
                      <Button variant="secondary" size="sm" disabled={!selectedPixelDetails}>Fazer Oferta</Button>
                 )}
               </DialogFooter>
@@ -714,15 +769,38 @@ export default function PixelGrid() {
                         <Paintbrush className="h-4 w-4 mr-2" /> Nova Cor
                       </CardTitle>
                     </CardHeader>
+                    <CardContent className="px-4 pb-3 flex items-center gap-2">
+                      <Input
+                        id="pixelColorEdit"
+                        type="color"
+                        value={editableColor}
+                        onChange={(e) => setEditableColor(e.target.value)}
+                        className="w-16 h-10 p-1"
+                      />
+                      <Input
+                        type="text"
+                        placeholder="#RRGGBB"
+                        value={editableColor}
+                        onChange={(e) => setEditableColor(e.target.value)}
+                        className="font-code flex-1 h-10"
+                        aria-label="Código Hex da Cor"
+                      />
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-background/50">
+                    <CardHeader className="pb-2 pt-3 px-4">
+                      <CardTitle className="text-md font-headline flex items-center text-primary">
+                        <TypeIcon className="h-4 w-4 mr-2" /> Título do Pixel
+                      </CardTitle>
+                    </CardHeader>
                     <CardContent className="px-4 pb-3">
                       <Input
                         type="text"
-                        placeholder="Ex: #FF0000"
-                        value={editableColor}
-                        onChange={(e) => setEditableColor(e.target.value)}
-                        className="font-code"
+                        placeholder="Ex: Meu Pôr do Sol Pixelizado"
+                        value={editableTitle}
+                        onChange={(e) => setEditableTitle(e.target.value)}
                       />
-                      <p className="text-xs text-muted-foreground mt-1">Insira um código de cor hexadecimal.</p>
                     </CardContent>
                   </Card>
 
@@ -738,6 +816,39 @@ export default function PixelGrid() {
                         value={editableManualDescription}
                         onChange={(e) => setEditableManualDescription(e.target.value)}
                         rows={3}
+                      />
+                    </CardContent>
+                  </Card>
+                  
+                  <Card className="bg-background/50">
+                    <CardHeader className="pb-2 pt-3 px-4">
+                      <CardTitle className="text-md font-headline flex items-center text-primary">
+                        <TagsIcon className="h-4 w-4 mr-2" /> Tags
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="px-4 pb-3">
+                      <Input
+                        type="text"
+                        placeholder="Ex: paisagem, lisboa, arte"
+                        value={editableTags}
+                        onChange={(e) => setEditableTags(e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">Separadas por vírgula.</p>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-background/50">
+                    <CardHeader className="pb-2 pt-3 px-4">
+                      <CardTitle className="text-md font-headline flex items-center text-primary">
+                        <LinkIcon className="h-4 w-4 mr-2" /> Link Associado
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="px-4 pb-3">
+                      <Input
+                        type="url"
+                        placeholder="https://exemplo.com"
+                        value={editableLinkUrl}
+                        onChange={(e) => setEditableLinkUrl(e.target.value)}
                       />
                     </CardContent>
                   </Card>
@@ -765,7 +876,7 @@ export default function PixelGrid() {
                             onClick={() => {
                               setEditablePixelImageFile(null);
                               setEditablePixelImagePreview(null);
-                              if (canvasRef.current) { // Reset file input
+                              if (canvasRef.current) { 
                                 const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
                                 if (fileInput) fileInput.value = '';
                               }
@@ -778,6 +889,39 @@ export default function PixelGrid() {
                        <p className="text-xs text-muted-foreground">Envie uma imagem para associar a este pixel (simulado).</p>
                     </CardContent>
                   </Card>
+
+                  <Card className="bg-background/50">
+                    <CardHeader className="pb-2 pt-3 px-4">
+                      <CardTitle className="text-md font-headline flex items-center text-primary">
+                        <DollarSign className="h-4 w-4 mr-2" /> Vender Pixel
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="px-4 pb-3 space-y-3">
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          id="for-sale-switch"
+                          checked={editableIsForSaleByOwner}
+                          onCheckedChange={setEditableIsForSaleByOwner}
+                        />
+                        <Label htmlFor="for-sale-switch" className="text-sm">Colocar à venda</Label>
+                      </div>
+                      {editableIsForSaleByOwner && (
+                        <div>
+                          <Label htmlFor="sale-price" className="text-xs text-muted-foreground">Preço de Venda (Créditos)</Label>
+                          <Input
+                            id="sale-price"
+                            type="number"
+                            placeholder="Ex: 100"
+                            value={editableSalePrice}
+                            onChange={(e) => setEditableSalePrice(e.target.value)}
+                            className="mt-1"
+                            min="0"
+                          />
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
                 </div>
               </ScrollArea>
               <DialogFooter className="gap-2 pt-3">
