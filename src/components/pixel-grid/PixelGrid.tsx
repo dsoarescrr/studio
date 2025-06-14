@@ -96,11 +96,14 @@ const ZOOM_SENSITIVITY_FACTOR = 1.1;
 
 
 export default function PixelGrid() {
-  const [zoom, setZoom] = useState(1); // Initial zoom, will be updated
-  const [position, setPosition] = useState({ x: 0, y: 0 }); // Initial position, will be updated
+  const [zoom, setZoom] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [defaultView, setDefaultView] = useState<{ zoom: number; position: { x: number; y: number } } | null>(null);
+
+  const didDragRef = useRef(false);
+  const dragThreshold = 5; // Minimum pixels moved to be considered a drag
 
 
   const [selectedPixelCoordsForDisplay, setSelectedPixelCoordsForDisplay] = useState<{ x: number; y: number } | null>(null);
@@ -411,35 +414,49 @@ export default function PixelGrid() {
 
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    const targetElement = e.target as HTMLElement;
     // Allow dragging if clicking on the container or the canvas itself.
-    // Prevent dragging if clicking on specific UI elements (buttons, dialogs etc.)
+    const targetElement = e.target as HTMLElement;
     if (
       targetElement.closest(
         'button, [data-dialog-content], [data-tooltip-content], [data-popover-content], label, a, [role="menuitem"], [role="tab"], input, textarea'
-      )
+      ) && targetElement !== canvasRef.current
     ) {
       return;
     }
 
     setIsDragging(true);
     setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+    didDragRef.current = false; // Reset drag flag on new mousedown
   };
 
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging || !containerRef.current) return;
+
     const newX = e.clientX - dragStart.x;
     const newY = e.clientY - dragStart.y;
     setPosition({ x: newX, y: newY });
+
+    // Check if it's a significant drag
+    const dx = Math.abs(e.clientX - (dragStart.x + position.x));
+    const dy = Math.abs(e.clientY - (dragStart.y + position.y));
+    if (dx > dragThreshold || dy > dragThreshold) {
+        didDragRef.current = true;
+    }
   };
 
   const handleMouseUpOrLeave = () => {
     setIsDragging(false);
+    // Note: We don't reset didDragRef here. It's reset on the next mousedown or after a click.
   };
 
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    if (didDragRef.current) {
+        didDragRef.current = false; // Reset for the next interaction
+        return;
+    }
     if (!canvasRef.current || !mapData?.path2D || workerStatus !== 'done') return;
+
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
 
@@ -854,6 +871,21 @@ export default function PixelGrid() {
                   </CardContent>
                 </Card>
 
+                {(!pixelDescription && !isGeneratingDesc && (aiModalProgressValue === 0 || aiModalProgressValue === 100) && showPixelModal) && (
+                  <Card className="bg-background/50">
+                    <CardHeader className="pb-2 pt-3 px-4">
+                        <CardTitle className="text-md font-headline flex items-center text-primary">
+                            <Sparkles className="h-4 w-4 mr-2" /> Descrição por IA
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="px-4 pb-3">
+                        <Button variant="outline" size="sm" onClick={handleGenerateDescription} disabled={!selectedPixelDetails} className="w-full mt-1">
+                            <Sparkles className="mr-1.5 h-3.5 w-3.5"/>
+                            Gerar Descrição com IA
+                        </Button>
+                    </CardContent>
+                  </Card>
+                )}
                 {(isGeneratingDesc || pixelDescription || (aiModalProgressValue > 0 && aiModalProgressValue < 100 && !pixelDescription && showPixelModal)) && (
                   <Card className="bg-background/50">
                     <CardHeader className="pb-2 pt-3 px-4">
@@ -871,12 +903,6 @@ export default function PixelGrid() {
                       )}
                       {pixelDescription && (aiModalProgressValue === 0 || aiModalProgressValue === 100) && showPixelModal && (
                         <p className="text-xs text-foreground italic">&quot;{pixelDescription}&quot;</p>
-                      )}
-                      {!pixelDescription && !isGeneratingDesc && (aiModalProgressValue === 0 || aiModalProgressValue === 100) && showPixelModal && (
-                         <Button variant="outline" size="sm" onClick={handleGenerateDescription} disabled={!selectedPixelDetails} className="w-full mt-2">
-                            <Sparkles className="mr-1.5 h-3.5 w-3.5"/>
-                            Gerar Descrição com IA
-                         </Button>
                       )}
                     </CardContent>
                   </Card>
