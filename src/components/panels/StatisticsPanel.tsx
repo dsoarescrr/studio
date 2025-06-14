@@ -55,7 +55,7 @@ export default function StatisticsPanel() {
 
   useEffect(() => {
      if (typeof window !== 'undefined') {
-        setPosition({ x: window.innerWidth - 340, y: window.innerHeight - 280 }); 
+        setPosition({ x: window.innerWidth - 340, y: window.innerHeight - 280 }); // Adjusted Y for bottom right
      }
   }, []);
 
@@ -138,7 +138,7 @@ export default function StatisticsPanel() {
          <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" onClick={() => setIsMinimized(!isMinimized)} className="text-muted-foreground hover:text-foreground">
+              <Button variant="ghost" size="icon" onClick={() => setIsMinimized(!isMinimized)} className="text-muted-foreground hover:text-foreground h-7 w-7">
                 {isMinimized ? <Maximize2 className="h-5 w-5" /> : <Minimize2 className="h-5 w-5" />}
               </Button>
             </TooltipTrigger>
@@ -152,7 +152,7 @@ export default function StatisticsPanel() {
         <CardContent className="p-4">
           <div className="space-y-3">
             {stats.map((stat) => (
-              <div key={stat.label} className="flex items-center justify-between p-2.5 bg-background/60 rounded-md shadow-sm relative group">
+              <div key={stat.label} className="flex items-center justify-between p-2.5 bg-background/70 rounded-md shadow-sm relative group">
                 <div className="flex items-center">
                   <div className="p-1.5 bg-muted rounded-md mr-2">{stat.icon}</div>
                   <span className="ml-1 text-sm text-foreground">{stat.label}</span>

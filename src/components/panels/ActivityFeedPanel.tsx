@@ -84,7 +84,7 @@ export default function ActivityFeedPanel() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      setPosition({ x: window.innerWidth - 340, y: 20 });
+      setPosition({ x: window.innerWidth - 340, y: 80 }); // Adjusted Y position
     }
   }, []); 
 
@@ -155,7 +155,7 @@ export default function ActivityFeedPanel() {
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
-        maxHeight: isMinimized ? '60px' : 'calc(100vh - 40px)', // Allow more height
+        maxHeight: isMinimized ? '60px' : 'calc(100vh - 100px)', // Allow more height, adjusted for header
         overflow: 'hidden'
       }}
       onMouseDown={handleMouseDown}
@@ -171,7 +171,7 @@ export default function ActivityFeedPanel() {
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" onClick={() => setIsMinimized(!isMinimized)} className="text-muted-foreground hover:text-foreground">
+              <Button variant="ghost" size="icon" onClick={() => setIsMinimized(!isMinimized)} className="text-muted-foreground hover:text-foreground h-7 w-7">
                 {isMinimized ? <Maximize2 className="h-5 w-5" /> : <Minimize2 className="h-5 w-5" />}
               </Button>
             </TooltipTrigger>
@@ -203,7 +203,7 @@ export default function ActivityFeedPanel() {
               ))}
             </div>
           </div>
-          <ScrollArea className="h-[calc(100vh-220px)] min-h-[200px] max-h-[450px] p-4"> 
+          <ScrollArea className="h-[calc(100vh-280px)] min-h-[200px] max-h-[450px] p-4"> 
             <div className="space-y-1">
               {filteredActivities.map((activity) => (
                 <div 

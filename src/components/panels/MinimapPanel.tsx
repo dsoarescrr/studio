@@ -111,7 +111,7 @@ export default function MinimapPanel() {
       </CardHeader>
       {!isMinimized && (
         <CardContent className="p-3">
-          <div className="aspect-[5/8] w-full bg-background rounded-md overflow-hidden border border-border mb-3 shadow-inner relative">
+          <div className="aspect-[5/8] w-full bg-background/70 rounded-md overflow-hidden border border-border mb-3 shadow-inner relative">
             <PortugalMapSvg className="w-full h-full text-foreground/20" />
             <TooltipProvider>
               <Tooltip>

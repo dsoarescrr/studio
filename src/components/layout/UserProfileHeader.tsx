@@ -87,11 +87,11 @@ export default function UserProfileHeader() {
   }, [user.credits, user.specialCredits]);
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-40 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <div className="fixed top-0 left-0 right-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-sm supports-[backdrop-filter]:bg-background/70 shadow-md">
       <div className="container relative flex h-16 max-w-screen-2xl items-center justify-between px-4 md:px-6">
         {/* Left: Avatar + Name */}
         <div className="flex items-center space-x-2 sm:space-x-3">
-          <Avatar className="h-9 w-9 sm:h-10 sm:w-10 border-2 border-primary">
+          <Avatar className="h-9 w-9 sm:h-10 sm:w-10 border-2 border-primary shadow-sm">
             <AvatarImage src={user.avatarUrl} alt={user.name} data-ai-hint={user.dataAiHint} />
             <AvatarFallback className="text-xs sm:text-sm font-headline">{user.name.substring(0, 1).toUpperCase()}</AvatarFallback>
           </Avatar>

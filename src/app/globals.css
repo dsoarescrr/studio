@@ -54,8 +54,50 @@
     --bottom-nav-height: 64px; 
   }
 
-  /* Since the app is dark by default, :root contains the dark theme.
-     No .dark class override is needed if dark is the only theme. */
+  .light {
+    --background: 0 0% 100%; /* White */
+    --foreground: 220 15% 10%; /* Dark Blue/Black for text */
+
+    --card: 0 0% 97%; /* Very light gray */
+    --card-foreground: 220 15% 15%;
+
+    --popover: 0 0% 98%; /* Similar to card */
+    --popover-foreground: 220 15% 15%;
+
+    --primary: 39 70% 45%; /* Slightly darker Burnt Yellow for light theme contrast */
+    --primary-foreground: 0 0% 98%; /* Very light for text on primary */
+
+    --secondary: 220 10% 90%; /* Light muted blue/gray */
+    --secondary-foreground: 220 10% 20%;
+
+    --muted: 220 10% 94%;
+    --muted-foreground: 220 10% 40%; /* Darker gray for muted text */
+
+    --accent: 45 80% 55%; /* Slightly darker Vibrant Yellow */
+    --accent-foreground: 0 0% 98%; /* Very light for text on accent */
+
+    --destructive: 0 70% 50%; /* Standard destructive red */
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 220 15% 85%; /* Light border */
+    --input: 220 15% 88%; /* Light input */
+    --ring: 39 70% 50%; /* Ring based on primary */
+
+    --chart-1: 39 70% 45%; 
+    --chart-2: 45 80% 55%; 
+    --chart-3: 220 10% 50%; /* A neutral gray for light theme */
+    --chart-4: 39 70% 60%; 
+    --chart-5: 45 80% 70%;
+
+    --sidebar-background: 0 0% 96%;      
+    --sidebar-foreground: 220 15% 20%;
+    --sidebar-primary: 39 70% 45%;        
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 45 80% 55%;         
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 220 15% 80%;
+    --sidebar-ring: 39 70% 50%;
+  }
 }
 
 @layer base {
@@ -64,6 +106,9 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* overflow-hidden removed from here to allow page-specific scroll */
+  }
+  html, body {
+    @apply h-full; /* Ensure html and body take full height */
   }
 }
-

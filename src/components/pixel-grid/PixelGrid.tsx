@@ -315,8 +315,7 @@ export default function PixelGrid() {
         const fitZoomY = effectiveContainerHeight / canvasDrawHeight;
         const zoomToFit = Math.min(fitZoomX, fitZoomY);
 
-        
-        targetInitialZoom = Math.max(MIN_ZOOM, Math.min(targetInitialZoom, zoomToFit * 0.95));
+        targetInitialZoom = Math.max(MIN_ZOOM, Math.min(targetInitialZoom, zoomToFit * 0.95)); // Ensure it fits with 5% padding
         
         const calculatedZoom = targetInitialZoom;
 
@@ -333,7 +332,7 @@ export default function PixelGrid() {
         setPosition(calculatedPosition);
       }
     }
-  }, [mapData, workerStatus, defaultView, canvasDrawWidth, canvasDrawHeight]);
+  }, [mapData, workerStatus, defaultView]);
 
 
  const handleResetView = useCallback(() => {
@@ -363,7 +362,7 @@ export default function PixelGrid() {
             setDefaultView({ zoom: fallbackZoom, position: fallbackPosition });
         }
     }
-  }, [defaultView, canvasDrawWidth, canvasDrawHeight]);
+  }, [defaultView]);
 
 
  useEffect(() => {
@@ -778,7 +777,7 @@ export default function PixelGrid() {
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden relative">
-      <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 bg-card/80 p-2 rounded-md shadow-lg backdrop-blur-sm pointer-events-auto">
+      <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 bg-card/80 backdrop-blur-sm p-2 rounded-md shadow-lg pointer-events-auto">
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -823,7 +822,7 @@ export default function PixelGrid() {
               setEditMode(false);
           }
       }}>
-        <DialogContent className="sm:max-w-md bg-card text-card-foreground" data-dialog-content pointerEvents="auto">
+        <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-sm text-card-foreground" data-dialog-content pointerEvents="auto">
           {!editMode && selectedPixelDetails && (
             <>
               <DialogHeader>
@@ -851,7 +850,7 @@ export default function PixelGrid() {
               </DialogHeader>
               <ScrollArea className="max-h-[calc(100vh-250px)] pr-4">
               <div className="space-y-3 py-2">
-                <Card className="bg-background/50">
+                <Card className="bg-background/60 shadow-md">
                   <CardHeader className="pb-2 pt-3 px-4">
                       <CardTitle className="text-md font-headline flex items-center text-primary">
                           <Info className="h-4 w-4 mr-2" /> Informações do Pixel
@@ -902,7 +901,7 @@ export default function PixelGrid() {
                     {selectedPixelDetails.pixelImageUrl && (
                       <div className="pt-1">
                         <span className="font-semibold">Imagem do Pixel:</span>
-                        <div className="mt-1 relative w-24 h-24 rounded border border-border overflow-hidden">
+                        <div className="mt-1 relative w-24 h-24 rounded border border-border overflow-hidden shadow-sm">
                           <Image src={selectedPixelDetails.pixelImageUrl} alt="Imagem do Pixel" layout="fill" objectFit="cover" data-ai-hint={selectedPixelDetails.dataAiHint || 'pixel image'}/>
                         </div>
                       </div>
@@ -911,14 +910,14 @@ export default function PixelGrid() {
                 </Card>
 
                 {(!pixelDescription && !isGeneratingDesc && (aiModalProgressValue === 0 || aiModalProgressValue === 100) && showPixelModal) && (
-                  <Card className="bg-background/50">
+                  <Card className="bg-background/60 shadow-md">
                     <CardHeader className="pb-2 pt-3 px-4">
                         <CardTitle className="text-md font-headline flex items-center text-primary">
                             <Sparkles className="h-4 w-4 mr-2" /> Descrição por IA
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="px-4 pb-3">
-                        <Button variant="outline" size="sm" onClick={handleGenerateDescription} disabled={!selectedPixelDetails} className="w-full mt-1">
+                        <Button variant="outline" size="sm" onClick={handleGenerateDescription} disabled={!selectedPixelDetails} className="w-full mt-1 hover:bg-primary/10 hover:text-primary transition-colors">
                             <Sparkles className="mr-1.5 h-3.5 w-3.5"/>
                             Gerar Descrição com IA
                         </Button>
@@ -926,7 +925,7 @@ export default function PixelGrid() {
                   </Card>
                 )}
                 {(isGeneratingDesc || pixelDescription || (aiModalProgressValue > 0 && aiModalProgressValue < 100 && !pixelDescription && showPixelModal)) && (
-                  <Card className="bg-background/50">
+                  <Card className="bg-background/60 shadow-md">
                     <CardHeader className="pb-2 pt-3 px-4">
                       <CardTitle className="text-md font-headline flex items-center text-primary">
                           <Sparkles className="h-4 w-4 mr-2" /> Descrição por IA
@@ -948,7 +947,7 @@ export default function PixelGrid() {
                 )}
 
                 {selectedPixelDetails.history && selectedPixelDetails.history.length > 0 && (
-                  <Card className="bg-background/50">
+                  <Card className="bg-background/60 shadow-md">
                     <CardHeader className="pb-2 pt-3 px-4">
                       <CardTitle className="text-md font-headline flex items-center text-primary">
                           <HistoryIcon className="h-4 w-4 mr-2" /> Histórico de Proprietários
@@ -990,11 +989,11 @@ export default function PixelGrid() {
                     {selectedPixelDetails.isOwnedByCurrentUser && (
                       <>
                         {selectedPixelDetails.isForSaleByOwner ? (
-                          <Button size="sm" variant="outline" onClick={handleToggleForSaleByOwner} className="border-red-500 text-red-500 hover:bg-red-500/10">
+                          <Button size="sm" variant="outline" onClick={handleToggleForSaleByOwner} className="border-red-500 text-red-500 hover:bg-red-500/10 hover:text-red-500">
                              <BadgePercent className="mr-1.5 h-3.5 w-3.5" /> Retirar da Venda
                           </Button>
                         ) : (
-                          <Button size="sm" variant="outline" onClick={handleToggleForSaleByOwner} className="border-green-500 text-green-500 hover:bg-green-500/10">
+                          <Button size="sm" variant="outline" onClick={handleToggleForSaleByOwner} className="border-green-500 text-green-500 hover:bg-green-500/10 hover:text-green-500">
                              <BadgePercent className="mr-1.5 h-3.5 w-3.5" /> Colocar à Venda
                           </Button>
                         )}
@@ -1023,7 +1022,7 @@ export default function PixelGrid() {
               <ScrollArea className="max-h-[calc(100vh-250px)] pr-4">
                 <div className="space-y-4 py-2">
 
-                  <Card className="bg-background/50">
+                  <Card className="bg-background/60 shadow-md">
                     <CardHeader className="pb-2 pt-3 px-4">
                       <CardTitle className="text-md font-headline flex items-center text-primary">
                         <Palette className="h-4 w-4 mr-2" /> Aparência
@@ -1101,7 +1100,7 @@ export default function PixelGrid() {
                                 )}
                             </div>
                             {editablePixelImagePreview && (
-                                <div className="mt-2 relative w-24 h-24 rounded border border-border overflow-hidden group">
+                                <div className="mt-2 relative w-24 h-24 rounded border border-border overflow-hidden group shadow-sm">
                                 <Image src={editablePixelImagePreview} alt="Pré-visualização da Imagem" layout="fill" objectFit="cover" data-ai-hint="pixel image preview"/>
                                 </div>
                             )}
@@ -1110,7 +1109,7 @@ export default function PixelGrid() {
                     </CardContent>
                   </Card>
 
-                  <Card className="bg-background/50">
+                  <Card className="bg-background/60 shadow-md">
                      <CardHeader className="pb-2 pt-3 px-4">
                         <CardTitle className="text-md font-headline flex items-center text-primary">
                            <Paintbrush className="h-4 w-4 mr-2" /> Desenhar Imagem <Badge variant="outline" className="ml-2 text-xs">Experimental</Badge>
@@ -1143,7 +1142,7 @@ export default function PixelGrid() {
                      </CardContent>
                   </Card>
 
-                  <Card className="bg-background/50">
+                  <Card className="bg-background/60 shadow-md">
                     <CardHeader className="pb-2 pt-3 px-4">
                       <CardTitle className="text-md font-headline flex items-center text-primary">
                         <TagsIcon className="h-4 w-4 mr-2" /> Detalhes Adicionais & Venda
@@ -1243,7 +1242,7 @@ export default function PixelGrid() {
         </div>
 
         {showLoadingOverlay && (
-          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm pointer-events-none">
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/90 backdrop-blur-sm pointer-events-none">
             {workerStatus !== 'error' && <Sparkles className="h-12 w-12 text-primary animate-pulse mb-4" />}
             {workerStatus === 'error' && <div className="h-12 w-12 text-destructive flex items-center justify-center mb-4"><AlertTriangle className="h-10 w-10"/></div>}
             <p className={`text-lg font-headline mb-2 ${workerStatus === 'error' ? 'text-destructive' : 'text-foreground'}`}>{progressMessage}</p>
@@ -1261,7 +1260,7 @@ export default function PixelGrid() {
                 <Star className="h-7 w-7" />
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md bg-card" data-dialog-content pointerEvents="auto">
+          <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-sm" data-dialog-content pointerEvents="auto">
             <DialogHeader>
               <DialogTitle className="font-headline">Ações Rápidas do Universo</DialogTitle>
               <CardDescriptionElement>
