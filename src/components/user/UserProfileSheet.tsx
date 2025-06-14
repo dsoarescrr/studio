@@ -27,6 +27,7 @@ export function UserProfileSheet({ children, userData, achievementsData }: UserP
       <SheetTrigger asChild>{children}</SheetTrigger>
       <SheetContent className="w-full max-w-md p-0 sm:max-w-md" side="right">
         <ScrollArea className="h-full">
+          {/* Passing achievementsData to UserProfileDisplay, though it's globally imported there */}
           <UserProfileDisplay userData={userData} />
         </ScrollArea>
       </SheetContent>

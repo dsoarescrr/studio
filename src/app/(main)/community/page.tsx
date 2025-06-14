@@ -142,6 +142,7 @@ const mockUserProfiles: Record<string, UserProfileData> = {
   'u2': { id: 'u2', name: 'AdminBot', username: '@AdminBot', avatarUrl: 'https://placehold.co/128x128.png', dataAiHint: 'bot avatar', level: 99, xp: 0, xpMax: 0, credits: 0, specialCredits: 0, bio: 'Eu sou um bot.', pixelsOwned: 0, achievementsUnlocked: 0, unlockedAchievementIds: [], rank: 0, location: 'Servidor', socials: [], albums: [] },
   'u3': { id: 'u3', name: 'NortenhoPixel', username: '@NortenhoPixel', avatarUrl: 'https://placehold.co/128x128.png', dataAiHint: 'northern user', level: 6, xp: 1500, xpMax: 2000, credits: 1200, specialCredits: 30, bio: 'Do Norte com amor e pixels.', pixelsOwned: 15, achievementsUnlocked: 2, unlockedAchievementIds: [], rank: 50, location: 'Viana do Castelo', socials: [], albums: [] },
   'u4': { id: 'u4', name: 'AlfacinhaPixel', username: '@AlfacinhaPixel', avatarUrl: 'https://placehold.co/128x128.png', dataAiHint: 'lisbon user', level: 7, xp: 1800, xpMax: 2200, credits: 2000, specialCredits: 40, bio: 'Lisboa em cada pixel.', pixelsOwned: 25, achievementsUnlocked: 3, unlockedAchievementIds: [], rank: 40, location: 'Lisboa Capital', socials: [], albums: [] },
+  'currentUser': currentUser // Add current user to mock profiles for easy lookup
 };
 
 const initialChatRooms: ChatRoom[] = [
@@ -315,14 +316,14 @@ export default function CommunityPage() {
                 <Card key={post.id} className="shadow-md hover:shadow-lg transition-shadow duration-200 bg-card/70 backdrop-blur-sm">
                     <CardHeader className="pb-3">
                     <div className="flex items-center space-x-3">
-                        <UserProfileSheet userData={mockUserProfiles[post.user.id] || post.user} achievementsData={achievementsData}>
+                        <UserProfileSheet userData={mockUserProfiles[post.user.id] || {...post.user, ...currentUser, id: post.user.id, name: post.user.name, avatarUrl: post.user.avatarUrl}} achievementsData={achievementsData}>
                             <Avatar className="h-11 w-11 border-2 border-secondary cursor-pointer">
                                 <AvatarImage src={post.user.avatarUrl} alt={post.user.name} data-ai-hint={post.user.dataAiHint} />
                                 <AvatarFallback>{post.user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                             </Avatar>
                         </UserProfileSheet>
                         <div>
-                            <UserProfileSheet userData={mockUserProfiles[post.user.id] || post.user} achievementsData={achievementsData}>
+                            <UserProfileSheet userData={mockUserProfiles[post.user.id] || {...post.user, ...currentUser, id: post.user.id, name: post.user.name, avatarUrl: post.user.avatarUrl}} achievementsData={achievementsData}>
                                 <p className="font-semibold text-primary text-md hover:underline cursor-pointer">{post.user.name}</p>
                             </UserProfileSheet>
                             <FormattedTimestamp timestamp={post.timestamp} />
@@ -362,7 +363,7 @@ export default function CommunityPage() {
                         <div className="space-y-1.5 max-h-40 overflow-y-auto pr-2">
                         {post.comments.slice(0, 2).map(comment => ( 
                             <div key={comment.id} className="flex items-start space-x-2 text-xs bg-background/30 p-1.5 rounded-md">
-                            <UserProfileSheet userData={mockUserProfiles[comment.user.id] || comment.user} achievementsData={achievementsData}>
+                            <UserProfileSheet userData={mockUserProfiles[comment.user.id] || {...comment.user, ...currentUser, id: comment.user.id, name: comment.user.name, avatarUrl: comment.user.avatarUrl}} achievementsData={achievementsData}>
                                 <Avatar className="h-6 w-6 border border-border cursor-pointer">
                                     <AvatarImage src={comment.user.avatarUrl} alt={comment.user.name} data-ai-hint={comment.user.dataAiHint}/>
                                     <AvatarFallback className="text-[10px]">{comment.user.name.substring(0,1)}</AvatarFallback>
@@ -370,7 +371,7 @@ export default function CommunityPage() {
                             </UserProfileSheet>
                             <div className="flex-1">
                                 <div className="flex items-baseline justify-between">
-                                    <UserProfileSheet userData={mockUserProfiles[comment.user.id] || comment.user} achievementsData={achievementsData}>
+                                    <UserProfileSheet userData={mockUserProfiles[comment.user.id] || {...comment.user, ...currentUser, id: comment.user.id, name: comment.user.name, avatarUrl: comment.user.avatarUrl}} achievementsData={achievementsData}>
                                         <span className="font-semibold text-accent text-[11px] hover:underline cursor-pointer">{comment.user.name}</span>
                                     </UserProfileSheet>
                                 <FormattedTimestamp timestamp={comment.timestamp} className="text-[10px]"/>
@@ -461,7 +462,7 @@ export default function CommunityPage() {
                   <ScrollArea className="flex-1 p-4 space-y-4">
                     {displayedChatMessages.map(msg => (
                       <div key={msg.id} className="flex items-start space-x-3 group py-1.5">
-                        <UserProfileSheet userData={mockUserProfiles[msg.user.id] || msg.user} achievementsData={achievementsData}>
+                        <UserProfileSheet userData={mockUserProfiles[msg.user.id] || {...msg.user, ...currentUser, id: msg.user.id, name: msg.user.name, avatarUrl: msg.user.avatarUrl}} achievementsData={achievementsData}>
                             <Avatar className="h-9 w-9 border border-border cursor-pointer">
                             <AvatarImage src={msg.user.avatarUrl} alt={msg.user.name} data-ai-hint={msg.user.dataAiHint} />
                             <AvatarFallback>{msg.user.name.substring(0,1)}</AvatarFallback>
@@ -469,7 +470,7 @@ export default function CommunityPage() {
                         </UserProfileSheet>
                         <div className="flex-1">
                           <div className="flex items-baseline space-x-2">
-                            <UserProfileSheet userData={mockUserProfiles[msg.user.id] || msg.user} achievementsData={achievementsData}>
+                            <UserProfileSheet userData={mockUserProfiles[msg.user.id] || {...msg.user, ...currentUser, id: msg.user.id, name: msg.user.name, avatarUrl: msg.user.avatarUrl}} achievementsData={achievementsData}>
                                 <p className="text-sm font-semibold text-primary hover:underline cursor-pointer">{msg.user.name}</p>
                             </UserProfileSheet>
                             <FormattedTimestamp timestamp={msg.timestamp} className="text-[10px]" />
