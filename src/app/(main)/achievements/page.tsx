@@ -1,9 +1,9 @@
 
-import React from 'react'; // Added React import
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle2, Lock, Award, Star, Sparkles, Palette, MapPin, Zap, ShieldCheck, Crown } from "lucide-react";
+import { CheckCircle2, Lock, Award, Star, Sparkles, Palette, MapPin, Crown, Edit3, MessageSquare, Rocket, ShieldCheck, Compass } from "lucide-react";
 
 type AchievementTier = {
   level: number;
@@ -31,60 +31,90 @@ const achievementsData: Achievement[] = [
       { level: 1, description: "Comprou seu primeiro pixel", xpReward: 50, creditsReward: 10, isUnlocked: true },
       { level: 2, description: "Comprou 10 pixels", xpReward: 100, creditsReward: 25, isUnlocked: true },
       { level: 3, description: "Comprou 50 pixels", xpReward: 250, creditsReward: 75, isUnlocked: false },
+      { level: 4, description: "Comprou 100 pixels", xpReward: 500, creditsReward: 150, isUnlocked: false },
     ],
   },
   {
-    id: "color_enthusiast",
-    name: "Entusiasta das Cores",
-    overallDescription: "Mostre sua criatividade usando uma variedade de cores.",
+    id: "pixel_artisan",
+    name: "Artesão de Pixels",
+    overallDescription: "Aperfeiçoe a sua arte editando os seus pixels.",
+    icon: <Edit3 className="h-7 w-7" />,
+    tiers: [
+      { level: 1, description: "Editou a cor de 1 pixel", xpReward: 20, creditsReward: 5, isUnlocked: true },
+      { level: 2, description: "Editou a cor de 10 pixels", xpReward: 60, creditsReward: 15, isUnlocked: false },
+      { level: 3, description: "Editou a cor de 50 pixels", xpReward: 150, creditsReward: 40, isUnlocked: false },
+      { level: 4, description: "Realizou 100 edições de cor", xpReward: 300, creditsReward: 100, isUnlocked: false },
+    ],
+  },
+  {
+    id: "color_master",
+    name: "Mestre das Cores",
+    overallDescription: "Mostre sua criatividade usando uma vasta gama de cores.",
     icon: <Palette className="h-7 w-7" />,
     tiers: [
       { level: 1, description: "Usou 5 cores diferentes", xpReward: 30, creditsReward: 5, isUnlocked: true },
       { level: 2, description: "Usou 15 cores diferentes", xpReward: 70, creditsReward: 15, isUnlocked: false },
       { level: 3, description: "Usou 30 cores diferentes", xpReward: 150, creditsReward: 40, isUnlocked: false },
+      { level: 4, description: "Usou 50 cores diferentes (Paleta de Mestre)", xpReward: 300, creditsReward: 100, isUnlocked: false },
     ],
   },
   {
-    id: "regional_explorer",
-    name: "Explorador Regional",
-    overallDescription: "Aventure-se e visite diferentes regiões do mapa.",
-    icon: <Zap className="h-7 w-7" />, 
+    id: "territory_pioneer",
+    name: "Desbravador de Territórios",
+    overallDescription: "Aventure-se e interaja com diferentes regiões do mapa.",
+    icon: <Compass className="h-7 w-7" />,
     tiers: [
       { level: 1, description: "Visitou 3 regiões diferentes", xpReward: 60, creditsReward: 15, isUnlocked: true },
-      { level: 2, description: "Visitou 7 regiões diferentes", xpReward: 120, creditsReward: 35, isUnlocked: false },
-      { level: 3, description: "Visitou todas as regiões principais", xpReward: 300, creditsReward: 100, isUnlocked: false },
+      { level: 2, description: "Interagiu com pixels em 3 regiões", xpReward: 120, creditsReward: 35, isUnlocked: false },
+      { level: 3, description: "Visitou 7 regiões diferentes", xpReward: 200, creditsReward: 60, isUnlocked: false },
+      { level: 4, description: "Interagiu com pixels em todas as regiões principais", xpReward: 400, creditsReward: 120, isUnlocked: false },
     ],
   },
   {
     id: "pixel_tycoon",
     name: "Magnata dos Pixels",
-    overallDescription: "Acumule uma vasta coleção de pixels.",
+    overallDescription: "Acumule uma vasta coleção de pixels e demonstre o seu império.",
     icon: <Crown className="h-7 w-7" />,
     tiers: [
       { level: 1, description: "Possui 100 pixels", xpReward: 200, creditsReward: 50, isUnlocked: false },
       { level: 2, description: "Possui 500 pixels", xpReward: 500, creditsReward: 150, isUnlocked: false },
       { level: 3, description: "Possui 1000 pixels", xpReward: 1000, creditsReward: 300, isUnlocked: false },
+      { level: 4, description: "Possui 2500 pixels (Lenda dos Pixels)", xpReward: 2500, creditsReward: 750, isUnlocked: false },
+    ],
+  },
+  {
+    id: "community_voice",
+    name: "Voz da Comunidade",
+    overallDescription: "Partilhe as suas opiniões e interaja nas publicações.",
+    icon: <MessageSquare className="h-7 w-7" />,
+    tiers: [
+      { level: 1, description: "Fez o seu primeiro comentário", xpReward: 15, creditsReward: 5, isUnlocked: true },
+      { level: 2, description: "Fez 10 comentários construtivos", xpReward: 50, creditsReward: 15, isUnlocked: false },
+      { level: 3, description: "Fez 50 comentários", xpReward: 120, creditsReward: 30, isUnlocked: false },
+      { level: 4, description: "Recebeu 20 'gostos' nos seus comentários", xpReward: 200, creditsReward: 50, isUnlocked: false },
     ],
   },
   {
     id: "community_star",
     name: "Estrela da Comunidade",
-    overallDescription: "Envolva-se e seja reconhecido pela comunidade.",
+    overallDescription: "Envolva-se, publique e seja reconhecido pela comunidade.",
     icon: <Star className="h-7 w-7" />,
     tiers: [
-      { level: 1, description: "Recebeu 10 gostos em publicações", xpReward: 40, creditsReward: 10, isUnlocked: true },
-      { level: 2, description: "Recebeu 50 gostos em publicações", xpReward: 90, creditsReward: 25, isUnlocked: false },
+      { level: 1, description: "Recebeu 10 'gostos' em publicações", xpReward: 40, creditsReward: 10, isUnlocked: true },
+      { level: 2, description: "Recebeu 50 'gostos' em publicações", xpReward: 90, creditsReward: 25, isUnlocked: false },
       { level: 3, description: "Participou ativamente num evento comunitário", xpReward: 180, creditsReward: 60, isUnlocked: false },
+      { level: 4, description: "Teve uma publicação com mais de 100 'gostos'", xpReward: 350, creditsReward: 100, isUnlocked: false },
     ],
   },
   {
     id: "legendary_collector",
     name: "Colecionador Lendário",
-    overallDescription: "Obtenha os pixels mais raros e cobiçados.",
+    overallDescription: "Obtenha os pixels mais raros e cobiçados do universo.",
     icon: <Sparkles className="h-7 w-7" />,
     tiers: [
       { level: 1, description: "Possui um pixel 'Featured'", xpReward: 150, creditsReward: 50, isUnlocked: false },
       { level: 2, description: "Completou um conjunto de pixels temático", xpReward: 350, creditsReward: 120, isUnlocked: false },
+      { level: 3, description: "Possui 3 pixels 'Featured' diferentes", xpReward: 700, creditsReward: 250, isUnlocked: false },
     ],
   },
    {
@@ -95,6 +125,16 @@ const achievementsData: Achievement[] = [
     tiers: [
       { level: 1, description: "Reportou uma infração validada", xpReward: 70, creditsReward: 20, isUnlocked: false },
       { level: 2, description: "Ajudou a resolver uma disputa comunitária", xpReward: 150, creditsReward: 50, isUnlocked: false },
+      { level: 3, description: "Reportou 5 infrações validadas", xpReward: 300, creditsReward: 100, isUnlocked: false },
+    ],
+  },
+  {
+    id: "pixel_universe_pioneer",
+    name: "Pioneiro do Pixel Universe",
+    overallDescription: "Por estar entre os primeiros a explorar este universo.",
+    icon: <Rocket className="h-7 w-7" />,
+    tiers: [
+      { level: 1, description: "Juntou-se durante a fase Beta", xpReward: 100, creditsReward: 50, isUnlocked: true },
     ],
   },
 ];
@@ -149,7 +189,7 @@ export default function AchievementsPage() {
                 </CardHeader>
                 <CardContent className="space-y-3 pt-0">
                   {ach.tiers.map(tier => (
-                    <div key={tier.level} className={`p-3 rounded-md border ${tier.isUnlocked ? 'bg-background/70 border-primary/50' : 'bg-muted/30 border-border'}`}>
+                    <div key={tier.level} className={`p-3 rounded-md border ${tier.isUnlocked ? 'bg-background/70 border-primary/50 shadow-primary/10' : 'bg-muted/30 border-border'}`}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center">
                           {tier.isUnlocked ? (
