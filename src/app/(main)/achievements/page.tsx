@@ -225,7 +225,15 @@ export default function AchievementsPage() {
     activeFilter === 'all'
       ? achievementsData
       : activeFilter === 'completed'
-        ? achievementsData.filter(ach => ach.tiers.some(t => t.isUnlocked))
+        ? achievementsData
+            .filter(ach => ach.tiers.some(t => t.isUnlocked))
+            .sort((a, b) => {
+              const aIsFullyUnlocked = a.tiers.every(t => t.isUnlocked);
+              const bIsFullyUnlocked = b.tiers.every(t => t.isUnlocked);
+              if (aIsFullyUnlocked && !bIsFullyUnlocked) return -1;
+              if (!aIsFullyUnlocked && bIsFullyUnlocked) return 1;
+              return 0; // Fallback: mantém a ordem original ou pode adicionar critério secundário (ex: nome)
+            })
         : achievementsData.filter(ach => ach.category === activeFilter);
 
   return (
