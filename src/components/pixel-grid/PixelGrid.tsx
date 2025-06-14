@@ -7,7 +7,7 @@ import {
   ZoomIn, ZoomOut, Expand, Search, Sparkles, MousePointer2, Palette, Info, User, CalendarDays,
   History as HistoryIcon, DollarSign, ShoppingCart, Edit3, Paintbrush, FileText, Upload, Save,
   Image as ImageIcon, XCircle, Type as TypeIcon, Tags as TagsIcon, Link as LinkIcon, Pencil,
-  Eraser, PaintBucket, Trash2, Heart, Flag, BadgePercent, Star, AlertTriangle, MapPin as MapPinIconLucide
+  Eraser, PaintBucket, Trash2, Heart, Flag, BadgePercent, Star, AlertTriangle, MapPin as MapPinIconLucide, ScrollText, Gem
 } from 'lucide-react';
 import PortugalMapSvg, { type MapData } from './PortugalMapSvg';
 import { Button } from '@/components/ui/button';
@@ -88,6 +88,8 @@ interface SelectedPixelDetails {
   isForSaleByOwner?: boolean; // If current user is selling
   salePrice?: number; // Current user's sale price
   isFavorited?: boolean;
+  rarity?: 'Comum' | 'Incomum' | 'Raro' | 'Épico' | 'Lendário' | 'Marco Histórico';
+  loreSnippet?: string;
 }
 
 const MIN_ZOOM = 0.05;
@@ -95,6 +97,17 @@ const MAX_ZOOM = 10;
 const ZOOM_SENSITIVITY_FACTOR = 1.1;
 const HEADER_HEIGHT_PX = 64;
 const BOTTOM_NAV_HEIGHT_PX = 64;
+
+const mockRarities: SelectedPixelDetails['rarity'][] = ['Comum', 'Incomum', 'Raro', 'Épico', 'Lendário', 'Marco Histórico'];
+const mockLoreSnippets: string[] = [
+  "Dizem que este pixel brilha sob a lua cheia.",
+  "Um antigo mapa sugere um tesouro escondido perto daqui.",
+  "Este pixel já foi parte de uma grande obra de arte comunitária.",
+  "Sente-se uma energia estranha emanando deste local.",
+  "Viajantes contam histórias sobre as cores mutáveis deste pixel.",
+  "O primeiro explorador a encontrar este pixel deixou uma marca secreta.",
+  "Um pixel de sorte, frequentemente visitado por artistas em busca de inspiração.",
+];
 
 
 export default function PixelGrid() {
@@ -491,6 +504,8 @@ export default function PixelGrid() {
 
         const scenarioType = Math.random();
         let mockDetails: SelectedPixelDetails;
+        const randomRarity = mockRarities[Math.floor(Math.random() * mockRarities.length)];
+        const randomLore = mockLoreSnippets[Math.floor(Math.random() * mockLoreSnippets.length)];
 
         if (scenarioType < 0.33) { // Scenario 1: System-owned pixel
             mockDetails = {
@@ -503,6 +518,8 @@ export default function PixelGrid() {
                 isForSaleBySystem: true,
                 history: [],
                 isFavorited: Math.random() > 0.8,
+                rarity: randomRarity,
+                loreSnippet: randomLore,
             };
         } else if (scenarioType < 0.66) { // Scenario 2: Current user-owned pixel
             const isForSale = Math.random() > 0.5;
@@ -525,6 +542,8 @@ export default function PixelGrid() {
                 isForSaleByOwner: isForSale,
                 salePrice: isForSale ? Math.floor(Math.random() * 100) + 20 : undefined,
                 isFavorited: Math.random() > 0.5,
+                rarity: randomRarity,
+                loreSnippet: randomLore,
             };
         } else { // Scenario 3: Other user-owned pixel
             mockDetails = {
@@ -539,6 +558,8 @@ export default function PixelGrid() {
                 isForSaleBySystem: false,
                 manualDescription: 'Um pixel interessante de outro utilizador.',
                 isFavorited: Math.random() > 0.7,
+                rarity: randomRarity,
+                loreSnippet: randomLore,
             };
         }
 
@@ -685,10 +706,18 @@ export default function PixelGrid() {
     
     setSelectedPixelDetails(prev => {
         if (!prev) return null;
+        const newSalePrice = newSaleStatus ? (prev.salePrice || 50) : undefined;
+
+        // Also update editable fields if in edit mode
+        if (editMode) {
+          setEditableIsForSaleByOwner(newSaleStatus);
+          setEditableSalePrice(newSalePrice || '');
+        }
+
         return {
             ...prev,
             isForSaleByOwner: newSaleStatus,
-            salePrice: newSaleStatus ? (prev.salePrice || 50) : undefined, // Keep old price or default to 50
+            salePrice: newSalePrice,
             lastModifiedDate: new Date().toLocaleDateString('pt-PT'),
         };
     });
@@ -909,6 +938,36 @@ export default function PixelGrid() {
                   </CardContent>
                 </Card>
 
+                {selectedPixelDetails.rarity && (
+                  <Card className="bg-background/60 shadow-md">
+                    <CardHeader className="pb-2 pt-3 px-4">
+                        <CardTitle className="text-md font-headline flex items-center text-primary">
+                            <Gem className="h-4 w-4 mr-2" /> Raridade e História
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="px-4 pb-3 space-y-1.5">
+                       <div className="flex justify-between items-center text-sm">
+                          <span>Raridade:</span>
+                          <Badge variant="outline" className={
+                            selectedPixelDetails.rarity === 'Lendário' ? 'border-amber-400 text-amber-400' :
+                            selectedPixelDetails.rarity === 'Épico' ? 'border-purple-400 text-purple-400' :
+                            selectedPixelDetails.rarity === 'Raro' ? 'border-blue-400 text-blue-400' :
+                            selectedPixelDetails.rarity === 'Incomum' ? 'border-green-400 text-green-400' :
+                            selectedPixelDetails.rarity === 'Marco Histórico' ? 'border-rose-400 text-rose-400' :
+                            'border-border' // Comum
+                          }>{selectedPixelDetails.rarity}</Badge>
+                       </div>
+                       {selectedPixelDetails.loreSnippet && (
+                         <div className="pt-1">
+                            <span className="font-semibold text-sm">Fragmento de História (IA):</span>
+                            <p className="text-xs text-muted-foreground italic">&quot;{selectedPixelDetails.loreSnippet}&quot;</p>
+                         </div>
+                       )}
+                    </CardContent>
+                  </Card>
+                )}
+
+
                 {(!pixelDescription && !isGeneratingDesc && (aiModalProgressValue === 0 || aiModalProgressValue === 100) && showPixelModal) && (
                   <Card className="bg-background/60 shadow-md">
                     <CardHeader className="pb-2 pt-3 px-4">
@@ -919,7 +978,7 @@ export default function PixelGrid() {
                     <CardContent className="px-4 pb-3">
                         <Button variant="outline" size="sm" onClick={handleGenerateDescription} disabled={!selectedPixelDetails} className="w-full mt-1 hover:bg-primary/10 hover:text-primary transition-colors">
                             <Sparkles className="mr-1.5 h-3.5 w-3.5"/>
-                            Gerar Descrição com IA
+                            Gerar Descrição Detalhada com IA
                         </Button>
                     </CardContent>
                   </Card>
@@ -1281,3 +1340,4 @@ export default function PixelGrid() {
     </div>
   );
 }
+
