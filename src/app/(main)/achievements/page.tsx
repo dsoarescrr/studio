@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, Lock, Award, Star, Sparkles, Palette, MapPin, Crown, Edit3, MessageSquare, Rocket, ShieldCheck, Compass, Puzzle, Users, Eye, Map, Hourglass, Share2, Megaphone, Activity } from "lucide-react";
+import { CheckCircle2, Lock, Award, Star, Sparkles, Palette, MapPin, Crown, Edit3, MessageSquare, Rocket, ShieldCheck, Compass, Puzzle, Users, Eye, Map, Hourglass, Share2, Megaphone, Activity, CheckCheck } from "lucide-react";
 
 type AchievementTier = {
   level: number;
@@ -205,8 +205,11 @@ const achievementsData: Achievement[] = [
   },
 ];
 
-const filterCategories: { label: string; value: AchievementCategory | 'all'; icon: React.ReactNode }[] = [
+type FilterValue = AchievementCategory | 'all' | 'completed';
+
+const filterCategories: { label: string; value: FilterValue; icon: React.ReactNode }[] = [
   { label: "Todas", value: 'all', icon: <Eye className="h-4 w-4 mr-2" /> },
+  { label: "Completas", value: 'completed', icon: <CheckCheck className="h-4 w-4 mr-2" /> },
   { label: "Píxeis", value: 'pixel', icon: <Edit3 className="h-4 w-4 mr-2" /> },
   { label: "Comunidade", value: 'community', icon: <Users className="h-4 w-4 mr-2" /> },
   { label: "Exploração", value: 'exploration', icon: <Compass className="h-4 w-4 mr-2" /> },
@@ -216,11 +219,14 @@ const filterCategories: { label: string; value: AchievementCategory | 'all'; ico
 ];
 
 export default function AchievementsPage() {
-  const [activeFilter, setActiveFilter] = useState<AchievementCategory | 'all'>('all');
+  const [activeFilter, setActiveFilter] = useState<FilterValue>('all');
 
-  const filteredAchievements = activeFilter === 'all' 
-    ? achievementsData 
-    : achievementsData.filter(ach => ach.category === activeFilter);
+  const filteredAchievements =
+    activeFilter === 'all'
+      ? achievementsData
+      : activeFilter === 'completed'
+        ? achievementsData.filter(ach => ach.tiers.every(t => t.isUnlocked))
+        : achievementsData.filter(ach => ach.category === activeFilter);
 
   return (
     <div className="container mx-auto py-8 px-4 mb-16">
@@ -254,7 +260,7 @@ export default function AchievementsPage() {
           </div>
 
           {filteredAchievements.length === 0 && (
-            <p className="text-center text-muted-foreground py-4">Nenhuma conquista encontrada para esta categoria.</p>
+            <p className="text-center text-muted-foreground py-4">Nenhuma conquista encontrada para este filtro.</p>
           )}
 
           {filteredAchievements.map(ach => {
