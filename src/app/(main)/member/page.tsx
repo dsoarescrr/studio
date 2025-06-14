@@ -25,7 +25,7 @@ export default function MemberPage() {
     bio: "Artista digital e explorador apaixonado por pixel art. Criando universos pixelizados, um quadrado de cada vez! 🇵🇹",
     pixelsOwned: 42,
     achievementsUnlocked: 5, 
-    unlockedAchievementIds: ['pixel_initiate', 'color_master', 'community_star', 'time_virtuoso'], 
+    unlockedAchievementIds: ['pixel_initiate', 'color_master', 'community_star', 'time_virtuoso', 'album_curator'], 
     rank: 1, 
     primaryColor: "#FFD700",
     location: "Lisboa, Portugal",
