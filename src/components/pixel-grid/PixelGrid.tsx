@@ -578,6 +578,12 @@ export default function PixelGrid() {
                     {pixelDescription && (aiModalProgressValue === 0 || aiModalProgressValue === 100) && showPixelModal && (
                       <p className="text-xs text-foreground italic">&quot;{pixelDescription}&quot;</p>
                     )}
+                    {!pixelDescription && !isGeneratingDesc && (aiModalProgressValue === 0 || aiModalProgressValue === 100) && showPixelModal && (
+                       <Button variant="outline" size="sm" onClick={handleGenerateDescription} disabled={!selectedPixelDetails} className="w-full mt-2">
+                          <Sparkles className="mr-1.5 h-3.5 w-3.5"/>
+                          Gerar Descrição com IA
+                       </Button>
+                    )}
                   </CardContent>
                 </Card>
               )}
@@ -608,10 +614,9 @@ export default function PixelGrid() {
           )}
 
           <DialogFooter className="gap-2 sm:gap-1.5 flex-wrap justify-center pt-3 sm:justify-end">
-            <Button variant="outline" size="sm" onClick={handleGenerateDescription} disabled={isGeneratingDesc || !selectedPixelDetails}>
-              <Sparkles className="mr-1.5 h-3.5 w-3.5"/>
-              {isGeneratingDesc ? "A gerar..." : (pixelDescription ? "Nova Descrição" : "Descrição IA")}
-            </Button>
+            {/* The "Descrição IA" button was here and has been removed as per user request.
+                A new button to trigger AI description is now inside the AI description card itself if no description exists.
+            */}
             {selectedPixelDetails?.isForSale && !selectedPixelDetails.isOwnedByCurrentUser && (
               <Button size="sm" disabled={!selectedPixelDetails} className="bg-green-600 hover:bg-green-700 text-white">
                 <ShoppingCart className="mr-1.5 h-3.5 w-3.5" /> Comprar ({selectedPixelDetails.price} Créditos)
@@ -622,7 +627,6 @@ export default function PixelGrid() {
                   <Edit3 className="mr-1.5 h-3.5 w-3.5" /> Editar Pixel
               </Button>
             )}
-            {/* Example for other owner */}
             {selectedPixelDetails && !selectedPixelDetails.isForSale && !selectedPixelDetails.isOwnedByCurrentUser && selectedPixelDetails.owner !== 'Disponível' && (
                  <Button variant="secondary" size="sm" disabled={!selectedPixelDetails}>Fazer Oferta</Button>
             )}
