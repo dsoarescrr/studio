@@ -5,8 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { ArrowUpRight, Award, Camera, CreditCard, Gem, MapPin, Palette, Settings, Sparkles, Star, Trophy, Upload, User as UserIcon, Edit3, Gift, Coins, Globe, Link as LinkIcon, Twitter, Instagram, Github, BookImage, FolderPlus } from "lucide-react";
-import Image from "next/image"; // Import next/image
+import { ArrowUpRight, Award, Camera, CreditCard, Gem, MapPin, Settings, User as UserIcon, Edit3, Gift, Coins, Globe, Link as LinkIcon, Twitter, Instagram, Github, BookImage, FolderPlus } from "lucide-react";
+import Image from "next/image";
+import React from 'react';
+import { achievementsData, type Achievement } from '@/app/(main)/achievements/page'; // Import achievement data and type
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'; // Import Tooltip components
 
 export default function MemberPage() {
   const user = {
@@ -21,7 +24,8 @@ export default function MemberPage() {
     specialCredits: 120, 
     bio: "Artista digital e explorador apaixonado por pixel art. Criando universos pixelizados, um quadrado de cada vez! 🇵🇹",
     pixelsOwned: 42,
-    achievementsUnlocked: 5, 
+    achievementsUnlocked: 5, // This can remain for a general count if desired elsewhere
+    unlockedAchievementIds: ['pixel_initiate', 'color_master', 'community_star', 'time_virtuoso'], // Specific unlocked achievements
     rank: 1, 
     primaryColor: "#FFD700",
     location: "Lisboa, Portugal",
@@ -38,6 +42,10 @@ export default function MemberPage() {
   };
 
   const nextLevelXp = user.xpMax - user.xp;
+
+  const displayedAchievements = user.unlockedAchievementIds
+    .map(id => achievementsData.find(ach => ach.id === id))
+    .filter(ach => ach !== undefined) as Achievement[];
 
   return (
     <div className="container mx-auto py-8 px-4 flex flex-col items-center mb-16">
@@ -59,11 +67,30 @@ export default function MemberPage() {
               </div>
 
               <div className="mt-4">
-                <h1 className="text-3xl font-headline font-bold text-foreground flex items-center justify-center">
-                  {user.name}
-                  {user.rank === 1 && <Award className="h-5 w-5 text-yellow-400 ml-2" title="Melhor Classificado" />}
-                  <Palette className="h-5 w-5 text-pink-400 ml-1.5" title="Artista Verificado" />
-                  <Sparkles className="h-5 w-5 text-purple-400 ml-1.5" title="Membro Ativo" />
+                <h1 className="text-3xl font-headline font-bold text-foreground flex items-center justify-center flex-wrap">
+                  <span>{user.name}</span>
+                  {user.rank === 1 && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                           <Award className="h-5 w-5 text-yellow-400 ml-2 cursor-default" />
+                        </TooltipTrigger>
+                        <TooltipContent><p>Melhor Classificado (Top {user.rank})</p></TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                  {displayedAchievements.slice(0, 3).map(ach => ( // Display up to 3 achievement icons
+                    <TooltipProvider key={ach.id}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="ml-1.5 cursor-default"> 
+                            {React.cloneElement(ach.icon as React.ReactElement, { className: "h-5 w-5 text-primary"})}
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent><p>{ach.name}</p></TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  ))}
                 </h1>
                 <p className="text-sm text-muted-foreground font-code">{user.username}</p>
                 <div className="flex items-center justify-center text-sm text-muted-foreground mt-1.5">
@@ -113,6 +140,7 @@ export default function MemberPage() {
                 <p className="text-xs text-muted-foreground">Pixels Adquiridos</p>
               </Card>
               <Card className="bg-accent/20 p-4 flex flex-col items-center justify-center text-center aspect-square rounded-lg shadow hover:shadow-accent/30 transition-shadow border-accent">
+                 {/* Use achievementsUnlocked for the count from user object */}
                 <Trophy className="h-8 w-8 text-accent-foreground mb-2" />
                 <p className="text-3xl font-bold font-code text-accent-foreground">{user.achievementsUnlocked}</p>
                 <p className="text-xs text-accent-foreground/80">Conquistas Únicas</p>
