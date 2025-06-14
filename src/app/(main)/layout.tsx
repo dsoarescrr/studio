@@ -8,7 +8,7 @@ export default function MainLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col min-h-screen overflow-hidden"> {/* Added overflow-hidden */}
+    <div className="flex flex-col h-full overflow-hidden"> {/* Changed min-h-screen to h-full */}
       <UserProfileHeader /> {/* Added UserProfileHeader here */}
       <main className="flex-1 flex flex-col pt-16 pb-[var(--bottom-nav-height)]"> {/* Added pt-16 for UserProfileHeader */}
         {children}
