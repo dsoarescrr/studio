@@ -27,25 +27,18 @@ const initialStats: StatItem[] = [
 ];
 
 const FormattedStatValue: React.FC<{ value: number | string }> = ({ value }) => {
-  const [displayValue, setDisplayValue] = useState<string | number>(
-    typeof value === 'number' ? '...' : value 
-  );
+  const [displayValue, setDisplayValue] = useState<string | number | null>(null); 
 
   useEffect(() => {
     if (typeof value === 'number') {
-      // Format number withtoLocaleString only if it's a client-side render
-      if (typeof window !== 'undefined') {
-        setDisplayValue(value.toLocaleString('pt-PT'));
-      } else {
-        setDisplayValue(value.toString()); // Fallback for SSR or if toLocaleString is not ideal
-      }
+      setDisplayValue(value.toLocaleString('pt-PT'));
     } else {
       setDisplayValue(value); 
     }
   }, [value]);
 
-  if (typeof value === 'number' && displayValue === '...') {
-    return <span className="text-lg font-semibold font-code">Carregando...</span>;
+  if (displayValue === null) {
+    return <span className="text-lg font-semibold font-code">...</span>;
   }
 
   return <>{displayValue}</>;
@@ -53,7 +46,7 @@ const FormattedStatValue: React.FC<{ value: number | string }> = ({ value }) => 
 
 
 export default function StatisticsPanel() {
-  const [isMinimized, setIsMinimized] = useState(true); // Start minimized
+  const [isMinimized, setIsMinimized] = useState(true); 
   const [stats, setStats] = useState<StatItem[]>(initialStats);
   const panelRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ x: 10000, y: 680 }); 
@@ -62,7 +55,7 @@ export default function StatisticsPanel() {
 
   useEffect(() => {
      if (typeof window !== 'undefined') {
-        setPosition({ x: window.innerWidth - 340, y: window.innerHeight - 280 }); // Position near bottom right
+        setPosition({ x: window.innerWidth - 340, y: window.innerHeight - 280 }); 
      }
   }, []);
 
@@ -128,7 +121,7 @@ export default function StatisticsPanel() {
       style={{ 
         left: `${position.x}px`, 
         top: `${position.y}px`,
-        maxHeight: isMinimized ? '60px' : 'auto', // Allow full height when not minimized
+        maxHeight: isMinimized ? '60px' : 'auto', 
         minHeight: isMinimized ? '60px' : '200px',
         overflow: 'hidden'
       }}

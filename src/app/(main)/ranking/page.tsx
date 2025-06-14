@@ -44,9 +44,9 @@ interface StatCardData {
 
 const globalStatsData: StatCardData[] = [
   { title: 'Total de Pixels no Mapa', value: '10,3M', icon: <MapPin className="h-6 w-6" />, tooltip: "Número total de pixels disponíveis no mapa de Portugal." },
-  { title: 'Pixels Adquiridos', value: '2,573', icon: <Target className="h-6 w-6" />, trend: { direction: 'up', value: '+12.3%', colorClass: 'text-green-500 border-green-500/50' }, tooltip: "Pixels que já foram comprados por utilizadores." },
-  { title: 'Utilizadores Ativos (24h)', value: '1,247', icon: <Users className="h-6 w-6" />, trend: { direction: 'up', value: '+8.7%', colorClass: 'text-green-500 border-green-500/50' }, tooltip: "Utilizadores que estiveram ativos nas últimas 24 horas." },
-  { title: 'Visualizações de Perfil (Hoje)', value: '5,892', icon: <Eye className="h-6 w-6" />, trend: { direction: 'up', value: '+15.2%', colorClass: 'text-green-500 border-green-500/50' }, tooltip: "Número de vezes que perfis de utilizador foram visualizados hoje."},
+  { title: 'Pixels Adquiridos', value: '2.573', icon: <Target className="h-6 w-6" />, trend: { direction: 'up', value: '+12.3%', colorClass: 'text-green-500 border-green-500/50' }, tooltip: "Pixels que já foram comprados por utilizadores." },
+  { title: 'Utilizadores Ativos (24h)', value: '1.247', icon: <Users className="h-6 w-6" />, trend: { direction: 'up', value: '+8.7%', colorClass: 'text-green-500 border-green-500/50' }, tooltip: "Utilizadores que estiveram ativos nas últimas 24 horas." },
+  { title: 'Visualizações de Perfil (Hoje)', value: '5.892', icon: <Eye className="h-6 w-6" />, trend: { direction: 'up', value: '+15.2%', colorClass: 'text-green-500 border-green-500/50' }, tooltip: "Número de vezes que perfis de utilizador foram visualizados hoje."},
   { title: 'Interações Totais', value: '127K', icon: <Heart className="h-6 w-6" />, trend: { direction: 'up', value: '+23.8%', colorClass: 'text-green-500 border-green-500/50' }, tooltip: "Soma de todas as interações (gostos, comentários, etc.)." },
   { title: 'Valor Médio do Pixel', value: '42,35 Kz', icon: <TrendingUp className="h-6 w-6" />, trend: { direction: 'up', value: '+5.4%', colorClass: 'text-green-500 border-green-500/50' }, tooltip: "Preço médio atual de um pixel no mercado." },
 ];
@@ -105,6 +105,18 @@ const StatDisplayCard: React.FC<StatCardData> = ({ title, value, icon, trend, fo
   </Card>
 );
 
+const FormattedNumber: React.FC<{ value: number }> = ({ value }) => {
+  const [formattedValue, setFormattedValue] = useState<string | null>(null);
+  useEffect(() => {
+    setFormattedValue(value.toLocaleString('pt-PT'));
+  }, [value]);
+
+  if (formattedValue === null) {
+    return <>...</>;
+  }
+  return <>{formattedValue}</>;
+};
+
 
 export default function StatisticsPage() {
   const [lastUpdated, setLastUpdated] = useState<string>('');
@@ -113,7 +125,7 @@ export default function StatisticsPage() {
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
-      setLastUpdated(now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+      setLastUpdated(now.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }));
     };
     updateTime(); 
     const intervalId = setInterval(updateTime, 60000); 
@@ -129,7 +141,7 @@ export default function StatisticsPage() {
   ];
 
   return (
-    <div className="container mx-auto py-8 px-4 space-y-6 mb-20"> {/* Increased mb for bottom nav space */}
+    <div className="container mx-auto py-8 px-4 space-y-6 mb-20"> 
       <Card className="bg-card/90 backdrop-blur-sm shadow-xl">
         <CardHeader className="flex flex-row items-center justify-between pb-4">
           <div className="flex items-center space-x-3">
@@ -246,8 +258,8 @@ export default function StatisticsPage() {
                       <span className="font-medium text-foreground">{entry.user}</span>
                     </div>
                   </TableCell>
-                  <TableCell className="text-right font-code">{entry.pixels.toLocaleString()}</TableCell>
-                  <TableCell className="text-right font-code">{entry.score.toLocaleString()}</TableCell>
+                  <TableCell className="text-right font-code"><FormattedNumber value={entry.pixels} /></TableCell>
+                  <TableCell className="text-right font-code"><FormattedNumber value={entry.score} /></TableCell>
                 </TableRow>
               ))}
             </TableBody>
