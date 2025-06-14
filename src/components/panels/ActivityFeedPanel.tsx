@@ -3,29 +3,33 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Activity, Minimize2, Maximize2, LogIn, LogOut, ShoppingCart, Palette, Eye, Users, Filter } from 'lucide-react';
+import { Activity, Minimize2, Maximize2, LogIn, LogOut, ShoppingCart, Palette, Eye, Users, Filter, ArrowRightCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
 
 type ActivityItem = {
   id: string;
-  type: 'login' | 'logout' | 'purchase' | 'color_change' | 'view' | 'custom';
-  user: { name: string; avatarUrl?: string };
+  type: 'login' | 'logout' | 'purchase' | 'color_change' | 'view' | 'custom' | 'achievement';
+  user: { name: string; avatarUrl?: string; dataAiHint?: string };
   timestamp: Date;
   details?: string;
+  region?: string;
 };
 
 const initialActivities: ActivityItem[] = [
-  { id: '1', type: 'login', user: { name: 'PixelAdventurer' }, timestamp: new Date(Date.now() - 1000 * 60 * 5) },
-  { id: '2', type: 'purchase', user: { name: 'ArtCollector7' }, timestamp: new Date(Date.now() - 1000 * 60 * 12), details: 'Pixel (12,34)' },
-  { id: '3', type: 'color_change', user: { name: 'ColorMaster' }, timestamp: new Date(Date.now() - 1000 * 60 * 25), details: 'Pixel (5,8) to #FF0000' },
-  { id: '4', type: 'view', user: { name: 'ExplorerPro' }, timestamp: new Date(Date.now() - 1000 * 60 * 33), details: 'Região Norte' },
-  { id: '5', type: 'logout', user: { name: 'PixelAdventurer' }, timestamp: new Date(Date.now() - 1000 * 60 * 45) },
-  { id: '6', type: 'custom', user: { name: 'ServerBot' }, timestamp: new Date(Date.now() - 1000 * 60 * 50), details: 'Evento especial iniciado!' },
+  { id: '1', type: 'login', user: { name: 'PixelAdventurer', dataAiHint: "avatar user" }, timestamp: new Date(Date.now() - 1000 * 60 * 5) },
+  { id: '2', type: 'purchase', user: { name: 'ArtCollector7', dataAiHint: "avatar user" }, timestamp: new Date(Date.now() - 1000 * 60 * 12), details: 'Pixel (12,34) em Lisboa', region: 'Lisboa' },
+  { id: '3', type: 'color_change', user: { name: 'ColorMaster', dataAiHint: "avatar user" }, timestamp: new Date(Date.now() - 1000 * 60 * 25), details: 'Pixel (5,8) para #FF0000', region: 'Porto' },
+  { id: '4', type: 'view', user: { name: 'ExplorerPro', dataAiHint: "avatar user" }, timestamp: new Date(Date.now() - 1000 * 60 * 33), details: 'Região Norte' },
+  { id: '5', type: 'achievement', user: { name: 'PixelAdventurer', dataAiHint: "avatar user" }, timestamp: new Date(Date.now() - 1000 * 60 * 40), details: 'Conquista: Primeiro Pixel!' },
+  { id: '6', type: 'logout', user: { name: 'PixelAdventurer', dataAiHint: "avatar user" }, timestamp: new Date(Date.now() - 1000 * 60 * 45) },
+  { id: '7', type: 'custom', user: { name: 'ServerBot', dataAiHint: "bot avatar" }, timestamp: new Date(Date.now() - 1000 * 60 * 50), details: 'Evento especial de Verão iniciado!' },
 ];
 
 const activityIcons = {
@@ -35,15 +39,17 @@ const activityIcons = {
   color_change: <Palette className="h-4 w-4 text-accent" />,
   view: <Eye className="h-4 w-4 text-blue-400" />,
   custom: <Activity className="h-4 w-4 text-purple-400" />,
+  achievement: <Trophy className="h-4 w-4 text-yellow-400" />
 };
 
 const activityLabels = {
   login: 'Login',
   logout: 'Logout',
-  purchase: 'Compra',
+  purchase: 'Compra de Pixel',
   color_change: 'Mudança de Cor',
   view: 'Visualização',
-  custom: 'Evento',
+  custom: 'Evento do Sistema',
+  achievement: 'Conquista Desbloqueada'
 };
 
 const FormattedTimestamp: React.FC<{ timestamp: Date }> = ({ timestamp }) => {
@@ -51,17 +57,17 @@ const FormattedTimestamp: React.FC<{ timestamp: Date }> = ({ timestamp }) => {
   const [dateString, setDateString] = useState<string>('');
 
   useEffect(() => {
-    setTimeString(timestamp.toLocaleTimeString());
-    setDateString(timestamp.toLocaleDateString());
+    setTimeString(timestamp.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }));
+    setDateString(timestamp.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric' }));
   }, [timestamp]);
 
   if (!timeString || !dateString) {
-    return <span className="text-xs text-muted-foreground/70">Carregando data...</span>;
+    return <span className="text-xs text-muted-foreground/70 font-code">Carregando data...</span>;
   }
 
   return (
-    <p className="text-xs text-muted-foreground/70">
-      {timeString} - {dateString}
+    <p className="text-xs text-muted-foreground/80 font-code" title={`${dateString} ${timeString}`}>
+      {timeString}
     </p>
   );
 };
@@ -70,19 +76,17 @@ export default function ActivityFeedPanel() {
   const [isMinimized, setIsMinimized] = useState(false);
   const [activities, setActivities] = useState<ActivityItem[]>(initialActivities);
   const [filter, setFilter] = useState<'all' | ActivityItem['type']>('all');
-  const [onlineUsers, setOnlineUsers] = useState(137); // Placeholder
+  const [onlineUsers, setOnlineUsers] = useState(137); 
   const panelRef = useRef<HTMLDivElement>(null);
-  // Initialize with a server-renderable, consistent value
   const [position, setPosition] = useState({ x: 10000, y: 20 }); 
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
-    // Set initial client-side position after mount
     if (typeof window !== 'undefined') {
       setPosition({ x: window.innerWidth - 340, y: 20 });
     }
-  }, []); // Empty dependency array ensures this runs once on mount
+  }, []); 
 
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -121,23 +125,25 @@ export default function ActivityFeedPanel() {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, handleMouseMove, handleMouseUp]);
+  }, [isDragging, dragStart]);
 
 
   const filteredActivities = activities.filter(act => filter === 'all' || act.type === filter);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setOnlineUsers(prev => Math.max(0, prev + Math.floor(Math.random() * 11) - 5)); 
+      setOnlineUsers(prev => Math.max(50, prev + Math.floor(Math.random() * 21) - 10)); 
+      const randomActivityTypes: ActivityItem['type'][] = ['login', 'purchase', 'color_change', 'view', 'achievement'];
       const newActivity: ActivityItem = {
         id: String(Date.now()),
-        type: (['login', 'purchase', 'color_change', 'view'] as ActivityItem['type'][])[Math.floor(Math.random() * 4)],
-        user: { name: `User${Math.floor(Math.random() * 1000)}` },
+        type: randomActivityTypes[Math.floor(Math.random() * randomActivityTypes.length)],
+        user: { name: `User${Math.floor(Math.random() * 1000)}`, dataAiHint: "avatar user" },
         timestamp: new Date(),
-        details: Math.random() > 0.5 ? `Detalhe ${Math.floor(Math.random() * 100)}` : undefined,
+        details: Math.random() > 0.3 ? `Detalhe aleatório ${Math.floor(Math.random() * 100)}` : undefined,
+        region: Math.random() > 0.5 ? ['Norte', 'Centro', 'Sul'][Math.floor(Math.random()*3)] : undefined
       };
-      setActivities(prev => [newActivity, ...prev.slice(0, 19)]); 
-    }, 5000);
+      setActivities(prev => [newActivity, ...prev.slice(0, 29)]); 
+    }, 8000); // Increased interval for less frequent updates
     return () => clearInterval(interval);
   }, []);
 
@@ -145,34 +151,42 @@ export default function ActivityFeedPanel() {
   return (
     <Card
       ref={panelRef}
-      className="fixed z-30 w-80 shadow-xl bg-card/80 backdrop-blur-md transition-all duration-300 ease-in-out pointer-events-none"
+      className="fixed z-30 w-80 shadow-xl bg-card/80 backdrop-blur-md transition-all duration-300 ease-in-out"
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
-        maxHeight: isMinimized ? '60px' : '600px',
+        maxHeight: isMinimized ? '60px' : 'calc(100vh - 40px)', // Allow more height
         overflow: 'hidden'
       }}
       onMouseDown={handleMouseDown}
     >
       <CardHeader 
-        className="py-3 px-4 flex flex-row items-center justify-between pointer-events-auto" 
+        className="py-3 px-4 flex flex-row items-center justify-between cursor-grab active:cursor-grabbing" 
         data-drag-handle="true" 
-        style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
       >
         <div className="flex items-center">
           <Activity className="h-6 w-6 mr-2 text-primary" />
-          <CardTitle className="text-lg font-headline">Atividade Recente</CardTitle>
+          <CardTitle className="text-lg font-headline">Atividade Global</CardTitle>
         </div>
-        <Button variant="ghost" size="icon" onClick={() => setIsMinimized(!isMinimized)} className="text-muted-foreground hover:text-foreground">
-          {isMinimized ? <Maximize2 className="h-5 w-5" /> : <Minimize2 className="h-5 w-5" />}
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" onClick={() => setIsMinimized(!isMinimized)} className="text-muted-foreground hover:text-foreground">
+                {isMinimized ? <Maximize2 className="h-5 w-5" /> : <Minimize2 className="h-5 w-5" />}
+              </Button>
+            </TooltipTrigger>
+             <TooltipContent side="left">
+              <p>{isMinimized ? 'Maximizar' : 'Minimizar'} Painel</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </CardHeader>
       {!isMinimized && (
-        <CardContent className="p-0 pointer-events-auto">
+        <CardContent className="p-0">
           <div className="p-4 border-b border-border">
             <div className="flex justify-between items-center mb-2">
               <h4 className="text-sm font-medium font-code">Filtros Rápidos:</h4>
-              <Badge variant={filter === 'all' ? "default" : "secondary"} className="cursor-pointer" onClick={() => setFilter('all')}>Todos</Badge>
+              <Badge variant={filter === 'all' ? "default" : "secondary"} className="cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setFilter('all')}>Todos</Badge>
             </div>
             <div className="flex flex-wrap gap-2">
               {(Object.keys(activityIcons) as ActivityItem['type'][]).map(type => (
@@ -184,31 +198,32 @@ export default function ActivityFeedPanel() {
                   onClick={() => setFilter(type)}
                 >
                   {React.cloneElement(activityIcons[type], { className: `h-3 w-3 mr-1 ${filter === type ? 'text-secondary-foreground' : 'text-muted-foreground'}` })}
-                  {activityLabels[type]}
+                  {activityLabels[type].split(' ')[0]} {/* Show only first word for brevity */}
                 </Button>
               ))}
             </div>
           </div>
-          <ScrollArea className="h-[350px] p-4"> 
-            <div className="space-y-2"> {/* Reduced space-y for tighter packing with padded items */}
+          <ScrollArea className="h-[calc(100vh-220px)] min-h-[200px] max-h-[450px] p-4"> 
+            <div className="space-y-1">
               {filteredActivities.map((activity) => (
                 <div 
                   key={activity.id} 
-                  className="flex items-start space-x-3 p-2 rounded-lg hover:bg-muted/70 transition-colors duration-150 cursor-default"
+                  className="flex items-start space-x-3 p-2.5 rounded-lg hover:bg-muted/60 transition-colors duration-150 cursor-default"
                 >
-                  <Avatar className="h-8 w-8 mt-1">
-                    <AvatarImage src={activity.user.avatarUrl || `https://placehold.co/40x40.png?text=${activity.user.name.substring(0,1)}`} alt={activity.user.name} data-ai-hint="avatar user"/>
+                  <Avatar className="h-8 w-8 mt-0.5 border-2 border-border">
+                    <AvatarImage src={activity.user.avatarUrl || `https://placehold.co/40x40.png?text=${activity.user.name.substring(0,1)}`} alt={activity.user.name} data-ai-hint={activity.user.dataAiHint || "avatar user"}/>
                     <AvatarFallback>{activity.user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
                     <p className="text-sm">
-                      <span className="font-semibold text-primary">{activity.user.name}</span>
+                      <span className="font-semibold text-primary hover:underline cursor-pointer">{activity.user.name}</span>
                       <span className="text-muted-foreground ml-1">{activityLabels[activity.type].toLowerCase()}</span>
                       {activity.details && <span className="text-muted-foreground text-xs ml-1 font-code">({activity.details})</span>}
                     </p>
                     <FormattedTimestamp timestamp={activity.timestamp} />
+                    {activity.region && <Badge variant="outline" className="text-xs mt-1 font-code">Região: {activity.region}</Badge>}
                   </div>
-                  <div className="mt-1">{activityIcons[activity.type]}</div>
+                  <div className="mt-1 text-muted-foreground">{activityIcons[activity.type]}</div>
                 </div>
               ))}
               {filteredActivities.length === 0 && (
@@ -217,17 +232,18 @@ export default function ActivityFeedPanel() {
             </div>
           </ScrollArea>
           <Separator />
-          <CardFooter className="p-3 flex justify-between items-center pointer-events-auto">
+          <CardFooter className="p-3 flex justify-between items-center">
             <div className="flex items-center text-sm">
               <Users className="h-4 w-4 mr-2 text-green-400" />
               <span className="font-semibold mr-1">{onlineUsers}</span>
-              <span className="text-muted-foreground">usuários online</span>
+              <span className="text-muted-foreground">online</span>
             </div>
-            <Button variant="link" size="sm" className="text-xs text-primary">Ver Tudo</Button>
+            <Button variant="link" size="sm" className="text-xs text-primary hover:text-primary/80">
+                Ver Histórico Completo <ArrowRightCircle className="ml-1 h-3 w-3" />
+            </Button>
           </CardFooter>
         </CardContent>
       )}
     </Card>
   );
 }
-
