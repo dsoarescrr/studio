@@ -3,14 +3,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, User, Trophy, BarChart3, Users, Sparkles } from 'lucide-react'; // Changed BarChartBig to BarChart3
+import { Home, User, Trophy, BarChartHorizontalBig, Users } from 'lucide-react'; // Changed BarChart3 to BarChartHorizontalBig
 import { cn } from '@/lib/utils';
 
 const navLinks = [
   { href: "/", label: "Universo", icon: Home },
   { href: "/member", label: "Perfil", icon: User },
   { href: "/achievements", label: "Conquistas", icon: Trophy },
-  { href: "/ranking", label: "Ranking", icon: BarChart3 },
+  { href: "/ranking", label: "Estatísticas", icon: BarChartHorizontalBig }, // Changed label and icon
   { href: "/community", label: "Comunidade", icon: Users },
 ];
 
