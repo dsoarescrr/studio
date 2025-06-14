@@ -4,7 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { ArrowUpRight, Award, Camera, CreditCard, Gem, MapPin, Palette, Settings, Sparkles, Star, Trophy, Upload, User as UserIcon, Edit3, Gift, Coins } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { ArrowUpRight, Award, Camera, CreditCard, Gem, MapPin, Palette, Settings, Sparkles, Star, Trophy, Upload, User as UserIcon, Edit3, Gift, Coins, Globe, Link as LinkIcon, Twitter, Instagram, Github } from "lucide-react";
 
 export default function MemberPage() {
   const user = {
@@ -21,13 +22,19 @@ export default function MemberPage() {
     pixelsOwned: 42,
     achievementsUnlocked: 5, 
     rank: 1, 
-    primaryColor: "#FFD700", 
+    primaryColor: "#FFD700",
+    location: "Lisboa, Portugal",
+    socials: [
+      { platform: "Twitter", handle: "@PixelMasterPT", icon: <Twitter className="h-4 w-4" />, url: "#" },
+      { platform: "Instagram", handle: "pixel.master.pt", icon: <Instagram className="h-4 w-4" />, url: "#" },
+      { platform: "Github", handle: "PedroSilvaDev", icon: <Github className="h-4 w-4" />, url: "#" },
+    ]
   };
 
   const nextLevelXp = user.xpMax - user.xp;
 
   return (
-    <div className="container mx-auto py-8 px-4 flex flex-col items-center mb-4"> {/* Reduced bottom margin as UserProfileHeader now global */}
+    <div className="container mx-auto py-8 px-4 flex flex-col items-center mb-16">
       <Card className="w-full max-w-md bg-card/90 backdrop-blur-sm shadow-xl border-primary/20">
         <CardHeader className="items-center text-center pt-6 pb-2 relative">
             <div className="relative">
@@ -53,13 +60,17 @@ export default function MemberPage() {
                   <Sparkles className="h-5 w-5 text-purple-400 ml-1.5" title="Membro Ativo" />
                 </h1>
                 <p className="text-sm text-muted-foreground font-code">{user.username}</p>
+                <div className="flex items-center justify-center text-sm text-muted-foreground mt-1.5">
+                  <MapPin className="h-4 w-4 mr-1.5 text-accent" />
+                  <span>{user.location}</span>
+                </div>
               </div>
               <div className="flex items-center space-x-3 mt-2">
                 <Badge variant="secondary" className="font-code text-xs py-1">Nível {user.level}</Badge>
               </div>
         </CardHeader>
-        <CardContent className="p-6 pt-2">
-          <div className="space-y-5">
+        <CardContent className="p-6 pt-4">
+          <div className="space-y-6">
             
             <Card className="w-full bg-background/50 p-4 text-center rounded-lg shadow">
               <CardDescription className="text-sm text-foreground italic">
@@ -89,7 +100,6 @@ export default function MemberPage() {
                 </Card>
             </div>
 
-
             <div className="grid grid-cols-2 gap-4 w-full">
               <Card className="bg-background/50 p-4 flex flex-col items-center justify-center text-center aspect-square rounded-lg shadow hover:shadow-primary/20 transition-shadow">
                 <MapPin className="h-8 w-8 text-primary mb-2" />
@@ -102,10 +112,36 @@ export default function MemberPage() {
                 <p className="text-xs text-accent-foreground/80">Conquistas Únicas</p>
               </Card>
             </div>
+
+            <Card className="bg-background/50 p-4 rounded-lg shadow">
+                <CardHeader className="p-0 pb-3">
+                    <CardTitle className="text-md font-headline flex items-center text-primary">
+                        <LinkIcon className="h-4 w-4 mr-2" />
+                        Redes Sociais
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0 space-y-2">
+                    {user.socials.map(social => (
+                        <Button key={social.platform} variant="outline" className="w-full justify-start text-sm hover:bg-muted/70" asChild>
+                            <a href={social.url} target="_blank" rel="noopener noreferrer">
+                                {social.icon}
+                                <span className="ml-2 font-semibold">{social.platform}:</span>
+                                <span className="ml-1.5 text-muted-foreground font-code">{social.handle}</span>
+                            </a>
+                        </Button>
+                    ))}
+                    {user.socials.length === 0 && (
+                        <p className="text-xs text-muted-foreground">Nenhuma rede social conectada.</p>
+                    )}
+                </CardContent>
+            </Card>
             
-            <div className="flex flex-col space-y-2">
+            <div className="flex flex-col space-y-2 pt-2">
               <Button variant="outline" className="w-full hover:bg-primary/10 transition-colors">
                 Ver Galeria de Pixels <ArrowUpRight className="h-4 w-4 ml-2" />
+              </Button>
+               <Button variant="default" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
+                Definir Localização no Mapa <Globe className="h-4 w-4 ml-2" />
               </Button>
               <Button variant="secondary" className="w-full hover:bg-secondary/70 transition-colors">
                 Editar Perfil <Edit3 className="h-4 w-4 ml-2" />
@@ -127,3 +163,4 @@ export default function MemberPage() {
     </div>
   );
 }
+
