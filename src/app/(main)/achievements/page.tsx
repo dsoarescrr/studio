@@ -1,9 +1,12 @@
 
-import React from 'react';
+'use client';
+
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle2, Lock, Award, Star, Sparkles, Palette, MapPin, Crown, Edit3, MessageSquare, Rocket, ShieldCheck, Compass } from "lucide-react";
+import { Button } from '@/components/ui/button'; // Added Button import
+import { CheckCircle2, Lock, Award, Star, Sparkles, Palette, MapPin, Crown, Edit3, MessageSquare, Rocket, ShieldCheck, Compass, Puzzle, Users, Eye } from "lucide-react"; // Added Puzzle, Users, Eye
 
 type AchievementTier = {
   level: number;
@@ -13,11 +16,14 @@ type AchievementTier = {
   isUnlocked: boolean;
 };
 
+type AchievementCategory = 'pixel' | 'community' | 'exploration' | 'collection' | 'moderation';
+
 type Achievement = {
   id: string;
   name: string;
   overallDescription: string;
   icon: React.ReactNode;
+  category: AchievementCategory;
   tiers: AchievementTier[];
 };
 
@@ -27,6 +33,7 @@ const achievementsData: Achievement[] = [
     name: "Iniciado dos Pixels",
     overallDescription: "Comece sua jornada no Pixel Universe adquirindo pixels.",
     icon: <MapPin className="h-7 w-7" />,
+    category: 'pixel',
     tiers: [
       { level: 1, description: "Comprou seu primeiro pixel", xpReward: 50, creditsReward: 10, isUnlocked: true },
       { level: 2, description: "Comprou 10 pixels", xpReward: 100, creditsReward: 25, isUnlocked: true },
@@ -39,6 +46,7 @@ const achievementsData: Achievement[] = [
     name: "Artesão de Pixels",
     overallDescription: "Aperfeiçoe a sua arte editando os seus pixels.",
     icon: <Edit3 className="h-7 w-7" />,
+    category: 'pixel',
     tiers: [
       { level: 1, description: "Editou a cor de 1 pixel", xpReward: 20, creditsReward: 5, isUnlocked: true },
       { level: 2, description: "Editou a cor de 10 pixels", xpReward: 60, creditsReward: 15, isUnlocked: false },
@@ -51,6 +59,7 @@ const achievementsData: Achievement[] = [
     name: "Mestre das Cores",
     overallDescription: "Mostre sua criatividade usando uma vasta gama de cores.",
     icon: <Palette className="h-7 w-7" />,
+    category: 'pixel',
     tiers: [
       { level: 1, description: "Usou 5 cores diferentes", xpReward: 30, creditsReward: 5, isUnlocked: true },
       { level: 2, description: "Usou 15 cores diferentes", xpReward: 70, creditsReward: 15, isUnlocked: false },
@@ -63,6 +72,7 @@ const achievementsData: Achievement[] = [
     name: "Desbravador de Territórios",
     overallDescription: "Aventure-se e interaja com diferentes regiões do mapa.",
     icon: <Compass className="h-7 w-7" />,
+    category: 'exploration',
     tiers: [
       { level: 1, description: "Visitou 3 regiões diferentes", xpReward: 60, creditsReward: 15, isUnlocked: true },
       { level: 2, description: "Interagiu com pixels em 3 regiões", xpReward: 120, creditsReward: 35, isUnlocked: false },
@@ -75,6 +85,7 @@ const achievementsData: Achievement[] = [
     name: "Magnata dos Pixels",
     overallDescription: "Acumule uma vasta coleção de pixels e demonstre o seu império.",
     icon: <Crown className="h-7 w-7" />,
+    category: 'collection',
     tiers: [
       { level: 1, description: "Possui 100 pixels", xpReward: 200, creditsReward: 50, isUnlocked: false },
       { level: 2, description: "Possui 500 pixels", xpReward: 500, creditsReward: 150, isUnlocked: false },
@@ -87,6 +98,7 @@ const achievementsData: Achievement[] = [
     name: "Voz da Comunidade",
     overallDescription: "Partilhe as suas opiniões e interaja nas publicações.",
     icon: <MessageSquare className="h-7 w-7" />,
+    category: 'community',
     tiers: [
       { level: 1, description: "Fez o seu primeiro comentário", xpReward: 15, creditsReward: 5, isUnlocked: true },
       { level: 2, description: "Fez 10 comentários construtivos", xpReward: 50, creditsReward: 15, isUnlocked: false },
@@ -99,6 +111,7 @@ const achievementsData: Achievement[] = [
     name: "Estrela da Comunidade",
     overallDescription: "Envolva-se, publique e seja reconhecido pela comunidade.",
     icon: <Star className="h-7 w-7" />,
+    category: 'community',
     tiers: [
       { level: 1, description: "Recebeu 10 'gostos' em publicações", xpReward: 40, creditsReward: 10, isUnlocked: true },
       { level: 2, description: "Recebeu 50 'gostos' em publicações", xpReward: 90, creditsReward: 25, isUnlocked: false },
@@ -111,6 +124,7 @@ const achievementsData: Achievement[] = [
     name: "Colecionador Lendário",
     overallDescription: "Obtenha os pixels mais raros e cobiçados do universo.",
     icon: <Sparkles className="h-7 w-7" />,
+    category: 'collection',
     tiers: [
       { level: 1, description: "Possui um pixel 'Featured'", xpReward: 150, creditsReward: 50, isUnlocked: false },
       { level: 2, description: "Completou um conjunto de pixels temático", xpReward: 350, creditsReward: 120, isUnlocked: false },
@@ -122,6 +136,7 @@ const achievementsData: Achievement[] = [
     name: "Guardião Mestre",
     overallDescription: "Proteja e mantenha a ordem no universo dos pixels.",
     icon: <ShieldCheck className="h-7 w-7" />,
+    category: 'moderation',
     tiers: [
       { level: 1, description: "Reportou uma infração validada", xpReward: 70, creditsReward: 20, isUnlocked: false },
       { level: 2, description: "Ajudou a resolver uma disputa comunitária", xpReward: 150, creditsReward: 50, isUnlocked: false },
@@ -133,13 +148,29 @@ const achievementsData: Achievement[] = [
     name: "Pioneiro do Pixel Universe",
     overallDescription: "Por estar entre os primeiros a explorar este universo.",
     icon: <Rocket className="h-7 w-7" />,
+    category: 'exploration',
     tiers: [
       { level: 1, description: "Juntou-se durante a fase Beta", xpReward: 100, creditsReward: 50, isUnlocked: true },
     ],
   },
 ];
 
+const filterCategories: { label: string; value: AchievementCategory | 'all'; icon: React.ReactNode }[] = [
+  { label: "Todas", value: 'all', icon: <Eye className="h-4 w-4 mr-2" /> },
+  { label: "Píxeis", value: 'pixel', icon: <Edit3 className="h-4 w-4 mr-2" /> },
+  { label: "Comunidade", value: 'community', icon: <Users className="h-4 w-4 mr-2" /> },
+  { label: "Exploração", value: 'exploration', icon: <Compass className="h-4 w-4 mr-2" /> },
+  { label: "Coleção", value: 'collection', icon: <Puzzle className="h-4 w-4 mr-2" /> },
+  { label: "Moderação", value: 'moderation', icon: <ShieldCheck className="h-4 w-4 mr-2" /> },
+];
+
 export default function AchievementsPage() {
+  const [activeFilter, setActiveFilter] = useState<AchievementCategory | 'all'>('all');
+
+  const filteredAchievements = activeFilter === 'all' 
+    ? achievementsData 
+    : achievementsData.filter(ach => ach.category === activeFilter);
+
   return (
     <div className="container mx-auto py-8 px-4 mb-16">
       <Card className="shadow-xl bg-card/90 backdrop-blur-sm border-primary/30">
@@ -152,8 +183,30 @@ export default function AchievementsPage() {
             Desbloqueie conquistas, ganhe XP e créditos para subir de nível e mostrar seu domínio no Pixel Universe!
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-8">
-          {achievementsData.map(ach => {
+        <CardContent className="space-y-6">
+          <div className="mb-6 p-4 bg-background/50 rounded-lg shadow-sm">
+            <h3 className="text-lg font-headline mb-3 text-primary">Filtrar por Categoria:</h3>
+            <div className="flex flex-wrap gap-2">
+              {filterCategories.map(filter => (
+                <Button
+                  key={filter.value}
+                  variant={activeFilter === filter.value ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setActiveFilter(filter.value)}
+                  className="font-code"
+                >
+                  {filter.icon}
+                  {filter.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {filteredAchievements.length === 0 && (
+            <p className="text-center text-muted-foreground py-4">Nenhuma conquista encontrada para esta categoria.</p>
+          )}
+
+          {filteredAchievements.map(ach => {
             const totalTiers = ach.tiers.length;
             const unlockedTiers = ach.tiers.filter(t => t.isUnlocked).length;
             const progressPercentage = totalTiers > 0 ? (unlockedTiers / totalTiers) * 100 : 0;
@@ -222,3 +275,6 @@ export default function AchievementsPage() {
     </div>
   );
 }
+
+
+    
