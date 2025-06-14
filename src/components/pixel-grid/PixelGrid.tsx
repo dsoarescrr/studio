@@ -1,4 +1,3 @@
-
 // src/components/pixel-grid/PixelGrid.tsx
 'use client';
 
@@ -307,34 +306,36 @@ export default function PixelGrid() {
 
   // Effect to set initial zoom and position to fit the map
   useEffect(() => {
-    if (containerRef.current && canvasRef.current && mapData?.path2D && workerStatus === 'done' && !defaultView) {
+    if (typeof window !== 'undefined' && containerRef.current && canvasRef.current && mapData?.path2D && workerStatus === 'done' && !defaultView) {
       const containerWidth = containerRef.current.offsetWidth;
-      const containerHeight = containerRef.current.offsetHeight;
+      
+      const HEADER_HEIGHT_PX = 64; // UserProfileHeader h-16 (4rem * 16px/rem)
+      const BOTTOM_NAV_HEIGHT_PX = 64; // From --bottom-nav-height in BottomNavBar.tsx
 
-      if (containerWidth > 0 && containerHeight > 0 && canvasDrawWidth > 0 && canvasDrawHeight > 0) {
+      // Calculate effective container height based on window height and fixed elements
+      const effectiveContainerHeight = window.innerHeight - HEADER_HEIGHT_PX - BOTTOM_NAV_HEIGHT_PX;
+
+
+      if (containerWidth > 0 && effectiveContainerHeight > 0 && canvasDrawWidth > 0 && canvasDrawHeight > 0) {
         const fitZoomX = containerWidth / canvasDrawWidth;
-        const fitZoomY = containerHeight / canvasDrawHeight;
-        const zoomToFit = Math.min(fitZoomX, fitZoomY); // Zoom level to make map fill the smaller dimension
+        const fitZoomY = effectiveContainerHeight / canvasDrawHeight;
+        const zoomToFit = Math.min(fitZoomX, fitZoomY); 
 
-        let targetInitialZoom = 0.25; // Target a 0.25x zoom level feel
-
-        // Ensure the target zoom is not smaller than MIN_ZOOM
+        let targetInitialZoom = 0.25; 
         let calculatedZoom = Math.max(MIN_ZOOM, targetInitialZoom);
 
-        // If the targetInitialZoom (or MIN_ZOOM if target was smaller) makes the map overflow the container,
-        // then reduce it to fit with some padding.
         if (calculatedZoom > zoomToFit) {
-          calculatedZoom = zoomToFit * 0.95; // Fit with 5% padding
+          calculatedZoom = zoomToFit * 0.95; 
         }
         
-        // Final clamp with MAX_ZOOM (though unlikely to be hit for initial view)
-        calculatedZoom = Math.min(calculatedZoom, MAX_ZOOM);
+        calculatedZoom = Math.max(MIN_ZOOM, Math.min(calculatedZoom, MAX_ZOOM));
 
         const canvasContentWidth = canvasDrawWidth * calculatedZoom;
         const canvasContentHeight = canvasDrawHeight * calculatedZoom;
+        
         const calculatedPosition = {
           x: (containerWidth - canvasContentWidth) / 2,
-          y: (containerHeight - canvasContentHeight) / 2,
+          y: (effectiveContainerHeight - canvasContentHeight) / 2,
         };
 
         setDefaultView({ zoom: calculatedZoom, position: calculatedPosition });
@@ -349,13 +350,18 @@ export default function PixelGrid() {
     if (defaultView) {
       setZoom(defaultView.zoom);
       setPosition(defaultView.position);
-    } else if (containerRef.current && canvasRef.current) { 
+    } else if (typeof window !== 'undefined' && containerRef.current && canvasRef.current) { 
         const containerWidth = containerRef.current.offsetWidth;
-        const containerHeight = containerRef.current.offsetHeight;
-        if (containerWidth > 0 && containerHeight > 0 && canvasDrawWidth > 0 && canvasDrawHeight > 0) {
+        
+        const HEADER_HEIGHT_PX = 64; 
+        const BOTTOM_NAV_HEIGHT_PX = 64;
+        const effectiveContainerHeight = window.innerHeight - HEADER_HEIGHT_PX - BOTTOM_NAV_HEIGHT_PX;
+
+        if (containerWidth > 0 && effectiveContainerHeight > 0 && canvasDrawWidth > 0 && canvasDrawHeight > 0) {
             const fitZoomX = containerWidth / canvasDrawWidth;
-            const fitZoomY = containerHeight / canvasDrawHeight;
+            const fitZoomY = effectiveContainerHeight / canvasDrawHeight;
             const zoomToFit = Math.min(fitZoomX, fitZoomY);
+            
             let fallbackZoom = 0.25;
             if (fallbackZoom > zoomToFit) {
               fallbackZoom = zoomToFit * 0.95;
@@ -366,10 +372,12 @@ export default function PixelGrid() {
             const canvasContentHeight = canvasDrawHeight * fallbackZoom;
             const fallbackPosition = {
                 x: (containerWidth - canvasContentWidth) / 2,
-                y: (containerHeight - canvasContentHeight) / 2,
+                y: (effectiveContainerHeight - canvasContentHeight) / 2,
             };
             setZoom(fallbackZoom);
             setPosition(fallbackPosition);
+            // Set defaultView here as well if it wasn't set, so subsequent resets use it.
+            setDefaultView({ zoom: fallbackZoom, position: fallbackPosition });
         }
     }
   }, [defaultView, canvasDrawWidth, canvasDrawHeight]);
@@ -434,6 +442,8 @@ export default function PixelGrid() {
 
   const handleMouseDown = (e: React.MouseEvent) => {
     const targetElement = e.target as HTMLElement;
+    // Allow drag initiation if clicking on the container or the canvas itself.
+    // Prevent drag if clicking on known interactive elements inside the grid controls or modals.
     if (
       targetElement.closest(
         'button, [data-dialog-content], [data-tooltip-content], [data-popover-content], label, a, [role="menuitem"], [role="tab"], input, textarea'
@@ -441,12 +451,10 @@ export default function PixelGrid() {
     ) {
       return;
     }
-    // Allow dragging if clicking on the container or the canvas itself.
-    if (targetElement === containerRef.current || targetElement === canvasRef.current || (containerRef.current && containerRef.current.contains(targetElement) && !targetElement.closest('button, input, textarea, [role="button"], [data-dialog-content]'))) {
-        setIsDragging(true);
-        setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
-        didDragRef.current = false; 
-    }
+    
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+    didDragRef.current = false;
   };
 
 
@@ -457,7 +465,7 @@ export default function PixelGrid() {
     const currentY = e.clientY - dragStart.y;
     
     if (!didDragRef.current) {
-        const dx = Math.abs(currentX - position.x);
+        const dx = Math.abs(currentX - position.x); // Compare with initial position at drag start for threshold
         const dy = Math.abs(currentY - position.y);
         if (dx > dragThreshold || dy > dragThreshold) {
             didDragRef.current = true;
@@ -663,7 +671,7 @@ export default function PixelGrid() {
         return {
             ...prev,
             isForSaleByOwner: newSaleStatus,
-            salePrice: newSaleStatus ? (prev.salePrice || 50) : undefined,
+            salePrice: newSaleStatus ? (prev.salePrice || 50) : undefined, // Keep old price or default to 50
         };
     });
 
@@ -672,6 +680,7 @@ export default function PixelGrid() {
         if (selectedPixelDetails.isForSaleByOwner) { 
             setEditableSalePrice('');
         } else { 
+            // If putting for sale in edit mode, prefill with current sale price or a default.
             setEditableSalePrice(selectedPixelDetails.salePrice || 50);
         }
     }
@@ -1263,4 +1272,3 @@ export default function PixelGrid() {
     </div>
   );
 }
-
