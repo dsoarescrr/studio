@@ -1,3 +1,4 @@
+
 // src/components/pixel-grid/PixelGrid.tsx
 'use client';
 
@@ -71,7 +72,7 @@ interface SelectedPixelDetails {
   x: number;
   y: number;
   owner?: string;
-  price?: number;
+  price?: number; // System price if isForSaleBySystem is true
   acquisitionDate?: string;
   lastModifiedDate?: string;
   color?: string;
@@ -84,14 +85,16 @@ interface SelectedPixelDetails {
   title?: string;
   tags?: string[];
   linkUrl?: string;
-  isForSaleByOwner?: boolean;
-  salePrice?: number;
+  isForSaleByOwner?: boolean; // If current user is selling
+  salePrice?: number; // Current user's sale price
   isFavorited?: boolean;
 }
 
 const MIN_ZOOM = 0.05;
 const MAX_ZOOM = 10;
 const ZOOM_SENSITIVITY_FACTOR = 1.1;
+const HEADER_HEIGHT_PX = 64;
+const BOTTOM_NAV_HEIGHT_PX = 64;
 
 
 export default function PixelGrid() {
@@ -102,7 +105,7 @@ export default function PixelGrid() {
   const [defaultView, setDefaultView] = useState<{ zoom: number; position: { x: number; y: number } } | null>(null);
 
   const didDragRef = useRef(false);
-  const dragThreshold = 5; // Minimum pixels moved to be considered a drag
+  const dragThreshold = 5;
 
 
   const [selectedPixelCoordsForDisplay, setSelectedPixelCoordsForDisplay] = useState<{ x: number; y: number } | null>(null);
@@ -194,11 +197,9 @@ export default function PixelGrid() {
           if (type === 'progress') {
             const workerProgress = Math.max(0, Math.min(100, Number((event.data as WorkerProgressMessage).progress) || 0));
             setOverallProgress(workerProgress * 0.5);
-            setProgressMessage(`A gerar mapa de pixels... ${(workerProgress * 0.5).toFixed(1)}%`);
           } else if (type === 'done') {
             setPixelBitmap(new Uint8Array((event.data as WorkerDoneMessage).bitmap));
             setWorkerStatus('drawing-canvas');
-            setProgressMessage("Mapa de pixels gerado. A desenhar no canvas...");
             setOverallProgress(50);
           } else if (type === 'error') {
             const errorMessage = (event.data as WorkerErrorMessage).error || 'Erro desconhecido no worker.';
@@ -281,7 +282,6 @@ export default function PixelGrid() {
           rowsDrawn += (endRow - startRow);
           const drawingProgress = (rowsDrawn / logicalGridRows) * 50;
           setOverallProgress(50 + drawingProgress);
-          setProgressMessage(`A desenhar pixels no canvas... ${(50 + drawingProgress).toFixed(1)}%`);
           resolve();
         });
       });
@@ -304,25 +304,21 @@ export default function PixelGrid() {
   }, [workerStatus, pixelBitmap, drawPixelsOnCanvas]);
 
 
-  // Effect to set initial zoom and position to fit the map
   useEffect(() => {
     if (typeof window !== 'undefined' && containerRef.current && canvasRef.current && mapData?.path2D && workerStatus === 'done' && !defaultView) {
-      const HEADER_HEIGHT_PX = 64;
-      const BOTTOM_NAV_HEIGHT_PX = 64;
       const containerWidth = containerRef.current.offsetWidth;
       const effectiveContainerHeight = window.innerHeight - HEADER_HEIGHT_PX - BOTTOM_NAV_HEIGHT_PX;
 
       if (containerWidth > 0 && effectiveContainerHeight > 0 && canvasDrawWidth > 0 && canvasDrawHeight > 0) {
-        let targetInitialZoom = 0.25;
+        let targetInitialZoom = 0.25; 
         const fitZoomX = containerWidth / canvasDrawWidth;
         const fitZoomY = effectiveContainerHeight / canvasDrawHeight;
         const zoomToFit = Math.min(fitZoomX, fitZoomY);
 
-        if (targetInitialZoom > zoomToFit) {
-          targetInitialZoom = zoomToFit * 0.95; // 5% padding
-        }
         
-        const calculatedZoom = Math.max(MIN_ZOOM, Math.min(targetInitialZoom, MAX_ZOOM));
+        targetInitialZoom = Math.max(MIN_ZOOM, Math.min(targetInitialZoom, zoomToFit * 0.95));
+        
+        const calculatedZoom = targetInitialZoom;
 
         const canvasContentWidth = canvasDrawWidth * calculatedZoom;
         const canvasContentHeight = canvasDrawHeight * calculatedZoom;
@@ -345,8 +341,6 @@ export default function PixelGrid() {
       setZoom(defaultView.zoom);
       setPosition(defaultView.position);
     } else if (typeof window !== 'undefined' && containerRef.current && canvasRef.current) { 
-        const HEADER_HEIGHT_PX = 64; 
-        const BOTTOM_NAV_HEIGHT_PX = 64;
         const containerWidth = containerRef.current.offsetWidth;
         const effectiveContainerHeight = window.innerHeight - HEADER_HEIGHT_PX - BOTTOM_NAV_HEIGHT_PX;
 
@@ -356,10 +350,7 @@ export default function PixelGrid() {
             const fitZoomY = effectiveContainerHeight / canvasDrawHeight;
             const zoomToFit = Math.min(fitZoomX, fitZoomY);
 
-            if (fallbackZoom > zoomToFit) {
-              fallbackZoom = zoomToFit * 0.95;
-            }
-            fallbackZoom = Math.max(MIN_ZOOM, Math.min(fallbackZoom, MAX_ZOOM));
+            fallbackZoom = Math.max(MIN_ZOOM, Math.min(fallbackZoom, zoomToFit * 0.95));
 
             const canvasContentWidth = canvasDrawWidth * fallbackZoom;
             const canvasContentHeight = canvasDrawHeight * fallbackZoom;
@@ -434,7 +425,7 @@ export default function PixelGrid() {
 
   const handleMouseDown = (e: React.MouseEvent) => {
     const targetElement = e.target as HTMLElement;
-    if (targetElement.closest('button, [data-dialog-content], [data-tooltip-content], [data-popover-content], label, a, [role="menuitem"], [role="tab"], input, textarea') && targetElement !== canvasRef.current) {
+     if (targetElement.closest('button, [data-dialog-content], [data-tooltip-content], [data-popover-content], label, a, [role="menuitem"], [role="tab"], input, textarea') && targetElement !== canvasRef.current) {
         return;
     }
     
@@ -499,39 +490,59 @@ export default function PixelGrid() {
       if (tempCtx && mapData.path2D && tempCtx.isPointInPath(mapData.path2D, svgCoordX, svgCoordY)) {
         setSelectedPixelCoordsForDisplay({ x: logicalCol, y: logicalRow });
 
-        const MOCK_OWNERS = ['User123', 'ArtistaPT', 'PixelFan', 'MatrixLord', MOCK_CURRENT_USER_ID, null, null];
-        const randomOwnerIndex = Math.floor(Math.random() * MOCK_OWNERS.length);
-        const randomOwner = MOCK_OWNERS[randomOwnerIndex];
-        const isOwned = randomOwner !== null;
-        const isOwnedByMe = isOwned && randomOwner === MOCK_CURRENT_USER_ID;
-        const isForSaleSystem = !isOwned;
-        const defaultColor = `#${Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')}`;
-        const mockIsForSaleByOwner = isOwnedByMe && Math.random() > 0.3;
+        const scenarioType = Math.random();
+        let mockDetails: SelectedPixelDetails;
 
-        const mockDetails: SelectedPixelDetails = {
-          x: logicalCol,
-          y: logicalRow,
-          owner: isOwned ? randomOwner : 'Disponível (Sistema)',
-          price: isForSaleSystem ? Math.floor(Math.random() * 50) + 10 : undefined,
-          acquisitionDate: isOwned ? new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 30).toLocaleDateString('pt-PT') : undefined,
-          lastModifiedDate: isOwned ? new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 7).toLocaleDateString('pt-PT') : undefined,
-          color: defaultColor,
-          history: isOwned ? [
-            { owner: randomOwner as string, date: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 30).toLocaleDateString('pt-PT'), price: Math.floor(Math.random() * 40) + 5 },
-            { owner: 'DonoAnterior', date: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 60).toLocaleDateString('pt-PT'), price: Math.floor(Math.random() * 30) + 5 }
-          ] : [],
-          isOwnedByCurrentUser: isOwnedByMe,
-          isForSaleBySystem: isForSaleSystem,
-          manualDescription: isOwnedByMe ? 'Este é uma descrição de exemplo do meu pixel.' : '',
-          pixelImageUrl: isOwnedByMe && Math.random() > 0.5 ? 'https://placehold.co/150x150.png' : undefined,
-          dataAiHint: 'pixel image',
-          title: isOwnedByMe ? `Pixel de ${randomOwner}` : undefined,
-          tags: isOwnedByMe ? ['arte', 'exemplo'] : [],
-          linkUrl: isOwnedByMe && Math.random() > 0.2 ? 'https://example.com' : undefined,
-          isForSaleByOwner: mockIsForSaleByOwner,
-          salePrice: mockIsForSaleByOwner ? Math.floor(Math.random() * 100) + 20 : undefined,
-          isFavorited: Math.random() > 0.7,
-        };
+        if (scenarioType < 0.33) { // Scenario 1: System-owned pixel
+            mockDetails = {
+                x: logicalCol,
+                y: logicalRow,
+                owner: 'Disponível (Sistema)',
+                price: Math.floor(Math.random() * 50) + 10,
+                color: `#${Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')}`,
+                isOwnedByCurrentUser: false,
+                isForSaleBySystem: true,
+                history: [],
+                isFavorited: Math.random() > 0.8,
+            };
+        } else if (scenarioType < 0.66) { // Scenario 2: Current user-owned pixel
+            const isForSale = Math.random() > 0.5;
+            mockDetails = {
+                x: logicalCol,
+                y: logicalRow,
+                owner: MOCK_CURRENT_USER_ID,
+                acquisitionDate: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 30).toLocaleDateString('pt-PT'),
+                lastModifiedDate: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 7).toLocaleDateString('pt-PT'),
+                color: `#${Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')}`,
+                history: [{ owner: MOCK_CURRENT_USER_ID, date: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 30).toLocaleDateString('pt-PT'), price: Math.floor(Math.random() * 40) + 5 }],
+                isOwnedByCurrentUser: true,
+                isForSaleBySystem: false,
+                manualDescription: 'Este é o meu pixel especial!',
+                pixelImageUrl: Math.random() > 0.6 ? 'https://placehold.co/150x150.png' : undefined,
+                dataAiHint: 'pixel image',
+                title: `Pixel de ${MOCK_CURRENT_USER_ID}`,
+                tags: ['meu', 'favorito'],
+                linkUrl: Math.random() > 0.5 ? 'https://dourado.com' : undefined,
+                isForSaleByOwner: isForSale,
+                salePrice: isForSale ? Math.floor(Math.random() * 100) + 20 : undefined,
+                isFavorited: Math.random() > 0.5,
+            };
+        } else { // Scenario 3: Other user-owned pixel
+            mockDetails = {
+                x: logicalCol,
+                y: logicalRow,
+                owner: `OutroUser${Math.floor(Math.random() * 1000)}`,
+                acquisitionDate: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 45).toLocaleDateString('pt-PT'),
+                lastModifiedDate: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 10).toLocaleDateString('pt-PT'),
+                color: `#${Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')}`,
+                history: [{ owner: `OutroUser${Math.floor(Math.random() * 1000)}`, date: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 45).toLocaleDateString('pt-PT'), price: Math.floor(Math.random() * 45) + 10 }],
+                isOwnedByCurrentUser: false,
+                isForSaleBySystem: false,
+                manualDescription: 'Um pixel interessante de outro utilizador.',
+                isFavorited: Math.random() > 0.7,
+            };
+        }
+
         setSelectedPixelDetails(mockDetails);
         setIsFavorite(mockDetails.isFavorited || false);
 
@@ -619,6 +630,7 @@ export default function PixelGrid() {
       linkUrl: editableLinkUrl,
       isForSaleByOwner: editableIsForSaleByOwner,
       salePrice: editableIsForSaleByOwner && !isNaN(salePriceNum) ? salePriceNum : undefined,
+      lastModifiedDate: new Date().toLocaleDateString('pt-PT'), // Update last modified date
     }) : null);
 
     toast({ title: "Alterações Guardadas", description: "As alterações ao seu pixel foram (simuladamente) guardadas." });
@@ -645,34 +657,46 @@ export default function PixelGrid() {
     });
   };
 
+  const handleBuyPixelFromSystem = () => {
+    if (!selectedPixelDetails || !selectedPixelDetails.isForSaleBySystem || !selectedPixelDetails.price) return;
+
+    setSelectedPixelDetails(prev => ({
+        ...prev!,
+        owner: MOCK_CURRENT_USER_ID,
+        isOwnedByCurrentUser: true,
+        isForSaleBySystem: false,
+        price: undefined, // System price is removed
+        acquisitionDate: new Date().toLocaleDateString('pt-PT'),
+        lastModifiedDate: new Date().toLocaleDateString('pt-PT'),
+        color: prev?.color || `#${Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')}`, // Keep existing or set random
+        history: [{ owner: MOCK_CURRENT_USER_ID, date: new Date().toLocaleDateString('pt-PT'), price: selectedPixelDetails.price }],
+        manualDescription: 'Acabei de adquirir este pixel!',
+        title: `Pixel de ${MOCK_CURRENT_USER_ID}`,
+        isForSaleByOwner: false, // Not for sale by owner initially
+        salePrice: undefined,
+    }));
+    toast({ title: "Pixel Comprado!", description: `Parabéns, o pixel (${selectedPixelDetails.x}, ${selectedPixelDetails.y}) é seu!`});
+  };
+
   const handleToggleForSaleByOwner = () => {
     if (!selectedPixelDetails || !selectedPixelDetails.isOwnedByCurrentUser) return;
 
     const currentlyForSale = selectedPixelDetails.isForSaleByOwner;
+    const newSaleStatus = !currentlyForSale;
     
     setSelectedPixelDetails(prev => {
         if (!prev) return null;
-        const newSaleStatus = !prev.isForSaleByOwner;
         return {
             ...prev,
             isForSaleByOwner: newSaleStatus,
             salePrice: newSaleStatus ? (prev.salePrice || 50) : undefined, // Keep old price or default to 50
+            lastModifiedDate: new Date().toLocaleDateString('pt-PT'),
         };
     });
-
-    if (editMode) {
-        setEditableIsForSaleByOwner(prev => !prev);
-        if (selectedPixelDetails.isForSaleByOwner) { 
-            setEditableSalePrice('');
-        } else { 
-            // If putting for sale in edit mode, prefill with current sale price or a default.
-            setEditableSalePrice(selectedPixelDetails.salePrice || 50);
-        }
-    }
     
     toast({
-        title: !currentlyForSale ? "Pixel Colocado à Venda" : "Pixel Retirado da Venda",
-        description: `O seu pixel (${selectedPixelDetails.x}, ${selectedPixelDetails.y}) foi ${!currentlyForSale ? 'colocado à venda.' : 'retirado da venda.'}`,
+        title: newSaleStatus ? "Pixel Colocado à Venda" : "Pixel Retirado da Venda",
+        description: `O seu pixel (${selectedPixelDetails.x}, ${selectedPixelDetails.y}) foi ${newSaleStatus ? `colocado à venda por ${selectedPixelDetails.salePrice || 50} créditos.` : 'retirado da venda.'}`,
     });
   };
 
@@ -958,28 +982,29 @@ export default function PixelGrid() {
                     </Tooltip>
                 </TooltipProvider>
                 <div className="flex gap-2 sm:gap-1.5 flex-wrap justify-center sm:justify-end">
-                    {selectedPixelDetails.isForSaleBySystem && !selectedPixelDetails.isOwnedByCurrentUser && (
-                      <Button size="sm" disabled={!selectedPixelDetails.price} className="bg-green-600 hover:bg-green-700 text-white">
+                    {selectedPixelDetails.isForSaleBySystem && !selectedPixelDetails.isOwnedByCurrentUser && selectedPixelDetails.price && (
+                      <Button size="sm" onClick={handleBuyPixelFromSystem} className="bg-green-600 hover:bg-green-700 text-white">
                         <ShoppingCart className="mr-1.5 h-3.5 w-3.5" /> Comprar ({selectedPixelDetails.price} Créditos)
                       </Button>
                     )}
-                    {selectedPixelDetails.isOwnedByCurrentUser && selectedPixelDetails.isForSaleByOwner && (
-                      <Button size="sm" variant="outline" onClick={handleToggleForSaleByOwner} className="border-red-500 text-red-500 hover:bg-red-500/10">
-                         <BadgePercent className="mr-1.5 h-3.5 w-3.5" /> Retirar da Venda
-                      </Button>
-                    )}
-                     {selectedPixelDetails.isOwnedByCurrentUser && !selectedPixelDetails.isForSaleByOwner && (
-                      <Button size="sm" variant="outline" onClick={handleToggleForSaleByOwner} className="border-green-500 text-green-500 hover:bg-green-500/10">
-                         <BadgePercent className="mr-1.5 h-3.5 w-3.5" /> Colocar à Venda
-                      </Button>
-                    )}
                     {selectedPixelDetails.isOwnedByCurrentUser && (
-                      <Button size="sm" onClick={() => setEditMode(true)} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                          <Edit3 className="mr-1.5 h-3.5 w-3.5" /> Editar Pixel
-                      </Button>
+                      <>
+                        {selectedPixelDetails.isForSaleByOwner ? (
+                          <Button size="sm" variant="outline" onClick={handleToggleForSaleByOwner} className="border-red-500 text-red-500 hover:bg-red-500/10">
+                             <BadgePercent className="mr-1.5 h-3.5 w-3.5" /> Retirar da Venda
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="outline" onClick={handleToggleForSaleByOwner} className="border-green-500 text-green-500 hover:bg-green-500/10">
+                             <BadgePercent className="mr-1.5 h-3.5 w-3.5" /> Colocar à Venda
+                          </Button>
+                        )}
+                        <Button size="sm" onClick={() => setEditMode(true)} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                            <Edit3 className="mr-1.5 h-3.5 w-3.5" /> Editar Pixel
+                        </Button>
+                      </>
                     )}
-                    {!selectedPixelDetails.isForSaleBySystem && !selectedPixelDetails.isOwnedByCurrentUser && selectedPixelDetails.owner !== 'Disponível (Sistema)' && !selectedPixelDetails.isForSaleByOwner && (
-                        <Button variant="secondary" size="sm" disabled={!selectedPixelDetails}>Fazer Oferta</Button>
+                    {!selectedPixelDetails.isForSaleBySystem && !selectedPixelDetails.isOwnedByCurrentUser && (
+                        <Button variant="secondary" size="sm" disabled>Fazer Oferta</Button>
                     )}
                 </div>
               </DialogFooter>
@@ -1257,4 +1282,3 @@ export default function PixelGrid() {
     </div>
   );
 }
-
