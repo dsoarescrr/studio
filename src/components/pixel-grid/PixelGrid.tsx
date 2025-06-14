@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ZoomIn, ZoomOut, Expand, Search, Sparkles, MousePointer2, Palette, Info, User, CalendarDays, History as HistoryIcon, DollarSign, ShoppingCart, Edit3 } from 'lucide-react';
+import { ZoomIn, ZoomOut, Expand, Search, Sparkles, MousePointer2, Palette, Info, User, CalendarDays, History as HistoryIcon, DollarSign, ShoppingCart, Edit3, Paintbrush, FileText, Upload, Save, Image as ImageIcon, XCircle } from 'lucide-react';
 import PortugalMapSvg, { type MapData } from './PortugalMapSvg';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -20,9 +20,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Progress } from '@/components/ui/progress';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription as CardDescriptionElement } from "@/components/ui/card"; // Renamed CardDescription
+import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import Image from 'next/image';
+
 
 const SVG_VIEWBOX_WIDTH = 12969;
 const SVG_VIEWBOX_HEIGHT = 26674;
@@ -68,6 +72,8 @@ interface SelectedPixelDetails {
   history?: Array<{ owner: string; date: string; price?: number }>;
   isOwnedByCurrentUser?: boolean;
   isForSale?: boolean;
+  manualDescription?: string;
+  pixelImageUrl?: string;
 }
 
 export default function PixelGrid() {
@@ -97,6 +103,14 @@ export default function PixelGrid() {
   const [workerErrorMessage, setWorkerErrorMessage] = useState<string | null>(null);
   
   const workerRef = useRef<Worker | null>(null);
+
+  // Edit mode states
+  const [editMode, setEditMode] = useState(false);
+  const [editableColor, setEditableColor] = useState('');
+  const [editableManualDescription, setEditableManualDescription] = useState('');
+  const [editablePixelImageFile, setEditablePixelImageFile] = useState<File | null>(null);
+  const [editablePixelImagePreview, setEditablePixelImagePreview] = useState<string | null>(null);
+
 
   const handleMapDataLoaded = useCallback((data: MapData) => {
     if (data && data.pathStrings && data.pathStrings.length > 0 && data.path2D) {
@@ -286,7 +300,7 @@ export default function PixelGrid() {
     let animationFrameId: number | undefined;
     let timeoutId: NodeJS.Timeout | undefined;
 
-    if (isGeneratingDesc && showPixelModal) {
+    if (isGeneratingDesc && showPixelModal && !editMode) {
         setAiModalProgressValue(0); 
         let currentProgress = 0;
         const animate = () => {
@@ -301,16 +315,14 @@ export default function PixelGrid() {
         };
         animationFrameId = requestAnimationFrame(animate);
     } else {
-        if (!isGeneratingDesc && showPixelModal) {
+        if (!isGeneratingDesc && showPixelModal && !editMode) {
              if (pixelDescription) {
                 setAiModalProgressValue(100); 
                 timeoutId = setTimeout(() => {
-                    // Do not close modal here, let user decide
-                    // if (showPixelModal) setShowPixelModal(false); 
                     setAiModalProgressValue(0); 
                 }, 1000); 
              }
-        } else if (!showPixelModal) {
+        } else if (!showPixelModal || editMode) {
             setAiModalProgressValue(0);
         }
     }
@@ -318,7 +330,7 @@ export default function PixelGrid() {
         if (animationFrameId) cancelAnimationFrame(animationFrameId);
         if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [isGeneratingDesc, showPixelModal, pixelDescription, initialAiProgressTrigger]); 
+  }, [isGeneratingDesc, showPixelModal, pixelDescription, initialAiProgressTrigger, editMode]); 
 
   useEffect(() => {
     if (workerStatus === 'error') {
@@ -405,6 +417,7 @@ export default function PixelGrid() {
         const isOwned = randomOwner !== null;
         const isOwnedByMe = isOwned && randomOwner === MOCK_CURRENT_USER_ID;
         const isForSale = !isOwned;
+        const defaultColor = `#${Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')}`;
 
         const mockDetails: SelectedPixelDetails = {
           x: logicalCol,
@@ -413,17 +426,27 @@ export default function PixelGrid() {
           price: isForSale ? Math.floor(Math.random() * 50) + 10 : undefined,
           acquisitionDate: isOwned ? new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 30).toLocaleDateString('pt-PT') : undefined,
           lastModifiedDate: isOwned ? new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 7).toLocaleDateString('pt-PT') : undefined,
-          color: `#${Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')}`,
+          color: defaultColor,
           history: isOwned ? [
             { owner: randomOwner as string, date: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 30).toLocaleDateString('pt-PT'), price: Math.floor(Math.random() * 40) + 5 },
             { owner: 'DonoAnterior', date: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 60).toLocaleDateString('pt-PT'), price: Math.floor(Math.random() * 30) + 5 }
           ] : [],
           isOwnedByCurrentUser: isOwnedByMe,
           isForSale: isForSale,
+          manualDescription: isOwnedByMe ? 'Esta é uma descrição de exemplo do meu pixel.' : '',
+          pixelImageUrl: isOwnedByMe && Math.random() > 0.5 ? 'https://placehold.co/150x150.png' : undefined,
         };
         setSelectedPixelDetails(mockDetails);
+        
+        // Initialize editable states if owned by current user
+        setEditableColor(mockDetails.color || '#FFFFFF');
+        setEditableManualDescription(mockDetails.manualDescription || '');
+        setEditablePixelImagePreview(mockDetails.pixelImageUrl || null);
+        setEditablePixelImageFile(null);
+
         setShowPixelModal(true);
-        setPixelDescription(null);
+        setPixelDescription(null); // Reset AI description
+        setEditMode(false); // Start in info mode
         setInitialAiProgressTrigger(prev => prev + 1);
       } else {
         setSelectedPixelCoordsForDisplay(null);
@@ -457,6 +480,36 @@ export default function PixelGrid() {
         setIsGeneratingDesc(false);
     }
   }, [selectedPixelDetails, toast]);
+
+  const handlePixelImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      const file = event.target.files[0];
+      setEditablePixelImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setEditablePixelImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSaveChanges = () => {
+    if (!selectedPixelDetails) return;
+    // Simulate saving
+    console.log("Saving changes:", {
+      color: editableColor,
+      manualDescription: editableManualDescription,
+      imageFile: editablePixelImageFile ? editablePixelImageFile.name : null,
+    });
+    setSelectedPixelDetails(prev => prev ? ({
+      ...prev,
+      color: editableColor,
+      manualDescription: editableManualDescription,
+      pixelImageUrl: editablePixelImagePreview || prev.pixelImageUrl,
+    }) : null);
+    toast({ title: "Alterações Guardadas", description: "As alterações ao seu pixel foram (simuladamente) guardadas." });
+    setEditMode(false);
+  };
 
   const progressText = 
     workerStatus === 'error' ? "Erro" : 
@@ -522,115 +575,219 @@ export default function PixelGrid() {
               setPixelDescription(null); 
               setIsGeneratingDesc(false); 
               setAiModalProgressValue(0);
+              setEditMode(false); // Ensure edit mode is reset
           }
       }}>
         <DialogContent className="sm:max-w-md bg-card text-card-foreground" data-dialog-content pointerEvents="auto">
-          <DialogHeader>
-            <DialogTitle className="font-headline flex items-center text-xl">
-                Pixel ({selectedPixelDetails?.x}, {selectedPixelDetails?.y})
-            </DialogTitle>
-            <DialogDescription>
-              Informações detalhadas e ações disponíveis para este pixel.
-            </DialogDescription>
-          </DialogHeader>
-          
-          {selectedPixelDetails && (
-            <ScrollArea className="max-h-[calc(100vh-250px)] pr-3">
-            <div className="space-y-3 py-2">
-              <Card className="bg-background/50">
-                <CardHeader className="pb-2 pt-3 px-4">
-                    <CardTitle className="text-md font-headline flex items-center text-primary">
-                        <Info className="h-4 w-4 mr-2" /> Informações do Pixel
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm space-y-1.5 px-4 pb-3">
-                  <div className="flex justify-between"><span>Proprietário:</span> <Badge variant={selectedPixelDetails.owner === 'Disponível' ? "secondary" : "outline"} className="font-code">{selectedPixelDetails.owner}</Badge></div>
-                  {selectedPixelDetails.isForSale && selectedPixelDetails.price && (
-                    <div className="flex justify-between items-center"><span>Preço:</span> <span className="font-code flex items-center">{selectedPixelDetails.price} Créditos <DollarSign className="inline h-3.5 w-3.5 ml-1" /></span></div>
-                  )}
-                  {selectedPixelDetails.acquisitionDate && <div className="flex justify-between"><span>Adquirido em:</span> <span className="font-code">{selectedPixelDetails.acquisitionDate}</span></div>}
-                  {selectedPixelDetails.lastModifiedDate && <div className="flex justify-between"><span>Modificado em:</span> <span className="font-code">{selectedPixelDetails.lastModifiedDate}</span></div>}
-                  <div className="flex justify-between items-center">
-                    <span>Cor Atual:</span>
-                    <div className="flex items-center">
-                      <div style={{ backgroundColor: selectedPixelDetails.color }} className="w-4 h-4 rounded-sm mr-1.5 border border-border"></div>
-                      <span className="font-code">{selectedPixelDetails.color}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {(isGeneratingDesc || pixelDescription || (aiModalProgressValue > 0 && aiModalProgressValue < 100 && !pixelDescription && showPixelModal)) && (
+          {!editMode && selectedPixelDetails && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="font-headline flex items-center text-xl">
+                    Pixel ({selectedPixelDetails.x}, {selectedPixelDetails.y})
+                </DialogTitle>
+                <CardDescriptionElement>
+                  Informações detalhadas e ações disponíveis para este pixel.
+                </CardDescriptionElement>
+              </DialogHeader>
+              <ScrollArea className="max-h-[calc(100vh-250px)] pr-3">
+              <div className="space-y-3 py-2">
                 <Card className="bg-background/50">
                   <CardHeader className="pb-2 pt-3 px-4">
-                    <CardTitle className="text-md font-headline flex items-center text-primary">
-                        <Sparkles className="h-4 w-4 mr-2" /> Descrição por IA
-                    </CardTitle>
+                      <CardTitle className="text-md font-headline flex items-center text-primary">
+                          <Info className="h-4 w-4 mr-2" /> Informações do Pixel
+                      </CardTitle>
                   </CardHeader>
-                  <CardContent className="px-4 pb-3">
-                    {(isGeneratingDesc || (aiModalProgressValue > 0 && aiModalProgressValue < 100 && !pixelDescription && showPixelModal)) && (
-                      <div className="flex flex-col items-center justify-center my-2">
-                        <Sparkles className="h-6 w-6 text-primary animate-pulse mb-1" />
-                        <p className="text-xs font-headline">A IA está a gerar a descrição...</p>
-                        <Progress value={aiModalProgressValue} className="w-full mt-1 h-1.5" />
+                  <CardContent className="text-sm space-y-1.5 px-4 pb-3">
+                    <div className="flex justify-between"><span>Proprietário:</span> <Badge variant={selectedPixelDetails.owner === 'Disponível' ? "secondary" : "outline"} className="font-code">{selectedPixelDetails.owner}</Badge></div>
+                    {selectedPixelDetails.isForSale && selectedPixelDetails.price && (
+                      <div className="flex justify-between items-center"><span>Preço:</span> <span className="font-code flex items-center">{selectedPixelDetails.price} Créditos <DollarSign className="inline h-3.5 w-3.5 ml-1" /></span></div>
+                    )}
+                    {selectedPixelDetails.acquisitionDate && <div className="flex justify-between"><span>Adquirido em:</span> <span className="font-code">{selectedPixelDetails.acquisitionDate}</span></div>}
+                    {selectedPixelDetails.lastModifiedDate && <div className="flex justify-between"><span>Modificado em:</span> <span className="font-code">{selectedPixelDetails.lastModifiedDate}</span></div>}
+                    <div className="flex justify-between items-center">
+                      <span>Cor Atual:</span>
+                      <div className="flex items-center">
+                        <div style={{ backgroundColor: selectedPixelDetails.color }} className="w-4 h-4 rounded-sm mr-1.5 border border-border"></div>
+                        <span className="font-code">{selectedPixelDetails.color}</span>
+                      </div>
+                    </div>
+                    {selectedPixelDetails.manualDescription && (
+                       <div className="pt-1">
+                          <span className="font-semibold">Descrição:</span>
+                          <p className="text-xs text-muted-foreground italic">&quot;{selectedPixelDetails.manualDescription}&quot;</p>
+                       </div>
+                    )}
+                    {selectedPixelDetails.pixelImageUrl && (
+                      <div className="pt-1">
+                        <span className="font-semibold">Imagem do Pixel:</span>
+                        <div className="mt-1 relative w-24 h-24 rounded border border-border overflow-hidden">
+                          <Image src={selectedPixelDetails.pixelImageUrl} alt="Imagem do Pixel" layout="fill" objectFit="cover" data-ai-hint="pixel image"/>
+                        </div>
                       </div>
                     )}
-                    {pixelDescription && (aiModalProgressValue === 0 || aiModalProgressValue === 100) && showPixelModal && (
-                      <p className="text-xs text-foreground italic">&quot;{pixelDescription}&quot;</p>
-                    )}
-                    {!pixelDescription && !isGeneratingDesc && (aiModalProgressValue === 0 || aiModalProgressValue === 100) && showPixelModal && (
-                       <Button variant="outline" size="sm" onClick={handleGenerateDescription} disabled={!selectedPixelDetails} className="w-full mt-2">
-                          <Sparkles className="mr-1.5 h-3.5 w-3.5"/>
-                          Gerar Descrição com IA
-                       </Button>
-                    )}
                   </CardContent>
                 </Card>
-              )}
 
-              {selectedPixelDetails.history && selectedPixelDetails.history.length > 0 && (
-                <Card className="bg-background/50">
-                  <CardHeader className="pb-2 pt-3 px-4">
-                    <CardTitle className="text-md font-headline flex items-center text-primary">
-                        <HistoryIcon className="h-4 w-4 mr-2" /> Histórico de Proprietários
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="px-4 pb-3">
-                    <ScrollArea className="h-20">
-                      <ul className="text-xs space-y-1 font-code">
-                        {selectedPixelDetails.history.map((entry, index) => (
-                          <li key={index} className="flex justify-between">
-                            <span>{entry.owner} ({entry.date})</span>
-                            <span>{entry.price ? `${entry.price}c` : ''}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </ScrollArea>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-            </ScrollArea>
+                {(isGeneratingDesc || pixelDescription || (aiModalProgressValue > 0 && aiModalProgressValue < 100 && !pixelDescription && showPixelModal)) && (
+                  <Card className="bg-background/50">
+                    <CardHeader className="pb-2 pt-3 px-4">
+                      <CardTitle className="text-md font-headline flex items-center text-primary">
+                          <Sparkles className="h-4 w-4 mr-2" /> Descrição por IA
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="px-4 pb-3">
+                      {(isGeneratingDesc || (aiModalProgressValue > 0 && aiModalProgressValue < 100 && !pixelDescription && showPixelModal)) && (
+                        <div className="flex flex-col items-center justify-center my-2">
+                          <Sparkles className="h-6 w-6 text-primary animate-pulse mb-1" />
+                          <p className="text-xs font-headline">A IA está a gerar a descrição...</p>
+                          <Progress value={aiModalProgressValue} className="w-full mt-1 h-1.5" />
+                        </div>
+                      )}
+                      {pixelDescription && (aiModalProgressValue === 0 || aiModalProgressValue === 100) && showPixelModal && (
+                        <p className="text-xs text-foreground italic">&quot;{pixelDescription}&quot;</p>
+                      )}
+                      {!pixelDescription && !isGeneratingDesc && (aiModalProgressValue === 0 || aiModalProgressValue === 100) && showPixelModal && (
+                         <Button variant="outline" size="sm" onClick={handleGenerateDescription} disabled={!selectedPixelDetails} className="w-full mt-2">
+                            <Sparkles className="mr-1.5 h-3.5 w-3.5"/>
+                            Gerar Descrição com IA
+                         </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {selectedPixelDetails.history && selectedPixelDetails.history.length > 0 && (
+                  <Card className="bg-background/50">
+                    <CardHeader className="pb-2 pt-3 px-4">
+                      <CardTitle className="text-md font-headline flex items-center text-primary">
+                          <HistoryIcon className="h-4 w-4 mr-2" /> Histórico de Proprietários
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="px-4 pb-3">
+                      <ScrollArea className="h-20">
+                        <ul className="text-xs space-y-1 font-code">
+                          {selectedPixelDetails.history.map((entry, index) => (
+                            <li key={index} className="flex justify-between">
+                              <span>{entry.owner} ({entry.date})</span>
+                              <span>{entry.price ? `${entry.price}c` : ''}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </ScrollArea>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+              </ScrollArea>
+              <DialogFooter className="gap-2 sm:gap-1.5 flex-wrap justify-center pt-3 sm:justify-end">
+                {selectedPixelDetails.isForSale && !selectedPixelDetails.isOwnedByCurrentUser && (
+                  <Button size="sm" disabled={!selectedPixelDetails} className="bg-green-600 hover:bg-green-700 text-white">
+                    <ShoppingCart className="mr-1.5 h-3.5 w-3.5" /> Comprar ({selectedPixelDetails.price} Créditos)
+                  </Button>
+                )}
+                {selectedPixelDetails.isOwnedByCurrentUser && (
+                  <Button size="sm" onClick={() => setEditMode(true)} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                      <Edit3 className="mr-1.5 h-3.5 w-3.5" /> Editar Pixel
+                  </Button>
+                )}
+                {selectedPixelDetails && !selectedPixelDetails.isForSale && !selectedPixelDetails.isOwnedByCurrentUser && selectedPixelDetails.owner !== 'Disponível' && (
+                     <Button variant="secondary" size="sm" disabled={!selectedPixelDetails}>Fazer Oferta</Button>
+                )}
+              </DialogFooter>
+            </>
           )}
+          {editMode && selectedPixelDetails && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="font-headline flex items-center text-xl">
+                    <Edit3 className="h-5 w-5 mr-2 text-accent" /> Editando Pixel ({selectedPixelDetails.x}, {selectedPixelDetails.y})
+                </DialogTitle>
+                <CardDescriptionElement>
+                  Modifique as propriedades do seu pixel.
+                </CardDescriptionElement>
+              </DialogHeader>
+              <ScrollArea className="max-h-[calc(100vh-250px)] pr-3">
+                <div className="space-y-4 py-2">
+                  <Card className="bg-background/50">
+                    <CardHeader className="pb-2 pt-3 px-4">
+                      <CardTitle className="text-md font-headline flex items-center text-primary">
+                        <Paintbrush className="h-4 w-4 mr-2" /> Nova Cor
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="px-4 pb-3">
+                      <Input
+                        type="text"
+                        placeholder="Ex: #FF0000"
+                        value={editableColor}
+                        onChange={(e) => setEditableColor(e.target.value)}
+                        className="font-code"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">Insira um código de cor hexadecimal.</p>
+                    </CardContent>
+                  </Card>
 
-          <DialogFooter className="gap-2 sm:gap-1.5 flex-wrap justify-center pt-3 sm:justify-end">
-            {/* The "Descrição IA" button was here and has been removed as per user request.
-                A new button to trigger AI description is now inside the AI description card itself if no description exists.
-            */}
-            {selectedPixelDetails?.isForSale && !selectedPixelDetails.isOwnedByCurrentUser && (
-              <Button size="sm" disabled={!selectedPixelDetails} className="bg-green-600 hover:bg-green-700 text-white">
-                <ShoppingCart className="mr-1.5 h-3.5 w-3.5" /> Comprar ({selectedPixelDetails.price} Créditos)
-              </Button>
-            )}
-            {selectedPixelDetails?.isOwnedByCurrentUser && (
-              <Button size="sm" disabled={!selectedPixelDetails} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                  <Edit3 className="mr-1.5 h-3.5 w-3.5" /> Editar Pixel
-              </Button>
-            )}
-            {selectedPixelDetails && !selectedPixelDetails.isForSale && !selectedPixelDetails.isOwnedByCurrentUser && selectedPixelDetails.owner !== 'Disponível' && (
-                 <Button variant="secondary" size="sm" disabled={!selectedPixelDetails}>Fazer Oferta</Button>
-            )}
-          </DialogFooter>
+                  <Card className="bg-background/50">
+                    <CardHeader className="pb-2 pt-3 px-4">
+                      <CardTitle className="text-md font-headline flex items-center text-primary">
+                        <FileText className="h-4 w-4 mr-2" /> Descrição Manual
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="px-4 pb-3">
+                      <Textarea
+                        placeholder="Descreva o seu pixel..."
+                        value={editableManualDescription}
+                        onChange={(e) => setEditableManualDescription(e.target.value)}
+                        rows={3}
+                      />
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-background/50">
+                    <CardHeader className="pb-2 pt-3 px-4">
+                      <CardTitle className="text-md font-headline flex items-center text-primary">
+                        <Upload className="h-4 w-4 mr-2" /> Imagem do Pixel
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="px-4 pb-3 space-y-2">
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePixelImageUpload}
+                        className="text-xs"
+                      />
+                      {editablePixelImagePreview && (
+                        <div className="mt-2 relative w-24 h-24 rounded border border-border overflow-hidden group">
+                          <Image src={editablePixelImagePreview} alt="Pré-visualização da Imagem" layout="fill" objectFit="cover" data-ai-hint="pixel image preview"/>
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => {
+                              setEditablePixelImageFile(null);
+                              setEditablePixelImagePreview(null);
+                              if (canvasRef.current) { // Reset file input
+                                const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+                                if (fileInput) fileInput.value = '';
+                              }
+                            }}
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                       <p className="text-xs text-muted-foreground">Envie uma imagem para associar a este pixel (simulado).</p>
+                    </CardContent>
+                  </Card>
+                </div>
+              </ScrollArea>
+              <DialogFooter className="gap-2 pt-3">
+                 <Button variant="outline" onClick={() => setEditMode(false)}>Cancelar</Button>
+                 <Button onClick={handleSaveChanges} className="bg-green-600 hover:bg-green-700 text-white">
+                    <Save className="mr-1.5 h-3.5 w-3.5" /> Guardar Alterações
+                  </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -686,9 +843,9 @@ export default function PixelGrid() {
           <DialogContent className="sm:max-w-md bg-card" data-dialog-content pointerEvents="auto">
             <DialogHeader>
               <DialogTitle className="font-headline">Ações Rápidas</DialogTitle>
-              <DialogDescription>
+              <CardDescriptionElement>
                 Selecione uma ação para interagir com o universo pixel.
-              </DialogDescription>
+              </CardDescriptionElement>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <Button pointerEvents="auto" variant="outline"><Search className="mr-2 h-4 w-4" />Explorar Pixel</Button>
