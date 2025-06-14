@@ -307,22 +307,17 @@ export default function PixelGrid() {
   // Effect to set initial zoom and position to fit the map
   useEffect(() => {
     if (typeof window !== 'undefined' && containerRef.current && canvasRef.current && mapData?.path2D && workerStatus === 'done' && !defaultView) {
+      const HEADER_HEIGHT_PX = 64;
+      const BOTTOM_NAV_HEIGHT_PX = 64;
       const containerWidth = containerRef.current.offsetWidth;
-      
-      const HEADER_HEIGHT_PX = 64; // UserProfileHeader h-16 (4rem * 16px/rem)
-      const BOTTOM_NAV_HEIGHT_PX = 64; // From --bottom-nav-height in BottomNavBar.tsx
-
-      // Calculate effective container height based on window height and fixed elements
       const effectiveContainerHeight = window.innerHeight - HEADER_HEIGHT_PX - BOTTOM_NAV_HEIGHT_PX;
 
-
       if (containerWidth > 0 && effectiveContainerHeight > 0 && canvasDrawWidth > 0 && canvasDrawHeight > 0) {
+        let targetInitialZoom = 0.25;
         const fitZoomX = containerWidth / canvasDrawWidth;
         const fitZoomY = effectiveContainerHeight / canvasDrawHeight;
-        let zoomToFit = Math.min(fitZoomX, fitZoomY); 
+        const zoomToFit = Math.min(fitZoomX, fitZoomY);
 
-        let targetInitialZoom = 0.25; 
-        // If 0.25 is too large to fit the map, use the fitZoom instead, with some padding
         if (targetInitialZoom > zoomToFit) {
           targetInitialZoom = zoomToFit * 0.95; // 5% padding
         }
@@ -350,18 +345,17 @@ export default function PixelGrid() {
       setZoom(defaultView.zoom);
       setPosition(defaultView.position);
     } else if (typeof window !== 'undefined' && containerRef.current && canvasRef.current) { 
-        const containerWidth = containerRef.current.offsetWidth;
-        
         const HEADER_HEIGHT_PX = 64; 
         const BOTTOM_NAV_HEIGHT_PX = 64;
+        const containerWidth = containerRef.current.offsetWidth;
         const effectiveContainerHeight = window.innerHeight - HEADER_HEIGHT_PX - BOTTOM_NAV_HEIGHT_PX;
 
         if (containerWidth > 0 && effectiveContainerHeight > 0 && canvasDrawWidth > 0 && canvasDrawHeight > 0) {
+            let fallbackZoom = 0.25;
             const fitZoomX = containerWidth / canvasDrawWidth;
             const fitZoomY = effectiveContainerHeight / canvasDrawHeight;
-            let zoomToFit = Math.min(fitZoomX, fitZoomY);
-            
-            let fallbackZoom = 0.25;
+            const zoomToFit = Math.min(fitZoomX, fitZoomY);
+
             if (fallbackZoom > zoomToFit) {
               fallbackZoom = zoomToFit * 0.95;
             }
@@ -375,7 +369,6 @@ export default function PixelGrid() {
             };
             setZoom(fallbackZoom);
             setPosition(fallbackPosition);
-            // Set defaultView here as well if it wasn't set, so subsequent resets use it.
             setDefaultView({ zoom: fallbackZoom, position: fallbackPosition });
         }
     }
@@ -440,12 +433,9 @@ export default function PixelGrid() {
 
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    // Allow drag initiation on the container or the canvas itself.
-    // No need to check for specific interactive elements here as the main check is if it's NOT a button etc.
-    // If clicking on the canvas, it's fine to initiate drag. Pixel selection will be handled by onClick + didDragRef.
     const targetElement = e.target as HTMLElement;
     if (targetElement.closest('button, [data-dialog-content], [data-tooltip-content], [data-popover-content], label, a, [role="menuitem"], [role="tab"], input, textarea') && targetElement !== canvasRef.current) {
-        return; // Don't drag if clicking on specific UI controls inside the grid container (but not the canvas)
+        return;
     }
     
     setIsDragging(true);
@@ -472,11 +462,10 @@ export default function PixelGrid() {
 
   const handleMouseUpOrLeave = () => {
     setIsDragging(false);
-    // didDragRef is reset in handleCanvasClick if a click occurs, or on next mousedown
   };
 
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
-    if (didDragRef.current) { // If a drag just happened, don't open modal
+    if (didDragRef.current) { 
         didDragRef.current = false; 
         return;
     }
@@ -1268,3 +1257,4 @@ export default function PixelGrid() {
     </div>
   );
 }
+
