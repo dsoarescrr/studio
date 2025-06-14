@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, Lock, Award, Star, Sparkles, Palette, MapPin, Crown, Edit3, MessageSquare, Rocket, ShieldCheck, Compass, Puzzle, Users, Eye, Map } from "lucide-react"; // Added Map icon
+import { CheckCircle2, Lock, Award, Star, Sparkles, Palette, MapPin, Crown, Edit3, MessageSquare, Rocket, ShieldCheck, Compass, Puzzle, Users, Eye, Map, Hourglass, Share2, Megaphone, Activity } from "lucide-react";
 
 type AchievementTier = {
   level: number;
@@ -16,7 +16,7 @@ type AchievementTier = {
   isUnlocked: boolean;
 };
 
-type AchievementCategory = 'pixel' | 'community' | 'exploration' | 'collection' | 'moderation';
+type AchievementCategory = 'pixel' | 'community' | 'exploration' | 'collection' | 'moderation' | 'engagement';
 
 type Achievement = {
   id: string;
@@ -119,6 +119,30 @@ const achievementsData: Achievement[] = [
       { level: 4, description: "Recebeu 20 'gostos' nos seus comentários", xpReward: 200, creditsReward: 50, isUnlocked: false },
     ],
   },
+   {
+    id: "pixel_ambassador",
+    name: "Embaixador dos Pixels",
+    overallDescription: "Traga os seus amigos para o Pixel Universe e expanda a nossa comunidade.",
+    icon: <Share2 className="h-7 w-7" />,
+    category: 'community',
+    tiers: [
+      { level: 1, description: "Convidou 1 amigo que se registou", xpReward: 50, creditsReward: 10, isUnlocked: false },
+      { level: 2, description: "Convidou 5 amigos que se registaram", xpReward: 150, creditsReward: 30, isUnlocked: false },
+      { level: 3, description: "Convidou 10 amigos (Catalisador Comunitário)", xpReward: 300, creditsReward: 75, isUnlocked: false },
+    ],
+  },
+  {
+    id: "social_sharer",
+    name: "Arauto das Redes",
+    overallDescription: "Partilhe as suas criações e conquistas do Pixel Universe com o mundo!",
+    icon: <Megaphone className="h-7 w-7" />,
+    category: 'community',
+    tiers: [
+      { level: 1, description: "Partilhou o Pixel Universe 1 vez numa rede social", xpReward: 25, creditsReward: 5, isUnlocked: false },
+      { level: 2, description: "Partilhou o Pixel Universe 5 vezes", xpReward: 70, creditsReward: 15, isUnlocked: false },
+      { level: 3, description: "Partilhou o Pixel Universe 10 vezes (Mestre da Partilha)", xpReward: 150, creditsReward: 40, isUnlocked: false },
+    ],
+  },
   {
     id: "community_star",
     name: "Estrela da Comunidade",
@@ -157,6 +181,19 @@ const achievementsData: Achievement[] = [
     ],
   },
   {
+    id: "time_virtuoso",
+    name: "Virtuoso do Tempo Pixel",
+    overallDescription: "Dedique o seu tempo ao Pixel Universe e seja recompensado.",
+    icon: <Hourglass className="h-7 w-7" />,
+    category: 'engagement',
+    tiers: [
+      { level: 1, description: "Viajante Temporal: 1 hora online", xpReward: 30, creditsReward: 5, isUnlocked: true },
+      { level: 2, description: "Explorador Cronometrado: 5 horas online", xpReward: 75, creditsReward: 15, isUnlocked: false },
+      { level: 3, description: "Mestre das Horas: 24 horas online", xpReward: 200, creditsReward: 50, isUnlocked: false },
+      { level: 4, description: "Lenda do Éter: 100 horas online", xpReward: 500, creditsReward: 150, isUnlocked: false },
+    ],
+  },
+  {
     id: "pixel_universe_pioneer",
     name: "Pioneiro do Pixel Universe",
     overallDescription: "Por estar entre os primeiros a explorar este universo.",
@@ -174,6 +211,7 @@ const filterCategories: { label: string; value: AchievementCategory | 'all'; ico
   { label: "Comunidade", value: 'community', icon: <Users className="h-4 w-4 mr-2" /> },
   { label: "Exploração", value: 'exploration', icon: <Compass className="h-4 w-4 mr-2" /> },
   { label: "Coleção", value: 'collection', icon: <Puzzle className="h-4 w-4 mr-2" /> },
+  { label: "Engajamento", value: 'engagement', icon: <Activity className="h-4 w-4 mr-2" /> },
   { label: "Moderação", value: 'moderation', icon: <ShieldCheck className="h-4 w-4 mr-2" /> },
 ];
 
@@ -288,3 +326,4 @@ export default function AchievementsPage() {
     </div>
   );
 }
+
