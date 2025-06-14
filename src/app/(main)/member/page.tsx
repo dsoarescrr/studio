@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { ArrowUpRight, Award, Camera, CreditCard, Gem, MapPin, Palette, Settings, Sparkles, Star, Trophy, Upload, User as UserIcon, Edit3, Gift, Coins, Globe, Link as LinkIcon, Twitter, Instagram, Github } from "lucide-react";
+import { ArrowUpRight, Award, Camera, CreditCard, Gem, MapPin, Palette, Settings, Sparkles, Star, Trophy, Upload, User as UserIcon, Edit3, Gift, Coins, Globe, Link as LinkIcon, Twitter, Instagram, Github, BookImage, FolderPlus } from "lucide-react";
+import Image from "next/image"; // Import next/image
 
 export default function MemberPage() {
   const user = {
@@ -28,6 +29,11 @@ export default function MemberPage() {
       { platform: "Twitter", handle: "@PixelMasterPT", icon: <Twitter className="h-4 w-4" />, url: "#" },
       { platform: "Instagram", handle: "pixel.master.pt", icon: <Instagram className="h-4 w-4" />, url: "#" },
       { platform: "Github", handle: "PedroSilvaDev", icon: <Github className="h-4 w-4" />, url: "#" },
+    ],
+    albums: [
+      { id: 'album1', name: 'Paisagens Pixelizadas', description: 'As minhas melhores paisagens.', coverPixelUrl: 'https://placehold.co/100x100.png', dataAiHint: 'pixel landscape', pixelCount: 15 },
+      { id: 'album2', name: 'Retratos Retro', description: 'Personagens e retratos.', coverPixelUrl: 'https://placehold.co/100x100.png', dataAiHint: 'pixel portrait', pixelCount: 8 },
+      { id: 'album3', name: 'Abstrações Cósmicas', description: 'Explorando o cosmos em pixels.', coverPixelUrl: 'https://placehold.co/100x100.png', dataAiHint: 'abstract space', pixelCount: 22 },
     ]
   };
 
@@ -112,6 +118,34 @@ export default function MemberPage() {
                 <p className="text-xs text-accent-foreground/80">Conquistas Únicas</p>
               </Card>
             </div>
+            
+            <Card className="bg-background/50 p-4 rounded-lg shadow">
+                <CardHeader className="p-0 pb-3">
+                    <CardTitle className="text-md font-headline flex items-center text-primary">
+                        <BookImage className="h-4 w-4 mr-2" />
+                        Meus Álbuns
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0 space-y-3">
+                    {user.albums.length > 0 ? (
+                        user.albums.map(album => (
+                            <div key={album.id} className="flex items-center space-x-3 p-2.5 bg-muted/30 rounded-md border border-border hover:border-primary/30 transition-colors">
+                                <Image src={album.coverPixelUrl} alt={album.name} width={40} height={40} className="rounded-sm border border-border" data-ai-hint={album.dataAiHint} />
+                                <div className="flex-1">
+                                    <h4 className="text-sm font-semibold text-foreground">{album.name}</h4>
+                                    <p className="text-xs text-muted-foreground font-code">{album.pixelCount} pixels</p>
+                                </div>
+                                <Button variant="ghost" size="sm" className="text-xs h-7">Ver</Button>
+                            </div>
+                        ))
+                    ) : (
+                        <p className="text-xs text-muted-foreground p-2">Ainda não criou nenhum álbum.</p>
+                    )}
+                    <Button variant="outline" className="w-full mt-3 hover:bg-primary/10 transition-colors">
+                        <FolderPlus className="h-4 w-4 mr-2" /> Criar Novo Álbum
+                    </Button>
+                </CardContent>
+            </Card>
 
             <Card className="bg-background/50 p-4 rounded-lg shadow">
                 <CardHeader className="p-0 pb-3">

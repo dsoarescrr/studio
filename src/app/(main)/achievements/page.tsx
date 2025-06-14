@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, Lock, Award, Star, Sparkles, Palette, MapPin, Crown, Edit3, MessageSquare, Rocket, ShieldCheck, Compass, Puzzle, Users, Eye, Map, Hourglass, Share2, Megaphone, Activity, CheckCheck } from "lucide-react";
+import { CheckCircle2, Lock, Award, Star, Sparkles, Palette, MapPin, Crown, Edit3, MessageSquare, Rocket, ShieldCheck, Compass, Puzzle, Users, Eye, Map, Hourglass, Share2, Megaphone, Activity, CheckCheck, BookImage } from "lucide-react";
 
 type AchievementTier = {
   level: number;
@@ -104,6 +104,18 @@ const achievementsData: Achievement[] = [
       { level: 2, description: "Possui 500 píxeis", xpReward: 500, creditsReward: 150, isUnlocked: false },
       { level: 3, description: "Possui 1000 píxeis", xpReward: 1000, creditsReward: 300, isUnlocked: false },
       { level: 4, description: "Possui 2500 píxeis (Lenda dos Píxeis)", xpReward: 2500, creditsReward: 750, isUnlocked: false },
+    ],
+  },
+  {
+    id: "album_curator",
+    name: "Curador de Álbuns",
+    overallDescription: "Organize as suas obras-primas pixelizadas em álbuns temáticos.",
+    icon: <BookImage className="h-7 w-7" />,
+    category: 'collection',
+    tiers: [
+      { level: 1, description: "Primeiro Álbum Criado", xpReward: 40, creditsReward: 10, isUnlocked: false },
+      { level: 2, description: "Colecionador Organizado (3 álbuns)", xpReward: 100, creditsReward: 25, isUnlocked: false },
+      { level: 3, description: "Mestre Arquivista (5 álbuns)", xpReward: 200, creditsReward: 60, isUnlocked: false },
     ],
   },
   {
@@ -232,7 +244,11 @@ export default function AchievementsPage() {
               const bIsFullyUnlocked = b.tiers.every(t => t.isUnlocked);
               if (aIsFullyUnlocked && !bIsFullyUnlocked) return -1;
               if (!aIsFullyUnlocked && bIsFullyUnlocked) return 1;
-              return 0; // Fallback: mantém a ordem original ou pode adicionar critério secundário (ex: nome)
+              // Secondary sort: if both fully unlocked or both not, sort by name or id
+              if (aIsFullyUnlocked === bIsFullyUnlocked) {
+                return a.name.localeCompare(b.name);
+              }
+              return 0;
             })
         : achievementsData.filter(ach => ach.category === activeFilter);
 
@@ -284,7 +300,7 @@ export default function AchievementsPage() {
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
                       <span className={`p-2 rounded-lg ${allTiersUnlocked ? 'bg-green-400/20 text-green-400' : 'bg-primary/20 text-primary'}`}>
-                        {React.cloneElement(ach.icon, { className: `h-7 w-7` })}
+                        {React.cloneElement(ach.icon as React.ReactElement, { className: `h-7 w-7` })}
                       </span>
                       <div>
                         <CardTitle className={`text-xl font-headline ${allTiersUnlocked ? 'text-green-400' : 'text-primary'}`}>{ach.name}</CardTitle>
