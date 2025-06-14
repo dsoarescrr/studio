@@ -17,17 +17,10 @@ export default function AppHeader() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 max-w-screen-2xl items-center justify-between px-4 md:px-6">
-        <div className="flex items-center">
-          <Link href="/" className="flex items-center space-x-2 mr-6">
-            <Sparkles className="h-8 w-8 text-primary" />
-            <span className="font-headline text-2xl font-bold">Pixel Universe</span>
-          </Link>
-          <p className="text-sm text-muted-foreground hidden md:block font-code">Deixe sua marca no universo digital.</p>
-        </div>
-
-        <div className="flex items-center gap-4">
+        {/* Left Section: Desktop Navigation */}
+        <div className="flex flex-1 items-center justify-start">
           <nav className="hidden md:flex gap-4">
-            {navLinks.slice(0,3).map(link => ( // Show fewer links on desktop header for space
+            {navLinks.slice(0, 3).map(link => ( // Show fewer links on desktop header for space
               <Button key={link.label} variant="ghost" asChild>
                 <Link href={link.href} className="text-sm font-medium text-foreground hover:text-primary">
                   {link.label}
@@ -35,9 +28,19 @@ export default function AppHeader() {
               </Button>
             ))}
           </nav>
+        </div>
 
+        {/* Center Section: Logo */}
+        <div className="flex items-center justify-center">
+          <Link href="/" className="flex items-center space-x-2">
+            <Sparkles className="h-8 w-8 text-primary" />
+            <span className="font-headline text-2xl font-bold">Pixel Universe</span>
+          </Link>
+        </div>
+
+        {/* Right Section: User Status & Mobile Menu Trigger */}
+        <div className="flex flex-1 items-center justify-end gap-2 md:gap-4">
           <UserStatus />
-
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="outline" size="icon" className="md:hidden">
@@ -76,7 +79,7 @@ function UserStatus() {
   const rank = "#42";
 
   return (
-    <div className="flex items-center gap-3 border-l border-border/40 pl-4">
+    <div className="flex items-center gap-3 border-l border-border/40 pl-4 md:border-none md:pl-0"> {/* Adjusted border for cleaner look with new layout */}
        <div className="text-right hidden sm:block">
           <p className="text-xs font-code text-primary">{userName}</p>
           <p className="text-xs text-muted-foreground">Créditos: {credits}</p>
@@ -108,7 +111,7 @@ function UserStatus() {
           <DropdownMenuItem>Sair</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-       <span className="relative flex h-3 w-3 ml-[-15px] mt-[-15px] self-start">
+       <span className="relative flex h-3 w-3 ml-[-15px] mt-[-15px] self-start"> {/* This notification dot might need slight repositioning based on UserStatus layout changes */}
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
           <span className="relative inline-flex rounded-full h-3 w-3 bg-accent"></span>
         </span>
