@@ -16,7 +16,7 @@ type AchievementTier = {
   isUnlocked: boolean;
 };
 
-type AchievementCategory = 'pixel' | 'community' | 'exploration' | 'collection' | 'moderation' | 'engagement';
+type AchievementCategory = 'pixel' | 'community' | 'exploration' | 'collection' | 'moderation' | 'social';
 
 type Achievement = {
   id: string;
@@ -30,34 +30,34 @@ type Achievement = {
 const achievementsData: Achievement[] = [
   {
     id: "pixel_initiate",
-    name: "Iniciado dos Pixels",
-    overallDescription: "Comece sua jornada no Pixel Universe adquirindo pixels.",
+    name: "Iniciado dos Píxeis",
+    overallDescription: "Comece a sua jornada no Pixel Universe adquirindo píxeis.",
     icon: <MapPin className="h-7 w-7" />,
     category: 'pixel',
     tiers: [
-      { level: 1, description: "Comprou seu primeiro pixel", xpReward: 50, creditsReward: 10, isUnlocked: true },
-      { level: 2, description: "Comprou 10 pixels", xpReward: 100, creditsReward: 25, isUnlocked: true },
-      { level: 3, description: "Comprou 50 pixels", xpReward: 250, creditsReward: 75, isUnlocked: false },
-      { level: 4, description: "Comprou 100 pixels", xpReward: 500, creditsReward: 150, isUnlocked: false },
+      { level: 1, description: "Comprou o seu primeiro píxel", xpReward: 50, creditsReward: 10, isUnlocked: true },
+      { level: 2, description: "Comprou 10 píxeis", xpReward: 100, creditsReward: 25, isUnlocked: true },
+      { level: 3, description: "Comprou 50 píxeis", xpReward: 250, creditsReward: 75, isUnlocked: false },
+      { level: 4, description: "Comprou 100 píxeis", xpReward: 500, creditsReward: 150, isUnlocked: false },
     ],
   },
   {
     id: "pixel_artisan",
-    name: "Artesão de Pixels",
-    overallDescription: "Aperfeiçoe a sua arte editando os seus pixels.",
+    name: "Artesão de Píxeis",
+    overallDescription: "Aperfeiçoe a sua arte editando os seus píxeis.",
     icon: <Edit3 className="h-7 w-7" />,
     category: 'pixel',
     tiers: [
-      { level: 1, description: "Editou a cor de 1 pixel", xpReward: 20, creditsReward: 5, isUnlocked: true },
-      { level: 2, description: "Editou a cor de 10 pixels", xpReward: 60, creditsReward: 15, isUnlocked: false },
-      { level: 3, description: "Editou a cor de 50 pixels", xpReward: 150, creditsReward: 40, isUnlocked: false },
+      { level: 1, description: "Editou a cor de 1 píxel", xpReward: 20, creditsReward: 5, isUnlocked: true },
+      { level: 2, description: "Editou a cor de 10 píxeis", xpReward: 60, creditsReward: 15, isUnlocked: false },
+      { level: 3, description: "Editou a cor de 50 píxeis", xpReward: 150, creditsReward: 40, isUnlocked: false },
       { level: 4, description: "Realizou 100 edições de cor", xpReward: 300, creditsReward: 100, isUnlocked: false },
     ],
   },
   {
     id: "color_master",
     name: "Mestre das Cores",
-    overallDescription: "Mostre sua criatividade usando uma vasta gama de cores.",
+    overallDescription: "Mostre a sua criatividade usando uma vasta gama de cores.",
     icon: <Palette className="h-7 w-7" />,
     category: 'pixel',
     tiers: [
@@ -75,9 +75,9 @@ const achievementsData: Achievement[] = [
     category: 'exploration',
     tiers: [
       { level: 1, description: "Visitou 3 regiões diferentes", xpReward: 60, creditsReward: 15, isUnlocked: true },
-      { level: 2, description: "Interagiu com pixels em 3 regiões", xpReward: 120, creditsReward: 35, isUnlocked: false },
+      { level: 2, description: "Interagiu com píxeis em 3 regiões", xpReward: 120, creditsReward: 35, isUnlocked: false },
       { level: 3, description: "Visitou 7 regiões diferentes", xpReward: 200, creditsReward: 60, isUnlocked: false },
-      { level: 4, description: "Interagiu com pixels em todas as regiões principais", xpReward: 400, creditsReward: 120, isUnlocked: false },
+      { level: 4, description: "Interagiu com píxeis em todas as regiões principais", xpReward: 400, creditsReward: 120, isUnlocked: false },
     ],
   },
   {
@@ -95,15 +95,15 @@ const achievementsData: Achievement[] = [
   },
   {
     id: "pixel_tycoon",
-    name: "Magnata dos Pixels",
-    overallDescription: "Acumule uma vasta coleção de pixels e demonstre o seu império.",
+    name: "Magnata dos Píxeis",
+    overallDescription: "Acumule uma vasta coleção de píxeis e demonstre o seu império.",
     icon: <Crown className="h-7 w-7" />,
     category: 'collection',
     tiers: [
-      { level: 1, description: "Possui 100 pixels", xpReward: 200, creditsReward: 50, isUnlocked: false },
-      { level: 2, description: "Possui 500 pixels", xpReward: 500, creditsReward: 150, isUnlocked: false },
-      { level: 3, description: "Possui 1000 pixels", xpReward: 1000, creditsReward: 300, isUnlocked: false },
-      { level: 4, description: "Possui 2500 pixels (Lenda dos Pixels)", xpReward: 2500, creditsReward: 750, isUnlocked: false },
+      { level: 1, description: "Possui 100 píxeis", xpReward: 200, creditsReward: 50, isUnlocked: false },
+      { level: 2, description: "Possui 500 píxeis", xpReward: 500, creditsReward: 150, isUnlocked: false },
+      { level: 3, description: "Possui 1000 píxeis", xpReward: 1000, creditsReward: 300, isUnlocked: false },
+      { level: 4, description: "Possui 2500 píxeis (Lenda dos Píxeis)", xpReward: 2500, creditsReward: 750, isUnlocked: false },
     ],
   },
   {
@@ -121,7 +121,7 @@ const achievementsData: Achievement[] = [
   },
    {
     id: "pixel_ambassador",
-    name: "Embaixador dos Pixels",
+    name: "Embaixador dos Píxeis",
     overallDescription: "Traga os seus amigos para o Pixel Universe e expanda a nossa comunidade.",
     icon: <Share2 className="h-7 w-7" />,
     category: 'community',
@@ -159,19 +159,19 @@ const achievementsData: Achievement[] = [
   {
     id: "legendary_collector",
     name: "Colecionador Lendário",
-    overallDescription: "Obtenha os pixels mais raros e cobiçados do universo.",
+    overallDescription: "Obtenha os píxeis mais raros e cobiçados do universo.",
     icon: <Sparkles className="h-7 w-7" />,
     category: 'collection',
     tiers: [
-      { level: 1, description: "Possui um pixel 'Featured'", xpReward: 150, creditsReward: 50, isUnlocked: false },
-      { level: 2, description: "Completou um conjunto de pixels temático", xpReward: 350, creditsReward: 120, isUnlocked: false },
-      { level: 3, description: "Possui 3 pixels 'Featured' diferentes", xpReward: 700, creditsReward: 250, isUnlocked: false },
+      { level: 1, description: "Possui um píxel 'Featured'", xpReward: 150, creditsReward: 50, isUnlocked: false },
+      { level: 2, description: "Completou um conjunto de píxeis temático", xpReward: 350, creditsReward: 120, isUnlocked: false },
+      { level: 3, description: "Possui 3 píxeis 'Featured' diferentes", xpReward: 700, creditsReward: 250, isUnlocked: false },
     ],
   },
    {
     id: "master_guardian",
     name: "Guardião Mestre",
-    overallDescription: "Proteja e mantenha a ordem no universo dos pixels.",
+    overallDescription: "Proteja e mantenha a ordem no universo dos píxeis.",
     icon: <ShieldCheck className="h-7 w-7" />,
     category: 'moderation',
     tiers: [
@@ -185,7 +185,7 @@ const achievementsData: Achievement[] = [
     name: "Virtuoso do Tempo Pixel",
     overallDescription: "Dedique o seu tempo ao Pixel Universe e seja recompensado.",
     icon: <Hourglass className="h-7 w-7" />,
-    category: 'engagement',
+    category: 'social',
     tiers: [
       { level: 1, description: "Viajante Temporal: 1 hora online", xpReward: 30, creditsReward: 5, isUnlocked: true },
       { level: 2, description: "Explorador Cronometrado: 5 horas online", xpReward: 75, creditsReward: 15, isUnlocked: false },
@@ -211,7 +211,7 @@ const filterCategories: { label: string; value: AchievementCategory | 'all'; ico
   { label: "Comunidade", value: 'community', icon: <Users className="h-4 w-4 mr-2" /> },
   { label: "Exploração", value: 'exploration', icon: <Compass className="h-4 w-4 mr-2" /> },
   { label: "Coleção", value: 'collection', icon: <Puzzle className="h-4 w-4 mr-2" /> },
-  { label: "Engajamento", value: 'engagement', icon: <Activity className="h-4 w-4 mr-2" /> },
+  { label: "Social", value: 'social', icon: <Activity className="h-4 w-4 mr-2" /> },
   { label: "Moderação", value: 'moderation', icon: <ShieldCheck className="h-4 w-4 mr-2" /> },
 ];
 
@@ -231,7 +231,7 @@ export default function AchievementsPage() {
             Quadro de Conquistas
           </CardTitle>
           <CardDescription className="text-muted-foreground">
-            Desbloqueie conquistas, ganhe XP e créditos para subir de nível e mostrar seu domínio no Pixel Universe!
+            Desbloqueie conquistas, ganhe XP e créditos para subir de nível e mostrar o seu domínio no Pixel Universe!
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
