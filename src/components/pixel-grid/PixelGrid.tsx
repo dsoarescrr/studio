@@ -6,8 +6,8 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   ZoomIn, ZoomOut, Expand, Search, Sparkles, MousePointer2, Palette, Info, User, CalendarDays,
   History as HistoryIcon, DollarSign, ShoppingCart, Edit3, Paintbrush, FileText, Upload, Save,
-  Image as ImageIcon, XCircle, Type as TypeIcon, Tags as TagsIcon, Link as LinkIcon, Pencil,
-  Eraser, PaintBucket, Trash2, Heart, Flag, BadgePercent, Star, AlertTriangle, MapPin as MapPinIconLucide, ScrollText, Gem
+  Image as ImageIcon, XCircle, Type as TypeIcon, Tags as TagsIcon, Link as LinkIconLucide, Pencil,
+  Eraser, PaintBucket, Trash2, Heart, Flag, BadgePercent, Star, AlertTriangle, MapPin as MapPinIconLucide, ScrollText, Gem, Globe
 } from 'lucide-react';
 import PortugalMapSvg, { type MapData } from './PortugalMapSvg';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,7 @@ import Image from 'next/image';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '../ui/separator';
+import { mapPixelToApproxGps } from '@/lib/utils';
 
 
 const SVG_VIEWBOX_WIDTH = 12969;
@@ -88,8 +89,9 @@ interface SelectedPixelDetails {
   isForSaleByOwner?: boolean; // If current user is selling
   salePrice?: number; // Current user's sale price
   isFavorited?: boolean;
-  rarity?: 'Comum' | 'Incomum' | 'Raro' | 'Épico' | 'Lendário' | 'Marco Histórico';
+  rarity?: 'Comum' | 'Raro' | 'Épico' | 'Lendário' | 'Marco Histórico';
   loreSnippet?: string;
+  gpsCoords?: { lat: number; lon: number; } | null;
 }
 
 const MIN_ZOOM = 0.05;
@@ -98,7 +100,7 @@ const ZOOM_SENSITIVITY_FACTOR = 1.1;
 const HEADER_HEIGHT_PX = 64;
 const BOTTOM_NAV_HEIGHT_PX = 64;
 
-const mockRarities: SelectedPixelDetails['rarity'][] = ['Comum', 'Incomum', 'Raro', 'Épico', 'Lendário', 'Marco Histórico'];
+const mockRarities: SelectedPixelDetails['rarity'][] = ['Comum', 'Raro', 'Épico', 'Lendário', 'Marco Histórico'];
 const mockLoreSnippets: string[] = [
   "Dizem que este pixel brilha sob a lua cheia.",
   "Um antigo mapa sugere um tesouro escondido perto daqui.",
@@ -267,10 +269,10 @@ export default function PixelGrid() {
     canvas.height = canvasDrawHeight;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = 'rgba(180, 180, 180, 0.7)';
+    ctx.fillStyle = 'hsl(var(--muted-foreground)/0.5)'; // Use themed color for pixels
 
     if (RENDERED_PIXEL_SIZE_CONFIG > 1) {
-        ctx.strokeStyle = 'rgba(30, 30, 30, 0.75)';
+        ctx.strokeStyle = 'hsl(var(--border)/0.3)'; // Themed border for grid lines
         ctx.lineWidth = 0.2;
     }
 
@@ -323,18 +325,18 @@ export default function PixelGrid() {
       const effectiveContainerHeight = window.innerHeight - HEADER_HEIGHT_PX - BOTTOM_NAV_HEIGHT_PX;
 
       if (containerWidth > 0 && effectiveContainerHeight > 0 && canvasDrawWidth > 0 && canvasDrawHeight > 0) {
-        let targetInitialZoom = 0.25; 
+        let targetInitialZoom = 0.25;
         const fitZoomX = containerWidth / canvasDrawWidth;
         const fitZoomY = effectiveContainerHeight / canvasDrawHeight;
         const zoomToFit = Math.min(fitZoomX, fitZoomY);
 
-        targetInitialZoom = Math.max(MIN_ZOOM, Math.min(targetInitialZoom, zoomToFit * 0.95)); // Ensure it fits with 5% padding
-        
+        targetInitialZoom = Math.max(MIN_ZOOM, Math.min(targetInitialZoom, zoomToFit * 0.95));
+
         const calculatedZoom = targetInitialZoom;
 
         const canvasContentWidth = canvasDrawWidth * calculatedZoom;
         const canvasContentHeight = canvasDrawHeight * calculatedZoom;
-        
+
         const calculatedPosition = {
           x: (containerWidth - canvasContentWidth) / 2,
           y: (effectiveContainerHeight - canvasContentHeight) / 2,
@@ -352,7 +354,7 @@ export default function PixelGrid() {
     if (defaultView) {
       setZoom(defaultView.zoom);
       setPosition(defaultView.position);
-    } else if (typeof window !== 'undefined' && containerRef.current && canvasRef.current) { 
+    } else if (typeof window !== 'undefined' && containerRef.current && canvasRef.current) {
         const containerWidth = containerRef.current.offsetWidth;
         const effectiveContainerHeight = window.innerHeight - HEADER_HEIGHT_PX - BOTTOM_NAV_HEIGHT_PX;
 
@@ -440,7 +442,7 @@ export default function PixelGrid() {
      if (targetElement.closest('button, [data-dialog-content], [data-tooltip-content], [data-popover-content], label, a, [role="menuitem"], [role="tab"], input, textarea') && targetElement !== canvasRef.current) {
         return;
     }
-    
+
     setIsDragging(true);
     setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
     didDragRef.current = false;
@@ -452,9 +454,9 @@ export default function PixelGrid() {
 
     const currentX = e.clientX - dragStart.x;
     const currentY = e.clientY - dragStart.y;
-    
+
     if (!didDragRef.current) {
-        const dx = Math.abs(currentX - position.x); 
+        const dx = Math.abs(currentX - position.x);
         const dy = Math.abs(currentY - position.y);
         if (dx > dragThreshold || dy > dragThreshold) {
             didDragRef.current = true;
@@ -468,8 +470,8 @@ export default function PixelGrid() {
   };
 
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
-    if (didDragRef.current) { 
-        didDragRef.current = false; 
+    if (didDragRef.current) {
+        didDragRef.current = false;
         return;
     }
     if (!canvasRef.current || !mapData?.path2D || workerStatus !== 'done') return;
@@ -506,6 +508,7 @@ export default function PixelGrid() {
         let mockDetails: SelectedPixelDetails;
         const randomRarity = mockRarities[Math.floor(Math.random() * mockRarities.length)];
         const randomLore = mockLoreSnippets[Math.floor(Math.random() * mockLoreSnippets.length)];
+        const approxGps = mapPixelToApproxGps(logicalCol, logicalRow, LOGICAL_GRID_COLS_CONFIG, logicalGridRows);
 
         if (scenarioType < 0.33) { // Scenario 1: System-owned pixel
             mockDetails = {
@@ -520,6 +523,7 @@ export default function PixelGrid() {
                 isFavorited: Math.random() > 0.8,
                 rarity: randomRarity,
                 loreSnippet: randomLore,
+                gpsCoords: approxGps,
             };
         } else if (scenarioType < 0.66) { // Scenario 2: Current user-owned pixel
             const isForSale = Math.random() > 0.5;
@@ -544,6 +548,7 @@ export default function PixelGrid() {
                 isFavorited: Math.random() > 0.5,
                 rarity: randomRarity,
                 loreSnippet: randomLore,
+                gpsCoords: approxGps,
             };
         } else { // Scenario 3: Other user-owned pixel
             mockDetails = {
@@ -560,6 +565,7 @@ export default function PixelGrid() {
                 isFavorited: Math.random() > 0.7,
                 rarity: randomRarity,
                 loreSnippet: randomLore,
+                gpsCoords: approxGps,
             };
         }
 
@@ -703,7 +709,7 @@ export default function PixelGrid() {
 
     const currentlyForSale = selectedPixelDetails.isForSaleByOwner;
     const newSaleStatus = !currentlyForSale;
-    
+
     setSelectedPixelDetails(prev => {
         if (!prev) return null;
         const newSalePrice = newSaleStatus ? (prev.salePrice || 50) : undefined;
@@ -721,7 +727,7 @@ export default function PixelGrid() {
             lastModifiedDate: new Date().toLocaleDateString('pt-PT'),
         };
     });
-    
+
     toast({
         title: newSaleStatus ? "Pixel Colocado à Venda" : "Pixel Retirado da Venda",
         description: `O seu pixel (${selectedPixelDetails.x}, ${selectedPixelDetails.y}) foi ${newSaleStatus ? `colocado à venda por ${selectedPixelDetails.salePrice || 50} créditos.` : 'retirado da venda.'}`,
@@ -738,9 +744,9 @@ export default function PixelGrid() {
     const mouseYInContainer = event.clientY - containerRect.top;
 
     let newZoom;
-    if (event.deltaY < 0) { 
+    if (event.deltaY < 0) {
       newZoom = Math.min(zoom * ZOOM_SENSITIVITY_FACTOR, MAX_ZOOM);
-    } else { 
+    } else {
       newZoom = Math.max(zoom / ZOOM_SENSITIVITY_FACTOR, MIN_ZOOM);
     }
 
@@ -759,7 +765,7 @@ export default function PixelGrid() {
 
   useEffect(() => {
     const currentContainer = containerRef.current;
-    if (currentContainer && workerStatus === 'done') { 
+    if (currentContainer && workerStatus === 'done') {
       currentContainer.addEventListener('wheel', handleWheelZoom, { passive: false });
       return () => {
         currentContainer.removeEventListener('wheel', handleWheelZoom);
@@ -777,7 +783,7 @@ export default function PixelGrid() {
 
     const isDefaultZoom = Math.abs(zoom - defaultView.zoom) < 0.001;
     const isDefaultPosition =
-      defaultView.position && 
+      defaultView.position &&
       Math.abs(position.x - defaultView.position.x) < 0.5 &&
       Math.abs(position.y - defaultView.position.y) < 0.5;
 
@@ -803,10 +809,11 @@ export default function PixelGrid() {
 
   const showLoadingOverlay = workerStatus !== 'done' || overallProgress < 100;
 
+  const rarityClass = selectedPixelDetails?.rarity === 'Lendário' ? 'legendary-glow-strong' : selectedPixelDetails?.rarity === 'Épico' ? 'epic-shadow' : '';
 
   return (
-    <div className="flex flex-col h-full w-full overflow-hidden relative">
-      <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 bg-card/80 backdrop-blur-sm p-2 rounded-md shadow-lg pointer-events-auto">
+    <div className="flex flex-col h-full w-full overflow-hidden relative animate-fade-in">
+      <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 bg-card/80 backdrop-blur-sm p-2 rounded-lg shadow-lg pointer-events-auto animate-slide-in-up animation-delay-200">
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -851,36 +858,36 @@ export default function PixelGrid() {
               setEditMode(false);
           }
       }}>
-        <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-sm text-card-foreground" data-dialog-content pointerEvents="auto">
+        <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-sm text-card-foreground border-primary/30 shadow-xl" data-dialog-content pointerEvents="auto">
           {!editMode && selectedPixelDetails && (
             <>
-              <DialogHeader>
+              <DialogHeader className={`dialog-header-gold-accent ${rarityClass} rounded-t-lg`}>
                 <div className="flex items-start justify-between">
                     <div>
-                        <DialogTitle className="font-headline flex items-center text-xl">
+                        <DialogTitle className="font-headline flex items-center text-xl text-shadow-gold-sm">
                             Pixel ({selectedPixelDetails.x}, {selectedPixelDetails.y})
                         </DialogTitle>
-                        {selectedPixelDetails.title && <CardDescriptionElement className="text-base text-muted-foreground -mt-1">&quot;{selectedPixelDetails.title}&quot;</CardDescriptionElement>}
+                        {selectedPixelDetails.title && <CardDescriptionElement className="text-base text-primary/90 -mt-1 text-shadow-gold-xs">&quot;{selectedPixelDetails.title}&quot;</CardDescriptionElement>}
                     </div>
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" onClick={handleToggleFavorite} className="text-muted-foreground hover:text-rose-500 h-8 w-8">
-                                    <Heart className={`h-5 w-5 ${isFavorite ? 'fill-rose-500 text-rose-500' : ''}`} />
+                                <Button variant="ghost" size="icon" onClick={handleToggleFavorite} className="text-muted-foreground hover:text-destructive-foreground h-8 w-8">
+                                    <Heart className={`h-5 w-5 transition-all duration-200 ${isFavorite ? 'fill-red-500 text-red-500 animate-scale-in' : 'hover:text-red-400'}`} />
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent><p>{isFavorite ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos'}</p></TooltipContent>
                         </Tooltip>
                     </TooltipProvider>
                 </div>
-                <CardDescriptionElement className="pt-1">
+                <CardDescriptionElement className="pt-1 text-muted-foreground">
                   Informações detalhadas e ações disponíveis para este pixel.
                 </CardDescriptionElement>
               </DialogHeader>
-              <ScrollArea className="max-h-[calc(100vh-250px)] pr-4">
-              <div className="space-y-3 py-2">
-                <Card className="bg-background/60 shadow-md">
-                  <CardHeader className="pb-2 pt-3 px-4">
+              <ScrollArea className="max-h-[calc(100vh-280px)] pr-4 -mr-2">
+              <div className="space-y-3 py-2 px-1">
+                <Card className="card-inset-shadow animate-fade-in animation-delay-100">
+                  <CardHeader className="card-header-accent pb-2 pt-3 px-4">
                       <CardTitle className="text-md font-headline flex items-center text-primary">
                           <Info className="h-4 w-4 mr-2" /> Informações do Pixel
                       </CardTitle>
@@ -889,7 +896,7 @@ export default function PixelGrid() {
                     <div className="flex justify-between"><span>Proprietário:</span> <Badge variant={selectedPixelDetails.owner === 'Disponível (Sistema)' ? "secondary" : "outline"} className="font-code">{selectedPixelDetails.owner}</Badge></div>
 
                     {selectedPixelDetails.isForSaleBySystem && selectedPixelDetails.price && (
-                      <div className="flex justify-between items-center"><span>Preço (Sistema):</span> <span className="font-code flex items-center">{selectedPixelDetails.price} Créditos <DollarSign className="inline h-3.5 w-3.5 ml-1" /></span></div>
+                      <div className="flex justify-between items-center"><span>Preço (Sistema):</span> <span className="font-code flex items-center">{selectedPixelDetails.price} Créditos <DollarSign className="inline h-3.5 w-3.5 ml-1 text-primary" /></span></div>
                     )}
                      {selectedPixelDetails.isOwnedByCurrentUser && selectedPixelDetails.isForSaleByOwner && selectedPixelDetails.salePrice && (
                       <div className="flex justify-between items-center"><span>À Venda por:</span> <Badge variant="destructive" className="font-code">{selectedPixelDetails.salePrice} Créditos</Badge></div>
@@ -904,6 +911,22 @@ export default function PixelGrid() {
                         <span className="font-code">{selectedPixelDetails.color}</span>
                       </div>
                     </div>
+                    {selectedPixelDetails.gpsCoords && (
+                      <div className="flex justify-between items-center">
+                        <span>GPS (Aprox.):</span>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="font-code flex items-center cursor-help">
+                                {selectedPixelDetails.gpsCoords.lat.toFixed(4)}, {selectedPixelDetails.gpsCoords.lon.toFixed(4)}
+                                <Globe className="inline h-3.5 w-3.5 ml-1.5 text-primary/80" />
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent align="end"><p>Coordenadas GPS aproximadas. Não para navegação precisa.</p></TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    )}
                     {selectedPixelDetails.manualDescription && (
                        <div className="pt-1">
                           <span className="font-semibold">Descrição:</span>
@@ -923,14 +946,14 @@ export default function PixelGrid() {
                             <span className="font-semibold">Link:</span>
                             <a href={selectedPixelDetails.linkUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline ml-1 flex items-center font-code">
                                 {selectedPixelDetails.linkUrl.length > 30 ? `${selectedPixelDetails.linkUrl.substring(0,30)}...` : selectedPixelDetails.linkUrl}
-                                <LinkIcon className="h-3 w-3 ml-1" />
+                                <LinkIconLucide className="h-3 w-3 ml-1" />
                             </a>
                         </div>
                     )}
                     {selectedPixelDetails.pixelImageUrl && (
                       <div className="pt-1">
                         <span className="font-semibold">Imagem do Pixel:</span>
-                        <div className="mt-1 relative w-24 h-24 rounded border border-border overflow-hidden shadow-sm">
+                        <div className="mt-1 relative w-24 h-24 rounded border border-border overflow-hidden shadow-sm animate-scale-in">
                           <Image src={selectedPixelDetails.pixelImageUrl} alt="Imagem do Pixel" layout="fill" objectFit="cover" data-ai-hint={selectedPixelDetails.dataAiHint || 'pixel image'}/>
                         </div>
                       </div>
@@ -939,8 +962,8 @@ export default function PixelGrid() {
                 </Card>
 
                 {selectedPixelDetails.rarity && (
-                  <Card className="bg-background/60 shadow-md">
-                    <CardHeader className="pb-2 pt-3 px-4">
+                  <Card className="card-inset-shadow animate-fade-in animation-delay-200">
+                    <CardHeader className="card-header-accent pb-2 pt-3 px-4">
                         <CardTitle className="text-md font-headline flex items-center text-primary">
                             <Gem className="h-4 w-4 mr-2" /> Raridade e História
                         </CardTitle>
@@ -948,14 +971,17 @@ export default function PixelGrid() {
                     <CardContent className="px-4 pb-3 space-y-1.5">
                        <div className="flex justify-between items-center text-sm">
                           <span>Raridade:</span>
-                          <Badge variant="outline" className={
-                            selectedPixelDetails.rarity === 'Lendário' ? 'border-amber-400 text-amber-400' :
-                            selectedPixelDetails.rarity === 'Épico' ? 'border-purple-400 text-purple-400' :
-                            selectedPixelDetails.rarity === 'Raro' ? 'border-blue-400 text-blue-400' :
-                            selectedPixelDetails.rarity === 'Incomum' ? 'border-green-400 text-green-400' :
-                            selectedPixelDetails.rarity === 'Marco Histórico' ? 'border-rose-400 text-rose-400' :
-                            'border-border' // Comum
-                          }>{selectedPixelDetails.rarity}</Badge>
+                          <Badge
+                              variant={
+                                  selectedPixelDetails.rarity === 'Lendário' ? 'legendary' :
+                                  selectedPixelDetails.rarity === 'Épico' ? 'epic' :
+                                  selectedPixelDetails.rarity === 'Raro' ? 'rare' :
+                                  'common'
+                              }
+                              className="font-code text-xs"
+                            >
+                            {selectedPixelDetails.rarity}
+                          </Badge>
                        </div>
                        {selectedPixelDetails.loreSnippet && (
                          <div className="pt-1">
@@ -969,14 +995,14 @@ export default function PixelGrid() {
 
 
                 {(!pixelDescription && !isGeneratingDesc && (aiModalProgressValue === 0 || aiModalProgressValue === 100) && showPixelModal) && (
-                  <Card className="bg-background/60 shadow-md">
-                    <CardHeader className="pb-2 pt-3 px-4">
+                  <Card className="card-inset-shadow animate-fade-in animation-delay-300">
+                    <CardHeader className="card-header-accent pb-2 pt-3 px-4">
                         <CardTitle className="text-md font-headline flex items-center text-primary">
                             <Sparkles className="h-4 w-4 mr-2" /> Descrição por IA
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="px-4 pb-3">
-                        <Button variant="outline" size="sm" onClick={handleGenerateDescription} disabled={!selectedPixelDetails} className="w-full mt-1 hover:bg-primary/10 hover:text-primary transition-colors">
+                        <Button variant="outline" size="sm" onClick={handleGenerateDescription} disabled={!selectedPixelDetails} className="w-full mt-1 button-gold-glow">
                             <Sparkles className="mr-1.5 h-3.5 w-3.5"/>
                             Gerar Descrição Detalhada com IA
                         </Button>
@@ -984,8 +1010,8 @@ export default function PixelGrid() {
                   </Card>
                 )}
                 {(isGeneratingDesc || pixelDescription || (aiModalProgressValue > 0 && aiModalProgressValue < 100 && !pixelDescription && showPixelModal)) && (
-                  <Card className="bg-background/60 shadow-md">
-                    <CardHeader className="pb-2 pt-3 px-4">
+                  <Card className="card-inset-shadow animate-fade-in animation-delay-300">
+                    <CardHeader className="card-header-accent pb-2 pt-3 px-4">
                       <CardTitle className="text-md font-headline flex items-center text-primary">
                           <Sparkles className="h-4 w-4 mr-2" /> Descrição por IA
                       </CardTitle>
@@ -1006,8 +1032,8 @@ export default function PixelGrid() {
                 )}
 
                 {selectedPixelDetails.history && selectedPixelDetails.history.length > 0 && (
-                  <Card className="bg-background/60 shadow-md">
-                    <CardHeader className="pb-2 pt-3 px-4">
+                  <Card className="card-inset-shadow animate-fade-in animation-delay-400">
+                    <CardHeader className="card-header-accent pb-2 pt-3 px-4">
                       <CardTitle className="text-md font-headline flex items-center text-primary">
                           <HistoryIcon className="h-4 w-4 mr-2" /> Histórico de Proprietários
                       </CardTitle>
@@ -1028,7 +1054,7 @@ export default function PixelGrid() {
                 )}
               </div>
               </ScrollArea>
-              <DialogFooter className="gap-2 sm:gap-1.5 flex-wrap justify-center pt-3 sm:justify-between">
+              <DialogFooter className="gap-2 sm:gap-1.5 flex-wrap justify-center pt-3 sm:justify-between dialog-footer-gold-accent rounded-b-lg">
                  <TooltipProvider>
                     <Tooltip>
                         <TooltipTrigger asChild>
@@ -1041,28 +1067,28 @@ export default function PixelGrid() {
                 </TooltipProvider>
                 <div className="flex gap-2 sm:gap-1.5 flex-wrap justify-center sm:justify-end">
                     {selectedPixelDetails.isForSaleBySystem && !selectedPixelDetails.isOwnedByCurrentUser && selectedPixelDetails.price && (
-                      <Button size="sm" onClick={handleBuyPixelFromSystem} className="bg-green-600 hover:bg-green-700 text-white">
+                      <Button size="sm" onClick={handleBuyPixelFromSystem} className="button-gradient-orange button-3d-effect">
                         <ShoppingCart className="mr-1.5 h-3.5 w-3.5" /> Comprar ({selectedPixelDetails.price} Créditos)
                       </Button>
                     )}
                     {selectedPixelDetails.isOwnedByCurrentUser && (
                       <>
                         {selectedPixelDetails.isForSaleByOwner ? (
-                          <Button size="sm" variant="outline" onClick={handleToggleForSaleByOwner} className="border-red-500 text-red-500 hover:bg-red-500/10 hover:text-red-500">
+                          <Button size="sm" variant="outline" onClick={handleToggleForSaleByOwner} className="border-red-500 text-red-500 hover:bg-red-500/10 hover:text-red-500 button-3d-effect-outline">
                              <BadgePercent className="mr-1.5 h-3.5 w-3.5" /> Retirar da Venda
                           </Button>
                         ) : (
-                          <Button size="sm" variant="outline" onClick={handleToggleForSaleByOwner} className="border-green-500 text-green-500 hover:bg-green-500/10 hover:text-green-500">
+                          <Button size="sm" variant="outline" onClick={handleToggleForSaleByOwner} className="border-green-500 text-green-500 hover:bg-green-500/10 hover:text-green-500 button-3d-effect-outline">
                              <BadgePercent className="mr-1.5 h-3.5 w-3.5" /> Colocar à Venda
                           </Button>
                         )}
-                        <Button size="sm" onClick={() => setEditMode(true)} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                        <Button size="sm" onClick={() => setEditMode(true)} className="button-gradient-gold button-3d-effect">
                             <Edit3 className="mr-1.5 h-3.5 w-3.5" /> Editar Pixel
                         </Button>
                       </>
                     )}
                     {!selectedPixelDetails.isForSaleBySystem && !selectedPixelDetails.isOwnedByCurrentUser && (
-                        <Button variant="secondary" size="sm" disabled>Fazer Oferta</Button>
+                        <Button variant="secondary" size="sm" disabled className="button-3d-effect">Fazer Oferta</Button>
                     )}
                 </div>
               </DialogFooter>
@@ -1070,19 +1096,19 @@ export default function PixelGrid() {
           )}
           {editMode && selectedPixelDetails && (
             <>
-              <DialogHeader>
-                <DialogTitle className="font-headline flex items-center text-xl">
+              <DialogHeader className="dialog-header-gold-accent rounded-t-lg">
+                <DialogTitle className="font-headline flex items-center text-xl text-shadow-gold-sm">
                     <Edit3 className="h-5 w-5 mr-2 text-accent" /> Editando Pixel ({selectedPixelDetails.x}, {selectedPixelDetails.y})
                 </DialogTitle>
-                <CardDescriptionElement>
+                <CardDescriptionElement className="text-muted-foreground">
                   Modifique as propriedades do seu pixel.
                 </CardDescriptionElement>
               </DialogHeader>
-              <ScrollArea className="max-h-[calc(100vh-250px)] pr-4">
-                <div className="space-y-4 py-2">
+              <ScrollArea className="max-h-[calc(100vh-280px)] pr-4 -mr-2">
+                <div className="space-y-4 py-2 px-1">
 
-                  <Card className="bg-background/60 shadow-md">
-                    <CardHeader className="pb-2 pt-3 px-4">
+                  <Card className="card-inset-shadow">
+                    <CardHeader className="card-header-accent pb-2 pt-3 px-4">
                       <CardTitle className="text-md font-headline flex items-center text-primary">
                         <Palette className="h-4 w-4 mr-2" /> Aparência
                       </CardTitle>
@@ -1096,14 +1122,14 @@ export default function PixelGrid() {
                                 type="color"
                                 value={editableColor}
                                 onChange={(e) => setEditableColor(e.target.value)}
-                                className="w-12 h-10 p-1"
+                                className="w-12 h-10 p-1 input-shadow"
                             />
                             <Input
                                 type="text"
                                 placeholder="#RRGGBB"
                                 value={editableColor}
                                 onChange={(e) => setEditableColor(e.target.value)}
-                                className="font-code flex-1 h-10 text-sm"
+                                className="font-code flex-1 h-10 text-sm input-shadow"
                                 aria-label="Código Hex da Cor"
                             />
                             </div>
@@ -1116,7 +1142,7 @@ export default function PixelGrid() {
                                 placeholder="Ex: Meu Pôr do Sol Pixelizado"
                                 value={editableTitle}
                                 onChange={(e) => setEditableTitle(e.target.value)}
-                                className="mt-1 h-10 text-sm"
+                                className="mt-1 h-10 text-sm input-shadow"
                             />
                         </div>
                          <div>
@@ -1127,7 +1153,7 @@ export default function PixelGrid() {
                                 value={editableManualDescription}
                                 onChange={(e) => setEditableManualDescription(e.target.value)}
                                 rows={3}
-                                className="mt-1 text-sm"
+                                className="mt-1 text-sm input-shadow"
                             />
                         </div>
                          <div>
@@ -1138,7 +1164,7 @@ export default function PixelGrid() {
                                     type="file"
                                     accept="image/*"
                                     onChange={handlePixelImageUpload}
-                                    className="text-xs flex-1"
+                                    className="text-xs flex-1 file:text-primary file:font-semibold file:mr-2 file:px-2 file:py-1 file:rounded-sm file:border-0 file:bg-primary/10 hover:file:bg-primary/20"
                                 />
                                 {editablePixelImagePreview && (
                                     <TooltipProvider>
@@ -1159,7 +1185,7 @@ export default function PixelGrid() {
                                 )}
                             </div>
                             {editablePixelImagePreview && (
-                                <div className="mt-2 relative w-24 h-24 rounded border border-border overflow-hidden group shadow-sm">
+                                <div className="mt-2 relative w-24 h-24 rounded border border-border overflow-hidden group shadow-sm animate-scale-in">
                                 <Image src={editablePixelImagePreview} alt="Pré-visualização da Imagem" layout="fill" objectFit="cover" data-ai-hint="pixel image preview"/>
                                 </div>
                             )}
@@ -1168,8 +1194,8 @@ export default function PixelGrid() {
                     </CardContent>
                   </Card>
 
-                  <Card className="bg-background/60 shadow-md">
-                     <CardHeader className="pb-2 pt-3 px-4">
+                  <Card className="card-inset-shadow">
+                     <CardHeader className="card-header-accent pb-2 pt-3 px-4">
                         <CardTitle className="text-md font-headline flex items-center text-primary">
                            <Paintbrush className="h-4 w-4 mr-2" /> Desenhar Imagem <Badge variant="outline" className="ml-2 text-xs">Experimental</Badge>
                         </CardTitle>
@@ -1201,8 +1227,8 @@ export default function PixelGrid() {
                      </CardContent>
                   </Card>
 
-                  <Card className="bg-background/60 shadow-md">
-                    <CardHeader className="pb-2 pt-3 px-4">
+                  <Card className="card-inset-shadow">
+                    <CardHeader className="card-header-accent pb-2 pt-3 px-4">
                       <CardTitle className="text-md font-headline flex items-center text-primary">
                         <TagsIcon className="h-4 w-4 mr-2" /> Detalhes Adicionais & Venda
                       </CardTitle>
@@ -1216,7 +1242,7 @@ export default function PixelGrid() {
                                 placeholder="Ex: paisagem, lisboa, arte"
                                 value={editableTags}
                                 onChange={(e) => setEditableTags(e.target.value)}
-                                className="mt-1 h-10 text-sm"
+                                className="mt-1 h-10 text-sm input-shadow"
                             />
                             <p className="text-xs text-muted-foreground mt-1">Separadas por vírgula.</p>
                         </div>
@@ -1228,15 +1254,16 @@ export default function PixelGrid() {
                                 placeholder="https://exemplo.com"
                                 value={editableLinkUrl}
                                 onChange={(e) => setEditableLinkUrl(e.target.value)}
-                                className="mt-1 h-10 text-sm"
+                                className="mt-1 h-10 text-sm input-shadow"
                             />
                         </div>
-                        <Separator />
+                        <Separator className="bg-border/50"/>
                         <div className="flex items-center space-x-2 pt-1">
                             <Switch
                             id="for-sale-switch"
                             checked={editableIsForSaleByOwner}
                             onCheckedChange={setEditableIsForSaleByOwner}
+                            className="data-[state=checked]:bg-accent data-[state=unchecked]:bg-muted"
                             />
                             <Label htmlFor="for-sale-switch" className="text-sm cursor-pointer">Colocar pixel à venda</Label>
                         </div>
@@ -1249,7 +1276,7 @@ export default function PixelGrid() {
                                 placeholder="Ex: 100"
                                 value={editableSalePrice}
                                 onChange={(e) => setEditableSalePrice(e.target.value)}
-                                className="mt-1 h-10 text-sm"
+                                className="mt-1 h-10 text-sm input-shadow"
                                 min="0"
                             />
                             </div>
@@ -1259,9 +1286,9 @@ export default function PixelGrid() {
 
                 </div>
               </ScrollArea>
-              <DialogFooter className="gap-2 pt-3">
-                 <Button variant="outline" onClick={() => setEditMode(false)}>Cancelar</Button>
-                 <Button onClick={handleSaveChanges} className="bg-green-600 hover:bg-green-700 text-white">
+              <DialogFooter className="gap-2 pt-3 dialog-footer-gold-accent rounded-b-lg">
+                 <Button variant="outline" onClick={() => setEditMode(false)} className="button-3d-effect-outline">Cancelar</Button>
+                 <Button onClick={handleSaveChanges} className="button-gradient-green button-3d-effect">
                     <Save className="mr-1.5 h-3.5 w-3.5" /> Guardar Alterações
                   </Button>
               </DialogFooter>
@@ -1289,7 +1316,7 @@ export default function PixelGrid() {
           }}
         >
           <PortugalMapSvg
-            className="absolute top-0 left-0 w-full h-full text-foreground/10 pointer-events-none z-0"
+            className="absolute top-0 left-0 w-full h-full text-border/30 pointer-events-none z-0"
             onMapDataLoaded={handleMapDataLoaded}
           />
           <canvas
@@ -1312,27 +1339,27 @@ export default function PixelGrid() {
         )}
       </div>
 
-      <div className="absolute bottom-6 right-6 z-20" pointerEvents="auto">
+      <div className="absolute bottom-6 right-6 z-20 animate-scale-in animation-delay-500" pointerEvents="auto">
         <Dialog>
           <DialogTrigger asChild>
-             <Button pointerEvents="auto" size="icon" className="rounded-full w-14 h-14 shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground">
+             <Button pointerEvents="auto" size="icon" className="rounded-full w-14 h-14 shadow-lg button-gradient-gold button-3d-effect hover:button-gold-glow active:scale-95">
                 <Star className="h-7 w-7" />
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-sm" data-dialog-content pointerEvents="auto">
-            <DialogHeader>
-              <DialogTitle className="font-headline">Ações Rápidas do Universo</DialogTitle>
-              <CardDescriptionElement>
+          <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-sm border-primary/30 shadow-xl" data-dialog-content pointerEvents="auto">
+            <DialogHeader className="dialog-header-gold-accent rounded-t-lg">
+              <DialogTitle className="font-headline text-shadow-gold-sm">Ações Rápidas do Universo</DialogTitle>
+              <CardDescriptionElement className="text-muted-foreground">
                 Explore, filtre e interaja com o mapa de pixels.
               </CardDescriptionElement>
             </DialogHeader>
             <div className="grid gap-3 py-4">
-              <Button pointerEvents="auto" variant="outline"><Search className="mr-2 h-4 w-4" />Explorar Pixel por Coordenadas</Button>
-              <Button pointerEvents="auto" variant="outline"><Palette className="mr-2 h-4 w-4" />Filtros de Visualização</Button>
-              <Button pointerEvents="auto" variant="outline"><Sparkles className="mr-2 h-4 w-4" />Ver Eventos Atuais</Button>
-               <Button pointerEvents="auto" variant="outline"><MapPinIconLucide className="mr-2 h-4 w-4" />Ir para Minha Localização</Button>
+              <Button pointerEvents="auto" variant="outline" className="button-3d-effect-outline"><Search className="mr-2 h-4 w-4" />Explorar Pixel por Coordenadas</Button>
+              <Button pointerEvents="auto" variant="outline" className="button-3d-effect-outline"><Palette className="mr-2 h-4 w-4" />Filtros de Visualização</Button>
+              <Button pointerEvents="auto" variant="outline" className="button-3d-effect-outline"><Sparkles className="mr-2 h-4 w-4" />Ver Eventos Atuais</Button>
+               <Button pointerEvents="auto" variant="outline" className="button-3d-effect-outline"><MapPinIconLucide className="mr-2 h-4 w-4" />Ir para Minha Localização</Button>
             </div>
-            <DialogFooter>
+            <DialogFooter className="dialog-footer-gold-accent rounded-b-lg">
             </DialogFooter>
           </DialogContent>
         </Dialog>
