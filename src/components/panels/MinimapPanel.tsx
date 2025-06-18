@@ -7,34 +7,34 @@ import { Map, Minimize2, Search, Maximize2, Pin, LocateFixed } from 'lucide-reac
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import PortugalMapSvg from '@/components/pixel-grid/PortugalMapSvg'; 
+import PortugalMapSvg, { type MapData } from '@/components/pixel-grid/PortugalMapSvg';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export default function MinimapPanel() {
   const [isMinimized, setIsMinimized] = useState(false);
   const [coords, setCoords] = useState({ x: '', y: '' });
   const panelRef = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState({ x: 20, y: 150 }); 
+  const [position, setPosition] = useState({ x: 20, y: 150 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!(e.target as HTMLElement).closest('[data-drag-handle="true"]')) return;
-    
+
     setIsDragging(true);
     if (panelRef.current) {
       const panelRect = panelRef.current.getBoundingClientRect();
-      setDragStart({ 
-        x: e.clientX - panelRect.left, 
-        y: e.clientY - panelRect.top 
+      setDragStart({
+        x: e.clientX - panelRect.left,
+        y: e.clientY - panelRect.top
       });
     }
   };
 
   const handleMouseMove = (e: MouseEvent) => {
     if (!isDragging || !panelRef.current) return;
-    
+
     let newX = e.clientX - dragStart.x;
     let newY = e.clientY - dragStart.y;
 
@@ -45,7 +45,7 @@ export default function MinimapPanel() {
 
     newX = Math.max(0, Math.min(newX, viewportWidth - panelWidth));
     newY = Math.max(0, Math.min(newY, viewportHeight - panelHeight));
-    
+
     setPosition({ x: newX, y: newY });
   };
 
@@ -76,20 +76,27 @@ export default function MinimapPanel() {
     console.log(`Região clicada: ${regionId}`);
   }
 
+  // Dummy function to satisfy the prop requirement for PortugalMapSvg
+  const handleMinimapDataLoaded = (data: MapData) => {
+    // The minimap might not need to do anything complex with this data,
+    // but the prop is required.
+    // console.log("Minimap Svg data loaded (no-op)", data);
+  };
+
   return (
-    <Card 
-      ref={panelRef} 
+    <Card
+      ref={panelRef}
       className="fixed z-30 w-72 shadow-xl bg-card/80 backdrop-blur-md transition-all duration-300 ease-in-out"
-      style={{ 
-        left: `${position.x}px`, 
+      style={{
+        left: `${position.x}px`,
         top: `${position.y}px`,
-        maxHeight: isMinimized ? '60px' : '480px', 
+        maxHeight: isMinimized ? '60px' : '480px',
         overflow: 'hidden'
       }}
       onMouseDown={handleMouseDown}
     >
-      <CardHeader 
-        className="py-3 px-4 flex flex-row items-center justify-between cursor-grab active:cursor-grabbing" 
+      <CardHeader
+        className="py-3 px-4 flex flex-row items-center justify-between cursor-grab active:cursor-grabbing"
         data-drag-handle="true"
       >
         <div className="flex items-center">
@@ -112,11 +119,14 @@ export default function MinimapPanel() {
       {!isMinimized && (
         <CardContent className="p-3">
           <div className="aspect-[5/8] w-full bg-background/70 rounded-md overflow-hidden border border-border mb-3 shadow-inner relative">
-            <PortugalMapSvg className="w-full h-full text-foreground/20" />
+            <PortugalMapSvg
+              className="w-full h-full text-foreground/20"
+              onMapDataLoaded={handleMinimapDataLoaded}
+            />
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div 
+                  <div
                     className="absolute top-[70%] left-[55%] w-4 h-4 bg-accent/70 rounded-full cursor-pointer hover:bg-accent ring-2 ring-accent/30 hover:ring-accent transition-all"
                     onClick={() => handleRegionClick("D18-Faro")}
                     data-ai-hint="region marker"
@@ -126,7 +136,7 @@ export default function MinimapPanel() {
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div 
+                  <div
                     className="absolute top-[20%] left-[25%] w-4 h-4 bg-primary/70 rounded-full cursor-pointer hover:bg-primary ring-2 ring-primary/30 hover:ring-primary transition-all"
                     onClick={() => handleRegionClick("D01-Viana_do_Castelo")}
                     data-ai-hint="region marker"
@@ -136,7 +146,7 @@ export default function MinimapPanel() {
               </Tooltip>
                <Tooltip>
                 <TooltipTrigger asChild>
-                  <div 
+                  <div
                     className="absolute top-[45%] left-[40%] w-4 h-4 bg-green-500/70 rounded-full cursor-pointer hover:bg-green-500 ring-2 ring-green-500/30 hover:ring-green-500 transition-all"
                     onClick={() => handleRegionClick("D11-Leiria")}
                     data-ai-hint="region marker"
@@ -148,17 +158,17 @@ export default function MinimapPanel() {
           </div>
           <CardDescription className="text-xs mb-2 font-code">Navegação Rápida:</CardDescription>
           <div className="flex gap-2 mb-2">
-            <Input 
-              type="number" 
-              placeholder="X" 
-              value={coords.x} 
+            <Input
+              type="number"
+              placeholder="X"
+              value={coords.x}
               onChange={(e) => setCoords({ ...coords, x: e.target.value })}
               className="h-8 text-xs font-code"
             />
-            <Input 
-              type="number" 
-              placeholder="Y" 
-              value={coords.y} 
+            <Input
+              type="number"
+              placeholder="Y"
+              value={coords.y}
               onChange={(e) => setCoords({ ...coords, y: e.target.value })}
               className="h-8 text-xs font-code"
             />
