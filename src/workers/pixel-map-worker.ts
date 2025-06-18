@@ -21,12 +21,15 @@ type WorkerMessage = WorkerProgressMessage | WorkerDoneMessage | WorkerErrorMess
 
 
 self.onmessage = (event: MessageEvent<WorkerInput>) => {
+  console.log("Worker: Message received", event.data); 
   try {
     if (!event.data) {
+      console.error("Worker: No data received from main thread.");
       self.postMessage({ type: 'error', error: 'Worker Error: No data received.' } as WorkerErrorMessage);
       return;
     }
     
+    console.log("Worker: Posting initial progress (0.1)");
     self.postMessage({ type: 'progress', progress: 0.1 } as WorkerProgressMessage);
 
     const {
@@ -39,6 +42,7 @@ self.onmessage = (event: MessageEvent<WorkerInput>) => {
 
 
     if (!pathStrings || pathStrings.length === 0) {
+      console.error("Worker: pathStrings array is empty or undefined.");
       self.postMessage({ type: 'error', error: 'Worker Error: pathStrings array is empty or undefined.' } as WorkerErrorMessage);
       return;
     }
@@ -46,26 +50,30 @@ self.onmessage = (event: MessageEvent<WorkerInput>) => {
     const combinedPath2D = new Path2D();
     for (const d of pathStrings) {
       if (typeof d !== 'string' || d.trim() === '') {
+        console.warn("Worker: Empty or invalid path string encountered:", d);
         continue;
       }
       try {
         combinedPath2D.addPath(new Path2D(d));
       } catch (e: any) {
+        console.error("Worker: Error creating Path2D from d attribute:", d, e);
         self.postMessage({ type: 'error', error: `Worker Error: Invalid Path2D string. Details: ${e.message}` } as WorkerErrorMessage);
         return; 
       }
     }
     
-    const tempCanvas = new OffscreenCanvas(1, 1);
+    const tempCanvas = new OffscreenCanvas(1, 1); // Minimal canvas for context
     const ctx = tempCanvas.getContext('2d');
 
     if (!ctx) {
+      console.error("Worker: Failed to get OffscreenCanvas 2D context.");
       self.postMessage({ type: 'error', error: 'Worker Error: Failed to get OffscreenCanvas 2D context.' } as WorkerErrorMessage);
       return;
     }
     
     const totalPixelsToProcess = logicalCols * logicalRows;
     if (totalPixelsToProcess === 0) {
+        console.error("Worker: Total pixels to process is zero.");
         self.postMessage({ type: 'error', error: 'Worker Error: Total pixels to process is zero.' } as WorkerErrorMessage);
         return;
     }
@@ -73,10 +81,10 @@ self.onmessage = (event: MessageEvent<WorkerInput>) => {
     const pixelBitmap = new Uint8Array(totalPixelsToProcess);
     let processedPixels = 0;
     let activePixelsCount = 0;
-    // Ajustar o intervalo de atualização para cerca de 500 atualizações no total
     const progressUpdateInterval = Math.max(1, Math.floor(totalPixelsToProcess / 500)); 
     let pixelsSinceLastUpdate = 0;
 
+    console.log(`Worker: Starting pixel processing. Total: ${totalPixelsToProcess}, Update Interval: ${progressUpdateInterval}`);
 
     for (let r = 0; r < logicalRows; r++) {
       for (let c = 0; c < logicalCols; c++) {
@@ -96,17 +104,21 @@ self.onmessage = (event: MessageEvent<WorkerInput>) => {
         if (pixelsSinceLastUpdate >= progressUpdateInterval || processedPixels === totalPixelsToProcess) {
           const currentProgress = (processedPixels / totalPixelsToProcess) * 100;
           if (Number.isFinite(currentProgress)) {
-              self.postMessage({ type: 'progress', progress: Math.min(99.9, 0.1 + (currentProgress * 0.998)) } as WorkerProgressMessage);
+              const progressPayload = { type: 'progress', progress: Math.min(99.9, 0.1 + (currentProgress * 0.998)) };
+              // console.log("Worker: Posting progress update", progressPayload); // Can be too noisy, uncomment if needed
+              self.postMessage(progressPayload as WorkerProgressMessage);
           }
           pixelsSinceLastUpdate = 0;
         }
       }
     }
     
+    console.log("Worker: Processing done. Active pixels:", activePixelsCount, "Bitmap size:", pixelBitmap.buffer.byteLength);
     self.postMessage({ type: 'done', bitmap: pixelBitmap.buffer, activePixelsInBitmap: activePixelsCount } as WorkerDoneMessage, [pixelBitmap.buffer]);
     
   } catch (e: any) {
     const errorMessage = e instanceof Error ? e.message : String(e);
+    console.error("Worker: Uncaught error during processing:", errorMessage, e);
     self.postMessage({ type: 'error', error: `Worker uncaught error: ${errorMessage}` } as WorkerErrorMessage);
   }
 };
