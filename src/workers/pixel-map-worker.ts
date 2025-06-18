@@ -1,3 +1,4 @@
+
 /// <reference lib="webworker" />
 
 // src/workers/pixel-map-worker.ts
@@ -72,7 +73,10 @@ self.onmessage = (event: MessageEvent<WorkerInput>) => {
     const pixelBitmap = new Uint8Array(totalPixelsToProcess);
     let processedPixels = 0;
     let activePixelsCount = 0;
-    const progressUpdateInterval = Math.max(1, Math.floor(logicalRows / 100)); 
+    // Ajustar o intervalo de atualização para cerca de 500 atualizações no total
+    const progressUpdateInterval = Math.max(1, Math.floor(totalPixelsToProcess / 500)); 
+    let pixelsSinceLastUpdate = 0;
+
 
     for (let r = 0; r < logicalRows; r++) {
       for (let c = 0; c < logicalCols; c++) {
@@ -85,12 +89,16 @@ self.onmessage = (event: MessageEvent<WorkerInput>) => {
         } else {
           pixelBitmap[r * logicalCols + c] = 0; 
         }
-      }
-      processedPixels += logicalCols;
-      if (r % progressUpdateInterval === 0 || r === logicalRows - 1) {
-        const currentProgress = (processedPixels / totalPixelsToProcess) * 100;
-        if (Number.isFinite(currentProgress)) {
-            self.postMessage({ type: 'progress', progress: Math.min(99.9, 0.1 + (currentProgress * 0.998)) } as WorkerProgressMessage);
+        
+        processedPixels++;
+        pixelsSinceLastUpdate++;
+
+        if (pixelsSinceLastUpdate >= progressUpdateInterval || processedPixels === totalPixelsToProcess) {
+          const currentProgress = (processedPixels / totalPixelsToProcess) * 100;
+          if (Number.isFinite(currentProgress)) {
+              self.postMessage({ type: 'progress', progress: Math.min(99.9, 0.1 + (currentProgress * 0.998)) } as WorkerProgressMessage);
+          }
+          pixelsSinceLastUpdate = 0;
         }
       }
     }
@@ -102,3 +110,4 @@ self.onmessage = (event: MessageEvent<WorkerInput>) => {
     self.postMessage({ type: 'error', error: `Worker uncaught error: ${errorMessage}` } as WorkerErrorMessage);
   }
 };
+

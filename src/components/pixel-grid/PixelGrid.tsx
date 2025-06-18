@@ -1,3 +1,4 @@
+
 // src/components/pixel-grid/PixelGrid.tsx
 'use client';
 
@@ -48,8 +49,8 @@ const totalLogicalPixels = LOGICAL_GRID_COLS_CONFIG * logicalGridRows;
 
 const PLACEHOLDER_IMAGE_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 
-const UNSOLD_PIXEL_COLOR = 'hsl(var(--secondary))';
-const UNSOLD_PIXEL_STROKE_COLOR = 'hsl(var(--border))';
+const UNSOLD_PIXEL_COLOR = 'rgba(0, 255, 0, 0.5)'; // Verde semi-transparente para depuração
+const UNSOLD_PIXEL_STROKE_COLOR = 'magenta'; // Magenta para depuração
 const USER_BOUGHT_PIXEL_COLOR = 'hsl(var(--primary))';
 
 const MOCK_CURRENT_USER_ID = 'currentUserPixelMaster';
@@ -284,6 +285,7 @@ export default function PixelGrid() {
         const renderY = pixel.y * RENDERED_PIXEL_SIZE_CONFIG;
         const displayPixelSize = Math.max(1 / zoom, RENDERED_PIXEL_SIZE_CONFIG); 
         ctx.fillRect(renderX, renderY, displayPixelSize, displayPixelSize);
+        // console.log(`PixelGrid: Drawing sold pixel at (${pixel.x}, ${pixel.y}) with color ${pixel.color}`);
       });
     }
   }, [mapData, soldPixels, zoom]);
@@ -298,6 +300,9 @@ export default function PixelGrid() {
       const containerWidth = containerRef.current.offsetWidth;
       const effectiveContainerHeight = window.innerHeight - HEADER_HEIGHT_PX - BOTTOM_NAV_HEIGHT_PX;
       
+      console.log("PixelGrid defaultView calc: containerWidth", containerWidth, "effectiveContainerHeight", effectiveContainerHeight);
+      console.log("PixelGrid defaultView calc: canvasDrawWidth", canvasDrawWidth, "canvasDrawHeight", canvasDrawHeight);
+
       if (containerWidth > 0 && effectiveContainerHeight > 0) {
         const fitZoomX = containerWidth / canvasDrawWidth;
         const fitZoomY = effectiveContainerHeight / canvasDrawHeight;
@@ -312,6 +317,10 @@ export default function PixelGrid() {
           y: (effectiveContainerHeight - canvasContentHeight) / 2,
         };
         
+        console.log("PixelGrid defaultView calc: fitZoomX", fitZoomX, "fitZoomY", fitZoomY, "zoomToFit", zoomToFit);
+        console.log("PixelGrid defaultView calc: calculatedZoom", calculatedZoom, "canvasContentWidth", canvasContentWidth, "canvasContentHeight", canvasContentHeight);
+        console.log("PixelGrid defaultView calc: calculatedPosition", calculatedPosition);
+
         setDefaultView({ zoom: calculatedZoom, position: calculatedPosition });
         setZoom(calculatedZoom);
         setPosition(calculatedPosition);
@@ -1333,3 +1342,7 @@ export default function PixelGrid() {
     </div>
   );
 }
+
+// Log para verificar o tipo de handleMapDataLoaded antes do return
+// console.log("PixelGrid: Type of handleMapDataLoaded before main return:", typeof handleMapDataLoaded);
+
