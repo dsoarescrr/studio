@@ -1,4 +1,3 @@
-
 // src/components/pixel-grid/PixelGrid.tsx
 'use client';
 
@@ -52,7 +51,7 @@ const PLACEHOLDER_IMAGE_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUg
 const ROWS_PER_DRAW_CHUNK = 100;
 
 type WorkerProgressMessage = { type: 'progress'; progress: number };
-type WorkerDoneMessage = { type: 'done'; bitmap: ArrayBuffer };
+type WorkerDoneMessage = { type: 'done'; bitmap: ArrayBuffer; activePixelsInBitmap: number };
 type WorkerErrorMessage = { type: 'error'; error: string };
 type WorkerMessage = WorkerProgressMessage | WorkerDoneMessage | WorkerErrorMessage;
 
@@ -113,6 +112,8 @@ const mockLoreSnippets: string[] = [
 
 
 export default function PixelGrid() {
+  console.log("PixelGrid: Component rendering START");
+  const [isClient, setIsClient] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -141,7 +142,7 @@ export default function PixelGrid() {
   const [pixelBitmap, setPixelBitmap] = useState<Uint8Array | null>(null);
   const [workerStatus, setWorkerStatus] = useState<'idle' | 'processing-worker' | 'drawing-canvas' | 'done' | 'error'>('idle');
   const [overallProgress, setOverallProgress] = useState(0);
-  const [progressMessage, setProgressMessage] = useState("A carregar dados do mapa...");
+  const [progressMessage, setProgressMessage] = useState("Aguardando cliente...");
   const [workerErrorMessage, setWorkerErrorMessage] = useState<string | null>(null);
 
   const workerRef = useRef<Worker | null>(null);
@@ -159,120 +160,183 @@ export default function PixelGrid() {
 
   const autoResetTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  useEffect(() => {
+    setIsClient(true);
+    console.log("PixelGrid: First useEffect - setting isClient to true. Component has mounted.");
+  }, []);
 
-  const handleMapDataLoaded = useCallback((data: MapData) => {
-    if (data && data.pathStrings && data.pathStrings.length > 0 && data.path2D) {
-      setMapData(data);
-      setProgressMessage("Mapa carregado. A preparar grelha de pixels...");
-      setWorkerStatus('idle');
-      setWorkerErrorMessage(null);
-    } else {
-      setWorkerStatus('error');
-      const errorMsg = "Erro: Dados do mapa (pathStrings ou path2D) estão vazios ou inválidos.";
-      setWorkerErrorMessage(errorMsg);
-      setProgressMessage(errorMsg);
-      toast({ title: "Erro ao Carregar Mapa", description: errorMsg, variant: "destructive" });
-    }
-  }, [toast]);
+
+  const handleMapDataLoaded = useCallback(
+    (data: { path2D: Path2D; pathStrings: string[] }) => {
+      console.log("PixelGrid: handleMapDataLoaded CALLED.");
+      console.log(`PixelGrid: Map data received. Path strings count: ${data?.pathStrings?.length}. Has Path2D: ${!!data?.path2D}.`);
+      if (data && data.pathStrings && data.pathStrings.length > 0 && data.path2D) {
+        setMapData(data);
+        setWorkerStatus('idle'); // Reset worker status for potential re-processing
+        setWorkerErrorMessage(null); // Clear previous errors
+        console.log("PixelGrid: mapData STATE UPDATED with new data.");
+      } else {
+        const errorMsg = "Erro: Dados do mapa (pathStrings ou path2D) estão vazios ou inválidos em handleMapDataLoaded.";
+        console.error(`PixelGrid: ${errorMsg}`, data);
+        setWorkerStatus('error');
+        setWorkerErrorMessage(errorMsg);
+        setProgressMessage(errorMsg);
+        // toast({ title: "Erro ao Carregar Mapa", description: errorMsg, variant: "destructive" });
+      }
+    },
+    [] // Empty dependency array for stability
+  );
+  console.log(`PixelGrid: BEFORE RETURN - Type of handleMapDataLoaded: ${typeof handleMapDataLoaded}`);
+
 
   useEffect(() => {
-    if (mapData && !workerRef.current) {
-      setProgressMessage("A iniciar worker...");
-      setOverallProgress(0);
-      setWorkerErrorMessage(null);
-      let workerInstance: Worker | null = null;
-      try {
-        workerInstance = new Worker(new URL('../../workers/pixel-map-worker.ts', import.meta.url));
-        workerRef.current = workerInstance;
-
-        workerRef.current.postMessage({
-          pathStrings: mapData.pathStrings,
-          canvasWidth: canvasDrawWidth,
-          canvasHeight: canvasDrawHeight,
-          svgViewBoxWidth: SVG_VIEWBOX_WIDTH,
-          svgViewBoxHeight: SVG_VIEWBOX_HEIGHT,
-          logicalCols: LOGICAL_GRID_COLS_CONFIG,
-          logicalRows: logicalGridRows,
-          pixelSize: RENDERED_PIXEL_SIZE_CONFIG,
-        } as WorkerInput);
-
-        setWorkerStatus('processing-worker');
-
-        workerRef.current.onmessage = (event: MessageEvent<WorkerMessage>) => {
-          if (!event.data || typeof event.data.type === 'undefined') {
-            console.error('Received invalid message from worker:', event.data);
-            setWorkerStatus('error');
-            setWorkerErrorMessage('Comunicação inválida do worker.');
-            setOverallProgress(0);
-            return;
-          }
-
-          const { type } = event.data;
-
-          if (type === 'progress') {
-            const workerProgress = Math.max(0, Math.min(100, Number((event.data as WorkerProgressMessage).progress) || 0));
-            setOverallProgress(workerProgress * 0.5);
-          } else if (type === 'done') {
-            setPixelBitmap(new Uint8Array((event.data as WorkerDoneMessage).bitmap));
-            setWorkerStatus('drawing-canvas');
-            setOverallProgress(50);
-          } else if (type === 'error') {
-            const errorMessage = (event.data as WorkerErrorMessage).error || 'Erro desconhecido no worker.';
-            setWorkerStatus('error');
-            setWorkerErrorMessage(errorMessage);
-            setProgressMessage(`Erro do Worker: ${errorMessage}`);
-            setOverallProgress(0);
-          }
-        };
-
-        workerRef.current.onerror = (err: ErrorEvent) => {
-          const errorMessage = `WORKER SCRIPT ERROR: ${err.message || "Ocorreu um erro crítico e inesperado no worker."}`;
-          setWorkerStatus('error');
-          setWorkerErrorMessage(errorMessage);
-          setProgressMessage(errorMessage);
-          setOverallProgress(0);
-          if (workerRef.current) {
-            workerRef.current.terminate();
-            workerRef.current = null;
-          }
-        };
-      } catch (e: any) {
-        const errorMsg = e instanceof Error ? e.message : String(e);
-        setWorkerStatus('error');
-        setWorkerErrorMessage(`Falha ao criar Worker: ${errorMsg}`);
-        setProgressMessage(`Falha ao criar Worker: ${errorMsg}`);
-        setOverallProgress(0);
-        if (workerRef.current) {
-            workerRef.current.terminate();
-            workerRef.current = null;
-        }
-      }
+    console.log(`PixelGrid: Worker initialization useEffect triggered. Conditions - isClient: ${isClient}, mapData: ${!!mapData}, workerRef.current: ${!!workerRef.current}, workerStatus: ${workerStatus}`);
+    if (!isClient) {
+      console.log("PixelGrid: Worker init skipped - not client yet.");
+      return;
+    }
+    if (!mapData) {
+      console.log("PixelGrid: Worker init skipped - no mapData yet.");
+      setProgressMessage("A carregar dados do mapa SVG..."); // Keep this message if mapData is missing
+      return;
+    }
+    if (workerRef.current || workerStatus === 'processing-worker' || workerStatus === 'drawing-canvas') {
+      console.log(`PixelGrid: Worker init skipped - worker already exists or is busy. Status: ${workerStatus}`);
+      return;
+    }
+    if (workerStatus === 'error' && workerErrorMessage) {
+      console.log("PixelGrid: Worker init skipped - previous error exists.");
+      setProgressMessage(`Erro: ${workerErrorMessage}`);
+      return;
     }
 
+
+    console.log("PixelGrid: Initializing worker...", mapData);
+    setProgressMessage("A iniciar worker...");
+    setOverallProgress(0);
+    setWorkerErrorMessage(null);
+    let workerInstance: Worker | null = null;
+    try {
+      workerInstance = new Worker(new URL('../../workers/pixel-map-worker.ts', import.meta.url));
+      workerRef.current = workerInstance;
+
+      workerRef.current.postMessage({
+        pathStrings: mapData.pathStrings,
+        canvasWidth: canvasDrawWidth,
+        canvasHeight: canvasDrawHeight,
+        svgViewBoxWidth: SVG_VIEWBOX_WIDTH,
+        svgViewBoxHeight: SVG_VIEWBOX_HEIGHT,
+        logicalCols: LOGICAL_GRID_COLS_CONFIG,
+        logicalRows: logicalGridRows,
+        pixelSize: RENDERED_PIXEL_SIZE_CONFIG,
+      } as WorkerInput);
+
+      setWorkerStatus('processing-worker');
+
+      workerRef.current.onmessage = (event: MessageEvent<WorkerMessage>) => {
+        if (!event.data || typeof event.data.type === 'undefined') {
+          console.error('PixelGrid: Received invalid message from worker:', event.data);
+          setWorkerStatus('error');
+          setWorkerErrorMessage('Comunicação inválida do worker.');
+          setOverallProgress(0);
+          return;
+        }
+        console.log(`PixelGrid: Message RECEIVED from worker. Type: ${event.data.type}`);
+
+        const { type } = event.data;
+
+        if (type === 'progress') {
+          const workerProgress = Math.max(0, Math.min(100, Number((event.data as WorkerProgressMessage).progress) || 0));
+          setOverallProgress(workerProgress * 0.5); // Worker processing is first 50%
+        } else if (type === 'done') {
+          const doneMessage = event.data as WorkerDoneMessage;
+          const receivedBitmap = new Uint8Array(doneMessage.bitmap);
+          console.log(`PixelGrid: Received pixelBitmap from worker. Length: ${receivedBitmap.length}. Worker reported active pixels: ${doneMessage.activePixelsInBitmap}`);
+          
+          // Verification step on main thread
+          let activeCountMainThread = 0;
+          for (let i = 0; i < receivedBitmap.length; i++) {
+            if (receivedBitmap[i] === 1) activeCountMainThread++;
+          }
+          console.log(`PixelGrid: Active pixels counted on main thread: ${activeCountMainThread}`);
+
+          setPixelBitmap(receivedBitmap);
+          setWorkerStatus('drawing-canvas');
+          setOverallProgress(50); // Mark worker processing as done (50%)
+        } else if (type === 'error') {
+          const errorMessage = (event.data as WorkerErrorMessage).error || 'Erro desconhecido no worker.';
+          console.error(`PixelGrid: Error message from worker: ${errorMessage}`);
+          setWorkerStatus('error');
+          setWorkerErrorMessage(errorMessage);
+          setProgressMessage(`Erro do Worker: ${errorMessage}`);
+          setOverallProgress(0);
+        }
+      };
+
+      workerRef.current.onerror = (err: ErrorEvent) => {
+        const errorMessage = `PixelGrid: WORKER SCRIPT ERROR: ${err.message || "Ocorreu um erro crítico e inesperado no worker."}`;
+        console.error(errorMessage, err);
+        setWorkerStatus('error');
+        setWorkerErrorMessage(errorMessage);
+        setProgressMessage(errorMessage);
+        setOverallProgress(0);
+        if (workerRef.current) {
+          workerRef.current.terminate();
+          workerRef.current = null;
+        }
+      };
+    } catch (e: any) {
+      const errorMsg = e instanceof Error ? e.message : String(e);
+      console.error(`PixelGrid: Falha ao criar Worker: ${errorMsg}`);
+      setWorkerStatus('error');
+      setWorkerErrorMessage(`Falha ao criar Worker: ${errorMsg}`);
+      setProgressMessage(`Falha ao criar Worker: ${errorMsg}`);
+      setOverallProgress(0);
+      if (workerRef.current) {
+          workerRef.current.terminate();
+          workerRef.current = null;
+      }
+    }
+    
     return () => {
       if (workerRef.current) {
+        console.log("PixelGrid: Terminating worker due to component unmount or dependency change.");
         workerRef.current.terminate();
         workerRef.current = null;
       }
     };
-  }, [mapData]);
+  }, [isClient, mapData]); // Removed workerStatus from dependencies to avoid re-triggering on status change
 
 
   const drawPixelsOnCanvas = useCallback(async () => {
+    console.log(`PixelGrid: drawPixelsOnCanvas triggered. Worker status: ${workerStatus}, PixelBitmap exists: ${!!pixelBitmap}`);
     const canvas = canvasRef.current;
-    if (!canvas || !pixelBitmap) return;
+    if (!canvas || !pixelBitmap) {
+      console.log("PixelGrid: drawPixelsOnCanvas - Canvas or pixelBitmap not ready. Skipping draw.");
+      return;
+    }
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      console.error("PixelGrid: Failed to get 2D context from canvas for drawing.");
+      return;
+    }
+
+    let activePixelsInBitmap = 0;
+    for(let i=0; i < pixelBitmap.length; i++) {
+        if(pixelBitmap[i] === 1) activePixelsInBitmap++;
+    }
+    console.log(`PixelGrid: drawPixelsOnCanvas - Starting drawing. Active pixels in bitmap: ${activePixelsInBitmap}.`);
+
 
     setProgressMessage(`A desenhar pixels no canvas... ${overallProgress.toFixed(1)}%`);
     canvas.width = canvasDrawWidth;
     canvas.height = canvasDrawHeight;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = 'hsl(var(--muted-foreground)/0.5)'; // Use themed color for pixels
+    ctx.fillStyle = 'hsl(var(--primary))'; // Changed to primary color, fully opaque
 
     if (RENDERED_PIXEL_SIZE_CONFIG > 1) {
-        ctx.strokeStyle = 'hsl(var(--border)/0.3)'; // Themed border for grid lines
+        ctx.strokeStyle = 'hsl(var(--border)/0.3)'; 
         ctx.lineWidth = 0.2;
     }
 
@@ -295,7 +359,7 @@ export default function PixelGrid() {
             }
           }
           rowsDrawn += (endRow - startRow);
-          const drawingProgress = (rowsDrawn / logicalGridRows) * 50;
+          const drawingProgress = (rowsDrawn / logicalGridRows) * 50; // Canvas drawing is the second 50%
           setOverallProgress(50 + drawingProgress);
           resolve();
         });
@@ -306,13 +370,15 @@ export default function PixelGrid() {
       await drawChunk(r);
     }
 
+    console.log("PixelGrid: Finished drawing pixels on canvas.");
     setProgressMessage("Universo pixel pronto!");
     setOverallProgress(100);
     setWorkerStatus('done');
-  }, [pixelBitmap, overallProgress]);
+  }, [pixelBitmap, overallProgress, workerStatus]);
 
 
   useEffect(() => {
+    console.log(`PixelGrid: useEffect for drawing triggered. Worker status: ${workerStatus}, PixelBitmap: ${!!pixelBitmap}`);
     if (workerStatus === 'drawing-canvas' && pixelBitmap) {
       drawPixelsOnCanvas();
     }
@@ -320,6 +386,7 @@ export default function PixelGrid() {
 
 
   useEffect(() => {
+    console.log("PixelGrid: Default view useEffect triggered.");
     if (typeof window !== 'undefined' && containerRef.current && canvasRef.current && mapData?.path2D && workerStatus === 'done' && !defaultView) {
       const containerWidth = containerRef.current.offsetWidth;
       const effectiveContainerHeight = window.innerHeight - HEADER_HEIGHT_PX - BOTTOM_NAV_HEIGHT_PX;
@@ -342,6 +409,7 @@ export default function PixelGrid() {
           y: (effectiveContainerHeight - canvasContentHeight) / 2,
         };
 
+        console.log("PixelGrid: Setting default view:", { zoom: calculatedZoom, position: calculatedPosition });
         setDefaultView({ zoom: calculatedZoom, position: calculatedPosition });
         setZoom(calculatedZoom);
         setPosition(calculatedPosition);
@@ -352,6 +420,7 @@ export default function PixelGrid() {
 
  const handleResetView = useCallback(() => {
     if (defaultView) {
+      console.log("PixelGrid: Resetting view to default", defaultView);
       setZoom(defaultView.zoom);
       setPosition(defaultView.position);
     } else if (typeof window !== 'undefined' && containerRef.current && canvasRef.current) {
@@ -372,9 +441,10 @@ export default function PixelGrid() {
                 x: (containerWidth - canvasContentWidth) / 2,
                 y: (effectiveContainerHeight - canvasContentHeight) / 2,
             };
+            console.log("PixelGrid: Resetting view to calculated fallback", { zoom: fallbackZoom, position: fallbackPosition });
             setZoom(fallbackZoom);
             setPosition(fallbackPosition);
-            setDefaultView({ zoom: fallbackZoom, position: fallbackPosition });
+            setDefaultView({ zoom: fallbackZoom, position: fallbackPosition }); // Also set it as default if it wasn't
         }
     }
   }, [defaultView]);
@@ -419,18 +489,21 @@ export default function PixelGrid() {
   useEffect(() => {
     if (workerStatus === 'error') {
       // Message is already set by the error handlers
+      setProgressMessage(`Erro: ${workerErrorMessage || "Falha desconhecida"}`);
     } else if (workerStatus === 'processing-worker' && overallProgress < 50) {
       setProgressMessage(`A gerar mapa de pixels... ${overallProgress.toFixed(1)}%`);
     } else if (workerStatus === 'drawing-canvas' && overallProgress < 100) {
       setProgressMessage(`A desenhar pixels no canvas... ${overallProgress.toFixed(1)}%`);
     } else if (workerStatus === 'done' && overallProgress >= 99.9) {
       setProgressMessage("Universo pixel pronto!");
-    } else if (workerStatus === 'idle' && !mapData) {
-      setProgressMessage("A carregar dados do mapa...");
-    } else if (workerStatus === 'idle' && mapData && overallProgress === 0 && !workerErrorMessage) {
+    } else if (workerStatus === 'idle' && !isClient) {
+      setProgressMessage("Aguardando cliente...");
+    } else if (workerStatus === 'idle' && isClient && !mapData) {
+      setProgressMessage("A carregar dados do mapa SVG...");
+    } else if (workerStatus === 'idle' && isClient && mapData && overallProgress === 0 && !workerErrorMessage) {
         setProgressMessage("A aguardar início do worker...");
     }
-  }, [workerStatus, overallProgress, mapData, workerErrorMessage]);
+  }, [workerStatus, overallProgress, mapData, workerErrorMessage, isClient]);
 
 
   const handleZoomIn = () => setZoom((prevZoom) => Math.min(prevZoom * 1.2, MAX_ZOOM));
@@ -474,7 +547,11 @@ export default function PixelGrid() {
         didDragRef.current = false;
         return;
     }
-    if (!canvasRef.current || !mapData?.path2D || workerStatus !== 'done') return;
+    // Important: Check workerStatus to ensure pixelBitmap is ready, or mapData.path2D for initial clicks
+    if (!canvasRef.current || !mapData?.path2D ) { // Removed workerStatus check for now, as click works based on mapData
+      console.log("PixelGrid: Canvas or mapData.path2D not ready for click.");
+      return;
+    }
 
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
@@ -606,7 +683,7 @@ export default function PixelGrid() {
         const input: GeneratePixelDescriptionInput = {
             x: selectedPixelDetails.x,
             y: selectedPixelDetails.y,
-            surroundingAreaImageDataUri: PLACEHOLDER_IMAGE_DATA_URI,
+            surroundingAreaImageDataUri: PLACEHOLDER_IMAGE_DATA_URI, // Placeholder for now
         };
         const result = await generatePixelDescription(input);
         setPixelDescription(result.description);
@@ -656,7 +733,7 @@ export default function PixelGrid() {
       linkUrl: editableLinkUrl,
       isForSaleByOwner: editableIsForSaleByOwner,
       salePrice: editableIsForSaleByOwner && !isNaN(salePriceNum) ? salePriceNum : undefined,
-      lastModifiedDate: new Date().toLocaleDateString('pt-PT'), // Update last modified date
+      lastModifiedDate: new Date().toLocaleDateString('pt-PT'),
     }) : null);
 
     toast({ title: "Alterações Guardadas", description: "As alterações ao seu pixel foram (simuladamente) guardadas." });
@@ -691,14 +768,14 @@ export default function PixelGrid() {
         owner: MOCK_CURRENT_USER_ID,
         isOwnedByCurrentUser: true,
         isForSaleBySystem: false,
-        price: undefined, // System price is removed
+        price: undefined, 
         acquisitionDate: new Date().toLocaleDateString('pt-PT'),
         lastModifiedDate: new Date().toLocaleDateString('pt-PT'),
-        color: prev?.color || `#${Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')}`, // Keep existing or set random
+        color: prev?.color || `#${Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')}`,
         history: [{ owner: MOCK_CURRENT_USER_ID, date: new Date().toLocaleDateString('pt-PT'), price: selectedPixelDetails.price }],
         manualDescription: 'Acabei de adquirir este pixel!',
         title: `Pixel de ${MOCK_CURRENT_USER_ID}`,
-        isForSaleByOwner: false, // Not for sale by owner initially
+        isForSaleByOwner: false,
         salePrice: undefined,
     }));
     toast({ title: "Pixel Comprado!", description: `Parabéns, o pixel (${selectedPixelDetails.x}, ${selectedPixelDetails.y}) é seu!`});
@@ -714,7 +791,6 @@ export default function PixelGrid() {
         if (!prev) return null;
         const newSalePrice = newSaleStatus ? (prev.salePrice || 50) : undefined;
 
-        // Also update editable fields if in edit mode
         if (editMode) {
           setEditableIsForSaleByOwner(newSaleStatus);
           setEditableSalePrice(newSalePrice || '');
@@ -1316,8 +1392,8 @@ export default function PixelGrid() {
           }}
         >
           <PortugalMapSvg
-            className="absolute top-0 left-0 w-full h-full text-border/30 pointer-events-none z-0"
             onMapDataLoaded={handleMapDataLoaded}
+            className="absolute top-0 left-0 w-full h-full text-border/30 pointer-events-none z-0"
           />
           <canvas
             ref={canvasRef}
@@ -1367,4 +1443,3 @@ export default function PixelGrid() {
     </div>
   );
 }
-

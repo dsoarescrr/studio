@@ -3,43 +3,63 @@
 
 import React, { useEffect, useRef } from 'react';
 
+export interface MapData {
+  path2D: Path2D;
+  pathStrings: string[];
+}
+
 type PortugalMapSvgProps = {
   className?: string;
-  onMapDataLoaded?: (data: { path2D: Path2D; pathStrings: string[] }) => void;
+  onMapDataLoaded: (data: MapData) => void;
 };
 
 // CC-BY-SA-4.0 Por: Afonso Gomes http://afonsogomes.com https://github.com/AfonsoFG/PortugalSVG
 export default function PortugalMapSvg({ className, onMapDataLoaded }: PortugalMapSvgProps) {
+  console.log(`PortugalMapSvg: Component rendering/re-rendering. onMapDataLoaded type: ${typeof onMapDataLoaded} Value: ${String(onMapDataLoaded)}`);
   const landmassPathsRef = useRef<SVGGElement>(null);
 
   useEffect(() => {
-    if (landmassPathsRef.current && onMapDataLoaded) {
+    console.log("PortugalMapSvg: useEffect triggered.");
+    console.log(`PortugalMapSvg: In useEffect, received onMapDataLoaded type: ${typeof onMapDataLoaded} Value: ${String(onMapDataLoaded)}`);
+
+    if (landmassPathsRef.current && typeof onMapDataLoaded === 'function') {
+      console.log("PortugalMapSvg: landmassPathsRef.current is present and onMapDataLoaded is a function.");
       const combinedPath2D = new Path2D();
       const pathStrings: string[] = [];
       const pathElements = landmassPathsRef.current.querySelectorAll('path');
       
-      pathElements.forEach(pathEl => {
+      console.log(`PortugalMapSvg: Found ${pathElements.length} path elements.`);
+
+      pathElements.forEach((pathEl, index) => {
         const d = pathEl.getAttribute('d');
+        // console.log(`PortugalMapSvg: Processing path ${index} - d: "${d ? d.substring(0,30)+'...' : 'null'}"`);
         if (d) {
           try {
-            combinedPath2D.addPath(new Path2D(d)); // For main thread usage
-            pathStrings.push(d); // For worker usage
+            combinedPath2D.addPath(new Path2D(d));
+            pathStrings.push(d);
           } catch (e) {
-            console.error("Error creating Path2D from d attribute:", d, e);
+            console.error("PortugalMapSvg: Error creating Path2D from d attribute:", d, e);
           }
         }
       });
 
+      console.log(`PortugalMapSvg: Successfully added ${pathStrings.length} paths to combinedPath2D.`);
       if (pathStrings.length > 0) {
+        console.log(`PortugalMapSvg: Calling onMapDataLoaded with path2D (exists: ${!!combinedPath2D}) and pathStrings (count: ${pathStrings.length}). First path string: ${pathStrings.length > 0 ? pathStrings[0].substring(0,30)+'...' : 'N/A'}`);
         onMapDataLoaded({ path2D: combinedPath2D, pathStrings });
+      } else {
+        console.warn("PortugalMapSvg: No valid path strings found to call onMapDataLoaded.");
       }
+    } else {
+      let reason = "";
+      if (!landmassPathsRef.current) reason += "landmassPathsRef.current is null. ";
+      if (typeof onMapDataLoaded !== 'function') reason += "onMapDataLoaded is not a function or not provided. Type: " + typeof onMapDataLoaded;
+      console.error("PortugalMapSvg: useEffect conditions not fully met or onMapDataLoaded is not a function. " + reason);
     }
-  }, [onMapDataLoaded]);
+  }, [onMapDataLoaded]); // Dependency array includes onMapDataLoaded
 
   return (
     <svg width="100%" height="100%" viewBox="0 0 12969 26674" preserveAspectRatio="xMidYMid meet">
-      {/* This group is for visual rendering and for the ref to access path data */}
-      {/* Increased strokeWidth from 10 to 20 to make map outlines more prominent */}
       <g id="portugal-landmass-paths" ref={landmassPathsRef} className={className} stroke="hsl(var(--border))" strokeWidth="20" fill="currentColor">
           <g id="D18-Faro">
             <path data-z="376" className="z z376" d="M8112 25289l0 131 33 130 120 112 -288 144 -30 -126 33 -98 0 -130 0 -130 -66 -98 198 65zm382 308l-84 -82 12 -132 217 46 33 219 -178 -51z"/>

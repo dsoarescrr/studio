@@ -13,9 +13,8 @@ interface WorkerInput {
   pixelSize: number;
 }
 
-// Tipos de mensagens que o worker pode enviar
 type WorkerProgressMessage = { type: 'progress'; progress: number };
-type WorkerDoneMessage = { type: 'done'; bitmap: ArrayBuffer };
+type WorkerDoneMessage = { type: 'done'; bitmap: ArrayBuffer; activePixelsInBitmap: number };
 type WorkerErrorMessage = { type: 'error'; error: string };
 type WorkerMessage = WorkerProgressMessage | WorkerDoneMessage | WorkerErrorMessage;
 
@@ -28,19 +27,15 @@ self.onmessage = (event: MessageEvent<WorkerInput>) => {
       return;
     }
     
-    // Confirmação inicial de que onmessage foi chamado e os dados foram recebidos
     console.log("Worker: onmessage received data, sending initial progress 0.1.");
     self.postMessage({ type: 'progress', progress: 0.1 } as WorkerProgressMessage);
 
     const {
       pathStrings,
-      // canvasWidth, // Não usado diretamente aqui para cálculo do bitmap lógico
-      // canvasHeight, // Não usado diretamente aqui
       svgViewBoxWidth,
       svgViewBoxHeight,
       logicalCols,
       logicalRows,
-      // pixelSize, // Não usado diretamente aqui
     } = event.data;
 
 
@@ -69,20 +64,19 @@ self.onmessage = (event: MessageEvent<WorkerInput>) => {
     }
     console.log(`Worker: Successfully added ${successfullyAddedPaths} paths to combinedPath2D.`);
     
-    const offscreenCanvas = new OffscreenCanvas(svgViewBoxWidth, svgViewBoxHeight);
-    const ctx = offscreenCanvas.getContext('2d');
+    // It's not strictly necessary to create an OffscreenCanvas here if we just need isPointInPath
+    // However, if other canvas operations were needed, it would be useful.
+    // For isPointInPath with Path2D, it can be called on any 2D rendering context.
+    // Let's use a minimal approach if only isPointInPath is needed.
+    const tempCanvas = new OffscreenCanvas(1, 1); // Minimal canvas for context
+    const ctx = tempCanvas.getContext('2d');
+
 
     if (!ctx) {
-      console.error("Worker Error: Failed to get OffscreenCanvas 2D context.");
-      self.postMessage({ type: 'error', error: 'Worker Error: Failed to get OffscreenCanvas 2D context.' } as WorkerErrorMessage);
+      console.error("Worker Error: Failed to get OffscreenCanvas 2D context for Path2D operations.");
+      self.postMessage({ type: 'error', error: 'Worker Error: Failed to get OffscreenCanvas 2D context for Path2D operations.' } as WorkerErrorMessage);
       return;
     }
-
-    // Test if the combinedPath2D is valid by checking a point (e.g., center of the viewBox)
-    const testX = svgViewBoxWidth / 2;
-    const testY = svgViewBoxHeight / 2;
-    const isCenterInPath = ctx.isPointInPath(combinedPath2D, testX, testY);
-    console.log(`Worker: Test - Center point (${testX}, ${testY}) in combinedPath2D: ${isCenterInPath}`);
     
     const totalPixelsToProcess = logicalCols * logicalRows;
     if (totalPixelsToProcess === 0) {
@@ -93,11 +87,12 @@ self.onmessage = (event: MessageEvent<WorkerInput>) => {
     
     const pixelBitmap = new Uint8Array(totalPixelsToProcess);
     let processedPixels = 0;
-    let activePixelsCount = 0;
+    let activePixelsCount = 0; // Renamed for clarity
     const progressUpdateInterval = Math.max(1, Math.floor(logicalRows / 100)); 
 
     for (let r = 0; r < logicalRows; r++) {
       for (let c = 0; c < logicalCols; c++) {
+        // Calculate the center of the logical pixel in SVG coordinate space
         const svgCoordX = (c + 0.5) * (svgViewBoxWidth / logicalCols);
         const svgCoordY = (r + 0.5) * (svgViewBoxHeight / logicalRows);
         
@@ -112,13 +107,15 @@ self.onmessage = (event: MessageEvent<WorkerInput>) => {
       if (r % progressUpdateInterval === 0 || r === logicalRows - 1) {
         const currentProgress = (processedPixels / totalPixelsToProcess) * 100;
         if (Number.isFinite(currentProgress)) {
+            // Progress from worker contributes to the first 50% of overall progress
             self.postMessage({ type: 'progress', progress: Math.min(99.9, 0.1 + (currentProgress * 0.998)) } as WorkerProgressMessage);
         }
       }
     }
     
     console.log(`Worker: Finished processing. Total active pixels in bitmap: ${activePixelsCount}`);
-    self.postMessage({ type: 'done', bitmap: pixelBitmap.buffer } as WorkerDoneMessage, [pixelBitmap.buffer]);
+    // Send the count of active pixels along with the bitmap
+    self.postMessage({ type: 'done', bitmap: pixelBitmap.buffer, activePixelsInBitmap: activePixelsCount } as WorkerDoneMessage, [pixelBitmap.buffer]);
     
   } catch (e: any) {
     const errorMessage = e instanceof Error ? e.message : String(e);
