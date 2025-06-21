@@ -21,15 +21,36 @@ type WorkerMessage = WorkerProgressMessage | WorkerDoneMessage | WorkerErrorMess
 
 
 self.onmessage = (event: MessageEvent<WorkerInput>) => {
-  console.log("Worker: Message received", event.data); 
+  console.log("Worker: Message received (DEBUG a SIMPLIFIED worker)"); 
   try {
+    const { logicalCols, logicalRows } = event.data;
+
+    // --- DEBUGGING: FAKE PROGRESS ---
+    // This section replaces the real work to test communication.
+    console.log("Worker (DEBUG): Starting fake progress simulation.");
+    self.postMessage({ type: 'progress', progress: 0.1 });
+
+    let progress = 10;
+    const interval = setInterval(() => {
+      self.postMessage({ type: 'progress', progress: progress });
+      console.log(`Worker (DEBUG): Sent progress: ${progress}%`);
+      progress += 10;
+      if (progress > 100) {
+        clearInterval(interval);
+        const dummyBitmap = new Uint8Array(logicalCols * logicalRows);
+        console.log("Worker (DEBUG): Sending fake DONE message.");
+        self.postMessage({ type: 'done', bitmap: dummyBitmap.buffer, activePixelsInBitmap: 0 } as WorkerDoneMessage, [dummyBitmap.buffer]);
+      }
+    }, 200); // Send an update every 200ms
+
+    // --- ORIGINAL CODE IS COMMENTED OUT BELOW ---
+    /*
     if (!event.data) {
       console.error("Worker: No data received from main thread.");
       self.postMessage({ type: 'error', error: 'Worker Error: No data received.' } as WorkerErrorMessage);
       return;
     }
     
-    console.log("Worker: Posting initial progress (0.1)");
     self.postMessage({ type: 'progress', progress: 0.1 } as WorkerProgressMessage);
 
     const {
@@ -84,7 +105,6 @@ self.onmessage = (event: MessageEvent<WorkerInput>) => {
     const progressUpdateInterval = Math.max(1, Math.floor(totalPixelsToProcess / 500)); 
     let pixelsSinceLastUpdate = 0;
 
-    console.log(`Worker: Starting pixel processing. Total: ${totalPixelsToProcess}, Update Interval: ${progressUpdateInterval}`);
 
     for (let r = 0; r < logicalRows; r++) {
       for (let c = 0; c < logicalCols; c++) {
@@ -105,7 +125,6 @@ self.onmessage = (event: MessageEvent<WorkerInput>) => {
           const currentProgress = (processedPixels / totalPixelsToProcess) * 100;
           if (Number.isFinite(currentProgress)) {
               const progressPayload = { type: 'progress', progress: Math.min(99.9, 0.1 + (currentProgress * 0.998)) };
-              // console.log("Worker: Posting progress update", progressPayload); // Can be too noisy, uncomment if needed
               self.postMessage(progressPayload as WorkerProgressMessage);
           }
           pixelsSinceLastUpdate = 0;
@@ -113,8 +132,8 @@ self.onmessage = (event: MessageEvent<WorkerInput>) => {
       }
     }
     
-    console.log("Worker: Processing done. Active pixels:", activePixelsCount, "Bitmap size:", pixelBitmap.buffer.byteLength);
     self.postMessage({ type: 'done', bitmap: pixelBitmap.buffer, activePixelsInBitmap: activePixelsCount } as WorkerDoneMessage, [pixelBitmap.buffer]);
+    */
     
   } catch (e: any) {
     const errorMessage = e instanceof Error ? e.message : String(e);
@@ -122,4 +141,3 @@ self.onmessage = (event: MessageEvent<WorkerInput>) => {
     self.postMessage({ type: 'error', error: `Worker uncaught error: ${errorMessage}` } as WorkerErrorMessage);
   }
 };
-
