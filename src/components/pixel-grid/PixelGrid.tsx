@@ -44,7 +44,7 @@ const BITMAP_DATA_KEY = "mapBitmapData";
 // Configuration constants
 const SVG_VIEWBOX_WIDTH = 12969;
 const SVG_VIEWBOX_HEIGHT = 26674;
-const LOGICAL_GRID_COLS_CONFIG = 1273; // Changed from 2250 to target ~3.3M pixels
+const LOGICAL_GRID_COLS_CONFIG = 1273; // Changed from 2250 to target ~3.3M
 const RENDERED_PIXEL_SIZE_CONFIG = 0.6;
 
 // Derived constants
@@ -137,11 +137,17 @@ async function saveBitmapToDB(data: {
     const store = transaction.objectStore(BITMAP_STORE_NAME);
     store.put(data, BITMAP_DATA_KEY);
     return new Promise((resolve, reject) => {
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = (event) => reject(`DB Transaction error: ${(event.target as IDBTransaction).error}`);
+      transaction.oncomplete = () => {
+        console.log("PixelGrid: Bitmap data saved to IndexedDB.");
+        resolve();
+      };
+      transaction.onerror = (event) => {
+        console.error("PixelGrid: DB Transaction error on save:", (event.target as IDBTransaction).error);
+        reject(`DB Transaction error: ${(event.target as IDBTransaction).error}`);
+      };
     });
   } catch (error) {
-    console.error("Failed to save bitmap to DB:", error);
+    console.error("PixelGrid: Failed to save bitmap to DB:", error);
   }
 }
 
@@ -167,17 +173,17 @@ async function loadBitmapFromDB(): Promise<{
           });
         } else {
           // Cache is invalid or doesn't exist
-          if (data) console.warn("DB Cache invalidated due to config mismatch.");
+          if (data) console.warn("PixelGrid: DB Cache invalidated due to config mismatch.");
           resolve(null);
         }
       };
       request.onerror = (event) => {
-        console.error("Failed to load bitmap from DB:", (event.target as IDBRequest).error);
+        console.error("PixelGrid: Failed to load bitmap from DB:", (event.target as IDBRequest).error);
         resolve(null); // Resolve with null on error to proceed with worker
       };
     });
   } catch (error) {
-    console.error("Failed to open DB for loading:", error);
+    console.error("PixelGrid: Failed to open DB for loading:", error);
     return null;
   }
 }
@@ -294,6 +300,7 @@ export default function PixelGrid() {
     setWorkerStatus('loading-cache');
     const cachedData = await loadBitmapFromDB();
     if (cachedData) {
+      console.log("PixelGrid: Bitmap loaded from IndexedDB.", cachedData);
       setPixelBitmap(cachedData.bitmap);
       setActivePixelsInMap(cachedData.activePixels);
       setOverallProgress(100);
@@ -303,11 +310,14 @@ export default function PixelGrid() {
       return;
     }
 
+    console.log("PixelGrid: No valid bitmap in IndexedDB or cache miss. Proceeding to worker.");
     setWorkerStatus('processing-worker');
     setOverallProgress(0);
 
     try {
+      console.log("PixelGrid: Attempting to create Web Worker.");
       workerRef.current = new Worker(new URL('../../workers/pixel-map-worker.ts', import.meta.url));
+      console.log("PixelGrid: Web Worker instance created.", workerRef.current);
       
       const workerInputData = {
         pathStrings: mapData!.pathStrings,
@@ -320,9 +330,9 @@ export default function PixelGrid() {
         pixelSize: RENDERED_PIXEL_SIZE_CONFIG,
       };
       
-      workerRef.current.postMessage(workerInputData);
-
+      console.log("PixelGrid: Assigning onmessage handler.");
       workerRef.current.onmessage = (event: MessageEvent<any>) => {
+        console.log("PixelGrid: RECEIVED worker message:", event.data);
         if (!event.data || typeof event.data.type === 'undefined') {
           setWorkerStatus('error');
           setWorkerErrorMessage('Comunicação inválida do worker.');
@@ -355,7 +365,9 @@ export default function PixelGrid() {
         }
       };
 
+      console.log("PixelGrid: Assigning onerror handler.");
       workerRef.current.onerror = (err: ErrorEvent) => {
+        console.error("PixelGrid: RECEIVED worker error:", err);
         const errorMessage = `PixelGrid: Error from worker script: ${err.message || "Ocorreu um erro crítico no worker."}`;
         setWorkerStatus('error');
         setWorkerErrorMessage(errorMessage);
@@ -365,6 +377,10 @@ export default function PixelGrid() {
           workerRef.current = null;
         }
       };
+
+      console.log("PixelGrid: Posting message to worker with input:", workerInputData);
+      workerRef.current.postMessage(workerInputData);
+
     } catch (e: any) {
       const errorMsg = e instanceof Error ? e.message : String(e);
       setWorkerStatus('error');
@@ -378,12 +394,14 @@ export default function PixelGrid() {
   }, [workerStatus, mapData]);
 
   useEffect(() => { 
+    console.log(`PixelGrid: Worker setup useEffect. Conditions - isClient: ${isClient}, mapData: ${!!mapData}, workerRef.current: ${!!workerRef.current}, workerStatus: ${workerStatus}, workerErrorMessage: ${!!workerErrorMessage}`);
     if (isClient && mapData && !workerRef.current && workerStatus === 'idle' && !workerErrorMessage) {
       initMapProcessing();
     }
     
     return () => {
       if (workerRef.current) {
+        console.log("PixelGrid: Cleanup function running, terminating worker.");
         workerRef.current.terminate();
         workerRef.current = null;
       }
@@ -1460,4 +1478,3 @@ export default function PixelGrid() {
     </div>
   );
 }
-
