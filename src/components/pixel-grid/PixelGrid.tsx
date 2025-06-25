@@ -54,8 +54,8 @@ const totalLogicalPixels = LOGICAL_GRID_COLS_CONFIG * logicalGridRows; // Approx
 
 const PLACEHOLDER_IMAGE_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 
-const UNSOLD_PIXEL_COLOR = 'hsl(0 0% 100%)'; // white
-const UNSOLD_PIXEL_STROKE_COLOR = 'rgba(200, 200, 200, 0.5)'; // light grey for subtle border
+const UNSOLD_PIXEL_COLOR = 'rgba(0, 255, 0, 0.3)'; // semi-transparent green for debug
+const UNSOLD_PIXEL_STROKE_COLOR = 'magenta'; // magenta for debug
 
 const USER_BOUGHT_PIXEL_COLOR = 'hsl(var(--primary))';
 
@@ -247,7 +247,7 @@ export default function PixelGrid() {
 
   const drawMap = useCallback(() => {
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
+    const ctx = canvas?.getContext('2d', { willReadFrequently: true });
 
     if (!ctx || !canvas) return;
     
@@ -274,7 +274,7 @@ export default function PixelGrid() {
     if (soldPixelsCanvasRef.current) {
       ctx.drawImage(soldPixelsCanvasRef.current, 0, 0);
     }
-  }, [mapData, zoom, canvasDrawWidth, canvasDrawHeight]);
+  }, [mapData, zoom, position, canvasDrawWidth, canvasDrawHeight]);
 
   useEffect(() => {
     drawMap();
@@ -288,28 +288,27 @@ export default function PixelGrid() {
     setMapData(data);
   }, []);
 
-
   useEffect(() => {
-    // This is the main effect for initializing the map processing.
-    // It runs when the client is ready and map data is loaded.
     const initMapProcessing = async () => {
-      // 1. Start by trying to load from cache
+      if (workerRef.current || workerStatus !== 'idle') return;
+
       setWorkerStatus('loading-cache');
       const cachedData = await loadBitmapFromDB();
+
       if (cachedData) {
         setPixelBitmap(cachedData.bitmap);
         setActivePixelsInMap(cachedData.activePixels);
         setOverallProgress(100);
         setWorkerStatus('done');
-        return; // Exit if loaded from cache
+        return;
       }
-
-      // 2. If cache fails, proceed to worker
+      
       setWorkerStatus('processing-worker');
       try {
-        workerRef.current = new Worker(new URL('../../workers/pixel-map-worker.ts', import.meta.url));
+        const worker = new Worker(new URL('../../workers/pixel-map-worker.ts', import.meta.url));
+        workerRef.current = worker;
         
-        workerRef.current.onmessage = (event: MessageEvent<any>) => {
+        worker.onmessage = (event: MessageEvent<any>) => {
           if (!event.data || typeof event.data.type === 'undefined') {
             setWorkerStatus('error');
             setWorkerErrorMessage('Comunicação inválida do worker.');
@@ -340,7 +339,7 @@ export default function PixelGrid() {
           }
         };
 
-        workerRef.current.onerror = (err: ErrorEvent) => {
+        worker.onerror = (err: ErrorEvent) => {
           const errorMessage = `PixelGrid: Error from worker script: ${err.message || "Ocorreu um erro crítico no worker."}`;
           setWorkerStatus('error');
           setWorkerErrorMessage(errorMessage);
@@ -360,7 +359,7 @@ export default function PixelGrid() {
           logicalRows: logicalGridRows,
           pixelSize: RENDERED_PIXEL_SIZE_CONFIG,
         };
-        workerRef.current.postMessage(workerInputData);
+        worker.postMessage(workerInputData);
 
       } catch (e: any) {
         const errorMsg = e instanceof Error ? e.message : String(e);
@@ -369,7 +368,7 @@ export default function PixelGrid() {
       }
     };
     
-    if (isClient && mapData && workerStatus === 'idle' && !workerErrorMessage) {
+    if (isClient && mapData && !workerErrorMessage) {
       initMapProcessing();
     }
     
