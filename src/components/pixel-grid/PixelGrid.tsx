@@ -123,8 +123,8 @@ export default function PixelGrid() {
   const [initialAiProgressTrigger, setInitialAiProgressTrigger] = useState(0);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const soldPixelsCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const pixelCanvasRef = useRef<HTMLCanvasElement>(null); // For pixelated content
+  const outlineCanvasRef = useRef<HTMLCanvasElement>(null); // For smooth outlines
   const { toast } = useToast();
 
   const [mapData, setMapData] = useState<MapData | null>(null);
@@ -135,7 +135,7 @@ export default function PixelGrid() {
   
   const [soldPixels, setSoldPixels] = useState<SoldPixel[]>([
       { x: Math.floor(LOGICAL_GRID_COLS_CONFIG * 0.451), y: Math.floor(logicalGridRows * 0.302), color: 'hsl(var(--accent))', title: 'Pixel especial LIS', ownerId: 'user123' },
-      { x: Math.floor(LOGICAL_GRID_COLS_CONFIG * 0.503), y: Math.floor(logicalGridRows * 0.204), color: 'magenta', title: 'Pixel especial POR', ownerId: MOCK_CURRENT_USER_ID },
+      { x: Math.floor(LOGICAL_GRID_COLS_CONFIG * 0.503), y: Math.floor(logicalGridRows * 0.204), color: 'magenta', title: 'Pixel especial POR', ownerId: MOCK_CURRENT_USER_ID, pixelImageUrl: 'https://placehold.co/1x1.png' },
       { x: Math.floor(LOGICAL_GRID_COLS_CONFIG * 0.555), y: Math.floor(logicalGridRows * 0.756), color: 'cyan', title: 'Pixel especial FAR', ownerId: 'user456' },
   ]);
 
@@ -177,58 +177,41 @@ export default function PixelGrid() {
     setMapData(data);
   }, []);
 
-  const drawMap = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !mapData) return;
-  
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    if (!ctx) return;
-  
-    if (canvas.width !== canvasDrawWidth || canvas.height !== canvasDrawHeight) {
-      canvas.width = canvasDrawWidth;
-      canvas.height = canvasDrawHeight;
-    }
-  
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const scaleFactor = canvasDrawWidth / SVG_VIEWBOX_WIDTH;
-    ctx.save();
-    ctx.scale(scaleFactor, scaleFactor);
-    ctx.fillStyle = `hsl(${unsoldColor})`;
-    ctx.strokeStyle = `hsl(${strokeColor})`;
-    ctx.lineWidth = 20; // Increased stroke width for better visibility
-  
-    mapData.pathStrings.forEach(pathString => {
-      try {
-        const path = new Path2D(pathString);
-        ctx.fill(path);
-        ctx.stroke(path);
-      } catch (e) {
-        // console.warn("Could not draw path", e);
-      }
-    });
-  
-    ctx.restore();
-  }, [mapData, unsoldColor, strokeColor]);
-
-
+  // Effect for generating the interactive bitmap from map data
   useEffect(() => {
-    if (!isClient || !mapData || !unsoldColor || !strokeColor) {
-      return;
-    }
+    if (!isClient || !mapData) return;
   
     setProgressMessage("A processar mapa interativo...");
     setIsLoadingMap(true);
     
-    drawMap();
+    // Create an off-screen canvas to generate the bitmap without affecting the UI
+    const offscreenCanvas = document.createElement('canvas');
+    offscreenCanvas.width = canvasDrawWidth;
+    offscreenCanvas.height = canvasDrawHeight;
+    const ctx = offscreenCanvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) {
+        setIsLoadingMap(false);
+        return;
+    }
   
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-  
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    if (!ctx) return;
+    const scaleFactor = canvasDrawWidth / SVG_VIEWBOX_WIDTH;
+    ctx.save();
+    ctx.scale(scaleFactor, scaleFactor);
+    ctx.fillStyle = 'black'; // Use a solid color for easy bitmap creation
+    
+    // Fill the paths to define the clickable area
+    mapData.pathStrings.forEach(pathString => {
+      try {
+        const path = new Path2D(pathString);
+        ctx.fill(path);
+      } catch (e) {
+        // console.warn("Could not draw path for bitmap", e);
+      }
+    });
+    ctx.restore();
   
     try {
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const imageData = ctx.getImageData(0, 0, offscreenCanvas.width, offscreenCanvas.height);
       const data = imageData.data;
       const newBitmap = new Uint8Array(LOGICAL_GRID_COLS_CONFIG * logicalGridRows);
       let activePixels = 0;
@@ -237,7 +220,7 @@ export default function PixelGrid() {
         for (let col = 0; col < LOGICAL_GRID_COLS_CONFIG; col++) {
           const canvasX = Math.floor((col + 0.5) * RENDERED_PIXEL_SIZE_CONFIG);
           const canvasY = Math.floor((row + 0.5) * RENDERED_PIXEL_SIZE_CONFIG);
-          const index = (canvasY * canvas.width + canvasX) * 4;
+          const index = (canvasY * offscreenCanvas.width + canvasX) * 4;
           
           if (data[index + 3] > 0) { // Check alpha channel
             newBitmap[row * LOGICAL_GRID_COLS_CONFIG + col] = 1;
@@ -255,7 +238,38 @@ export default function PixelGrid() {
       setProgressMessage("");
     }
   
-  }, [isClient, drawMap, mapData, unsoldColor, strokeColor, toast]);
+  }, [isClient, mapData, toast]);
+
+  // Effect to draw the base pixel layer (unsold pixels)
+  useEffect(() => {
+      if (!pixelBitmap || !unsoldColor) return;
+      const canvas = pixelCanvasRef.current;
+      if (!canvas) return;
+
+      if (canvas.width !== canvasDrawWidth || canvas.height !== canvasDrawHeight) {
+          canvas.width = canvasDrawWidth;
+          canvas.height = canvasDrawHeight;
+      }
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      
+      ctx.imageSmoothingEnabled = false;
+      ctx.fillStyle = `hsl(${unsoldColor})`;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let row = 0; row < logicalGridRows; row++) {
+          for (let col = 0; col < LOGICAL_GRID_COLS_CONFIG; col++) {
+              if (pixelBitmap[row * LOGICAL_GRID_COLS_CONFIG + col] === 1) {
+                  ctx.fillRect(
+                      col * RENDERED_PIXEL_SIZE_CONFIG,
+                      row * RENDERED_PIXEL_SIZE_CONFIG,
+                      RENDERED_PIXEL_SIZE_CONFIG,
+                      RENDERED_PIXEL_SIZE_CONFIG
+                  );
+              }
+          }
+      }
+  }, [pixelBitmap, unsoldColor]);
 
 
   // Effect to load images for sold pixels
@@ -278,25 +292,14 @@ export default function PixelGrid() {
   }, [soldPixels, loadedPixelImages]);
 
 
-  // Effect to draw sold pixels (colors or images)
+  // Effect to draw sold pixels (colors or images) over the base layer
   useEffect(() => { 
-    if (!soldPixels || !canvasDrawWidth || !canvasDrawHeight || !pixelBitmap) return;
+    if (!soldPixels || !pixelCanvasRef.current) return;
 
-    if (!soldPixelsCanvasRef.current) {
-      soldPixelsCanvasRef.current = document.createElement('canvas');
-    }
-    const offscreenCanvas = soldPixelsCanvasRef.current;
+    const ctx = pixelCanvasRef.current.getContext('2d');
+    if (!ctx) return;
 
-    if (offscreenCanvas.width !== canvasDrawWidth || offscreenCanvas.height !== canvasDrawHeight) {
-      offscreenCanvas.width = canvasDrawWidth;
-      offscreenCanvas.height = canvasDrawHeight;
-    }
-
-    const offCtx = offscreenCanvas.getContext('2d');
-    if (!offCtx) return;
-
-    offCtx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
-    offCtx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = false;
 
     soldPixels.forEach(pixel => {
       const renderX = pixel.x * RENDERED_PIXEL_SIZE_CONFIG;
@@ -304,24 +307,48 @@ export default function PixelGrid() {
       
       if (pixel.pixelImageUrl && loadedPixelImages[pixel.pixelImageUrl]) {
           const img = loadedPixelImages[pixel.pixelImageUrl];
-          offCtx.drawImage(img, renderX, renderY, RENDERED_PIXEL_SIZE_CONFIG, RENDERED_PIXEL_SIZE_CONFIG);
+          ctx.drawImage(img, renderX, renderY, RENDERED_PIXEL_SIZE_CONFIG, RENDERED_PIXEL_SIZE_CONFIG);
       } else {
-          offCtx.fillStyle = pixel.color;
-          offCtx.fillRect(renderX, renderY, RENDERED_PIXEL_SIZE_CONFIG, RENDERED_PIXEL_SIZE_CONFIG);
+          ctx.fillStyle = pixel.color;
+          ctx.fillRect(renderX, renderY, RENDERED_PIXEL_SIZE_CONFIG, RENDERED_PIXEL_SIZE_CONFIG);
       }
     });
 
-    const mainCanvas = canvasRef.current;
-    if (mainCanvas && mainCanvas.getContext('2d')) {
-        const mainCtx = mainCanvas.getContext('2d');
-        if (mainCtx) {
-            // Redraw base map first to ensure it's clean
-            drawMap();
-            // Then draw the sold pixels on top
-            mainCtx.drawImage(offscreenCanvas, 0, 0);
-        }
-    }
-  }, [soldPixels, loadedPixelImages, canvasDrawWidth, canvasDrawHeight, pixelBitmap, drawMap]);
+  }, [soldPixels, loadedPixelImages, pixelBitmap]); // Depends on pixelBitmap to ensure base is drawn first
+
+  // Effect to draw crisp outlines on a separate canvas
+  useEffect(() => {
+      if (!mapData || !strokeColor) return;
+      const canvas = outlineCanvasRef.current;
+      if (!canvas) return;
+
+      if (canvas.width !== canvasDrawWidth || canvas.height !== canvasDrawHeight) {
+          canvas.width = canvasDrawWidth;
+          canvas.height = canvasDrawHeight;
+      }
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = `hsl(${strokeColor})`;
+      // Dynamically adjust line width for a crisp look at any zoom level
+      ctx.lineWidth = 20 / zoom;
+      
+      const scaleFactor = canvasDrawWidth / SVG_VIEWBOX_WIDTH;
+      ctx.save();
+      ctx.scale(scaleFactor, scaleFactor);
+      
+      mapData.pathStrings.forEach(pathString => {
+          try {
+              const path = new Path2D(pathString);
+              ctx.stroke(path);
+          } catch(e) {
+              // console.warn('Could not draw outline path', e)
+          }
+      });
+      ctx.restore();
+  }, [mapData, zoom, strokeColor]);
+
 
   useEffect(() => { 
     if (isClient && containerRef.current && mapData?.pathStrings && !defaultView && canvasDrawWidth > 0 && canvasDrawHeight > 0) {
@@ -1296,9 +1323,14 @@ export default function PixelGrid() {
           }}
         >
           <canvas
-            ref={canvasRef}
+            ref={pixelCanvasRef}
             className="absolute top-0 left-0 w-full h-full z-10" 
             style={{ imageRendering: 'pixelated' }} 
+          />
+          <canvas
+            ref={outlineCanvasRef}
+            className="absolute top-0 left-0 w-full h-full z-20 pointer-events-none"
+            style={{ imageRendering: 'auto' }}
           />
           
           {(!mapData && isClient) && <PortugalMapSvg onMapDataLoaded={handleMapDataLoaded} className="invisible absolute" />}
