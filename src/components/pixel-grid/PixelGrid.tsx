@@ -365,8 +365,8 @@ export default function PixelGrid() {
 
       // Set line properties
       ctx.strokeStyle = `hsl(${strokeColor})`;
-      // Calculate lineWidth to be a consistent 1.5px on screen regardless of zoom.
-      ctx.lineWidth = 1.5 / (zoom * logicalToSvgScale);
+      // Calculate lineWidth to be a consistent 1.0px on screen regardless of zoom.
+      ctx.lineWidth = 1.0 / (zoom * logicalToSvgScale);
       ctx.imageSmoothingEnabled = true;
       
       mapData.pathStrings.forEach(pathString => {
