@@ -175,106 +175,82 @@ export default function PixelGrid() {
   }, []);
 
   useEffect(() => {
-    if (!mapData || !mapData.pathStrings.length || !isClient) {
+    if (!isClient || !mapData || !mapData.pathStrings.length || !unsoldColor || !strokeColor) {
       return;
     }
-
-    const processMap = () => {
-      setProgressMessage("A processar mapa interativo...");
-      
-      try {
-        const offscreenCanvas = new OffscreenCanvas(canvasDrawWidth, canvasDrawHeight);
-        const ctx = offscreenCanvas.getContext('2d');
-        if (!ctx) {
-          throw new Error("Could not create offscreen canvas context.");
-        }
-
-        const scaleX = canvasDrawWidth / SVG_VIEWBOX_WIDTH;
-        const scaleY = canvasDrawHeight / SVG_VIEWBOX_HEIGHT;
-        ctx.scale(scaleX, scaleY);
-        ctx.fillStyle = 'black';
-
-        mapData.pathStrings.forEach(d => {
-          try {
-            ctx.fill(new Path2D(d));
-          } catch (e) {
-            console.warn("Skipping invalid path string during bitmap calculation:", d);
-          }
-        });
-
-        const imageData = ctx.getImageData(0, 0, canvasDrawWidth, canvasDrawHeight);
-        const data = imageData.data;
-        const newBitmap = new Uint8Array(LOGICAL_GRID_COLS_CONFIG * logicalGridRows);
-        let activePixels = 0;
-
-        for (let row = 0; row < logicalGridRows; row++) {
-          for (let col = 0; col < LOGICAL_GRID_COLS_CONFIG; col++) {
-            const canvasX = Math.floor((col + 0.5) * RENDERED_PIXEL_SIZE_CONFIG);
-            const canvasY = Math.floor((row + 0.5) * RENDERED_PIXEL_SIZE_CONFIG);
-            const index = (canvasY * canvasDrawWidth + canvasX) * 4;
-            if (data[index + 3] > 0) {
-              newBitmap[row * LOGICAL_GRID_COLS_CONFIG + col] = 1;
-              activePixels++;
-            }
-          }
-        }
-        setPixelBitmap(newBitmap);
-        setActivePixelsInMap(activePixels);
-      } catch (error) {
-        console.error("Failed to process map:", error);
-        setProgressMessage("Erro ao processar o mapa.");
-      } finally {
-        setIsLoadingMap(false);
-        setProgressMessage("");
-      }
-    };
-
-    const timerId = setTimeout(processMap, 50);
-    return () => clearTimeout(timerId);
-
-  }, [isClient, mapData]);
-
-  const drawMap = useCallback(() => {
+  
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d', { willReadFrequently: true });
-
-    if (!ctx || !canvas || !mapData?.pathStrings.length || !unsoldColor) return;
-    
+    if (!canvas) return;
+  
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return;
+  
+    setProgressMessage("A processar mapa interativo...");
+    setIsLoadingMap(true);
+  
+    // Resize canvas if needed
     if (canvas.width !== canvasDrawWidth || canvas.height !== canvasDrawHeight) {
       canvas.width = canvasDrawWidth;
       canvas.height = canvasDrawHeight;
     }
-    
-    ctx.imageSmoothingEnabled = false;
+  
+    // 1. Draw the base map for visual representation
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
     const scaleFactor = canvasDrawWidth / SVG_VIEWBOX_WIDTH;
     ctx.save();
     ctx.scale(scaleFactor, scaleFactor);
     ctx.fillStyle = `hsl(${unsoldColor})`;
     ctx.strokeStyle = `hsl(${strokeColor})`;
-    ctx.lineWidth = Math.max(2, 5 / zoom);
-
+    ctx.lineWidth = 5; // Use a fixed, thin line width for consistency
+  
     mapData.pathStrings.forEach(d => {
       try {
         const path = new Path2D(d);
         ctx.fill(path);
         ctx.stroke(path);
-      } catch(e) {
+      } catch (e) {
         // console.warn("Skipping invalid path string during draw:", d);
       }
     });
-
     ctx.restore();
-    
-    if (soldPixelsCanvasRef.current) {
-      ctx.drawImage(soldPixelsCanvasRef.current, 0, 0);
+  
+    // 2. Generate the bitmap from the drawn canvas
+    try {
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      const newBitmap = new Uint8Array(LOGICAL_GRID_COLS_CONFIG * logicalGridRows);
+      let activePixels = 0;
+  
+      for (let row = 0; row < logicalGridRows; row++) {
+        for (let col = 0; col < LOGICAL_GRID_COLS_CONFIG; col++) {
+          const canvasX = Math.floor((col + 0.5) * RENDERED_PIXEL_SIZE_CONFIG);
+          const canvasY = Math.floor((row + 0.5) * RENDERED_PIXEL_SIZE_CONFIG);
+          const index = (canvasY * canvas.width + canvasX) * 4;
+          
+          // Check the alpha channel to see if the pixel has been painted
+          if (data[index + 3] > 0) {
+            newBitmap[row * LOGICAL_GRID_COLS_CONFIG + col] = 1;
+            activePixels++;
+          }
+        }
+      }
+      setPixelBitmap(newBitmap);
+      setActivePixelsInMap(activePixels);
+    } catch(e) {
+      console.error("Error generating pixel bitmap:", e);
+      toast({ title: "Erro na Grelha", description: "Não foi possível gerar a grelha interativa.", variant: "destructive" });
+    } finally {
+      setIsLoadingMap(false);
+      setProgressMessage("");
     }
-  }, [mapData, zoom, position, unsoldColor, strokeColor]);
+  
+    // 3. Draw sold pixels on top
+    if (soldPixelsCanvasRef.current) {
+        ctx.drawImage(soldPixelsCanvasRef.current, 0, 0);
+    }
+  
+  }, [isClient, mapData, unsoldColor, strokeColor, toast]);
 
-  useEffect(() => {
-    drawMap();
-  }, [drawMap]);
 
   useEffect(() => {
     if (!soldPixels || !canvasDrawWidth || !canvasDrawHeight) return;
@@ -302,8 +278,15 @@ export default function PixelGrid() {
       offCtx.fillRect(renderX, renderY, RENDERED_PIXEL_SIZE_CONFIG, RENDERED_PIXEL_SIZE_CONFIG);
     });
 
-    drawMap();
-  }, [soldPixels, canvasDrawWidth, canvasDrawHeight, drawMap]);
+    // Re-draw the main canvas to show the updated sold pixels
+    const mainCanvas = canvasRef.current;
+    if (mainCanvas && mainCanvas.getContext('2d')) {
+        const mainCtx = mainCanvas.getContext('2d');
+        if (mainCtx) {
+            mainCtx.drawImage(offscreenCanvas, 0, 0);
+        }
+    }
+  }, [soldPixels, canvasDrawWidth, canvasDrawHeight]);
 
   useEffect(() => { 
     if (isClient && containerRef.current && mapData?.pathStrings && !defaultView && canvasDrawWidth > 0 && canvasDrawHeight > 0) {
@@ -404,7 +387,7 @@ export default function PixelGrid() {
   const handleMouseDown = (e: React.MouseEvent) => {
     clearAutoResetTimeout();
     const targetElement = e.target as HTMLElement;
-     if (targetElement.closest('button, [data-dialog-content], [data-tooltip-content], [data-popover-content], label, a, [role="menuitem"], [role="tab"], input, textarea') && targetElement !== canvasRef.current) {
+     if (targetElement.closest('button, [data-dialog-content], [data-tooltip-content], [data-popover-content], label, a, [role="menuitem"], [role="tab"], input, textarea')) {
         return;
     }
     setIsDragging(true);
@@ -427,20 +410,11 @@ export default function PixelGrid() {
     }
     setPosition({ x: currentX, y: currentY });
   };
-
-  const handleMouseUpOrLeave = () => {
-    setIsDragging(false);
-  };
-
-  const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
+  
+  const handleCanvasClick = (event: React.MouseEvent) => {
     clearAutoResetTimeout();
-    if (didDragRef.current) {
-        didDragRef.current = false;
-        return;
-    }
-    if (!canvasRef.current) return;
 
-    if (isLoadingMap || !pixelBitmap) {
+    if (isLoadingMap || !pixelBitmap || !containerRef.current) {
       toast({
         title: "Mapa a Carregar",
         description: "A grelha interativa está a ser processada. Por favor, aguarde.",
@@ -449,23 +423,20 @@ export default function PixelGrid() {
       return;
     }
 
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect(); 
-    
-    const clickXInCanvasElement = event.clientX - rect.left;
-    const clickYInCanvasElement = event.clientY - rect.top;
+    const rect = containerRef.current.getBoundingClientRect();
+    const clickXInContainer = event.clientX - rect.left;
+    const clickYInContainer = event.clientY - rect.top;
 
-    const xOnContent = (clickXInCanvasElement / zoom) - (position.x / zoom);
-    const yOnContent = (clickYInCanvasElement / zoom) - (position.y / zoom);
-    
+    const xOnContent = (clickXInContainer - position.x) / zoom;
+    const yOnContent = (clickYInContainer - position.y) / zoom;
+
     const logicalCol = Math.floor(xOnContent / RENDERED_PIXEL_SIZE_CONFIG);
     const logicalRow = Math.floor(yOnContent / RENDERED_PIXEL_SIZE_CONFIG);
-    
 
     if (logicalCol >= 0 && logicalCol < LOGICAL_GRID_COLS_CONFIG && logicalRow >= 0 && logicalRow < logicalGridRows) {
       const bitmapIdx = logicalRow * LOGICAL_GRID_COLS_CONFIG + logicalCol;
-      
-      if (pixelBitmap && pixelBitmap[bitmapIdx] === 1) { 
+
+      if (pixelBitmap[bitmapIdx] === 1) {
         setSelectedPixelCoordsForDisplay({ x: logicalCol, y: logicalRow });
 
         const existingSoldPixel = soldPixels.find(p => p.x === logicalCol && p.y === logicalRow);
@@ -540,6 +511,16 @@ export default function PixelGrid() {
       setSelectedPixelCoordsForDisplay(null);
       setSelectedPixelDetails(null);
       toast({ title: "Fora dos Limites do Mapa", description: `Clicou fora dos limites do mapa. Coords Lógicas: (${logicalCol}, ${logicalRow}).`, variant: "default" });
+    }
+  };
+
+  const handleMouseUpOrLeave = (event: React.MouseEvent) => {
+    if (isDragging) {
+      if (!didDragRef.current) {
+        // This was a click, not a drag.
+        handleCanvasClick(event);
+      }
+      setIsDragging(false);
     }
   };
 
@@ -1280,7 +1261,6 @@ export default function PixelGrid() {
         >
           <canvas
             ref={canvasRef}
-            onClick={handleCanvasClick}
             className="absolute top-0 left-0 w-full h-full z-10" 
             style={{ imageRendering: 'pixelated' }} 
           />
