@@ -1,4 +1,3 @@
-
 // src/components/panels/MinimapPanel.tsx
 'use client';
 
@@ -86,23 +85,32 @@ export default function MinimapPanel() {
   return (
     <Card
       ref={panelRef}
-      className="fixed z-30 w-72 shadow-xl bg-card/80 backdrop-blur-md transition-all duration-300 ease-in-out"
+      className="fixed z-30 w-60 shadow-xl bg-card/80 backdrop-blur-md transition-all duration-300 ease-in-out"
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
-        maxHeight: isMinimized ? '60px' : '480px',
+        maxHeight: isMinimized ? '56px' : '420px',
         overflow: 'hidden'
       }}
       onMouseDown={handleMouseDown}
     >
       <CardHeader
-        className="py-3 px-4 flex flex-row items-center justify-between cursor-grab active:cursor-grabbing"
+        className="py-2 px-3 flex flex-row items-center justify-between cursor-grab active:cursor-grabbing"
         data-drag-handle="true"
       >
-        <div className="flex items-center">
-          <LocateFixed className="h-5 w-5 mr-2 text-primary" />
-          <CardTitle className="text-md font-headline">Minimapa</CardTitle>
-        </div>
+        <TooltipProvider>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <div className="flex items-center">
+                        <LocateFixed className="h-5 w-5 text-primary" />
+                    </div>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                    <p>Minimapa</p>
+                </TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
+        
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -117,7 +125,7 @@ export default function MinimapPanel() {
         </TooltipProvider>
       </CardHeader>
       {!isMinimized && (
-        <CardContent className="p-3">
+        <CardContent className="p-3 pt-0">
           <div className="aspect-[5/8] w-full bg-background/70 rounded-md overflow-hidden border border-border mb-3 shadow-inner relative">
             <PortugalMapSvg
               className="w-full h-full text-foreground/20"
@@ -127,7 +135,7 @@ export default function MinimapPanel() {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div
-                    className="absolute top-[70%] left-[55%] w-4 h-4 bg-accent/70 rounded-full cursor-pointer hover:bg-accent ring-2 ring-accent/30 hover:ring-accent transition-all"
+                    className="absolute top-[70%] left-[55%] w-3 h-3 bg-accent rounded-full cursor-pointer ring-2 ring-accent/50 hover:ring-accent transition-all animate-pulse"
                     onClick={() => handleRegionClick("D18-Faro")}
                     data-ai-hint="region marker"
                   ></div>
@@ -137,7 +145,7 @@ export default function MinimapPanel() {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div
-                    className="absolute top-[20%] left-[25%] w-4 h-4 bg-primary/70 rounded-full cursor-pointer hover:bg-primary ring-2 ring-primary/30 hover:ring-primary transition-all"
+                    className="absolute top-[20%] left-[25%] w-3 h-3 bg-primary rounded-full cursor-pointer ring-2 ring-primary/50 hover:ring-primary transition-all animate-pulse"
                     onClick={() => handleRegionClick("D01-Viana_do_Castelo")}
                     data-ai-hint="region marker"
                   ></div>
@@ -147,7 +155,7 @@ export default function MinimapPanel() {
                <Tooltip>
                 <TooltipTrigger asChild>
                   <div
-                    className="absolute top-[45%] left-[40%] w-4 h-4 bg-green-500/70 rounded-full cursor-pointer hover:bg-green-500 ring-2 ring-green-500/30 hover:ring-green-500 transition-all"
+                    className="absolute top-[45%] left-[40%] w-3 h-3 bg-green-500 rounded-full cursor-pointer ring-2 ring-green-500/50 hover:ring-green-500 transition-all animate-pulse"
                     onClick={() => handleRegionClick("D11-Leiria")}
                     data-ai-hint="region marker"
                   ></div>
@@ -156,7 +164,6 @@ export default function MinimapPanel() {
               </Tooltip>
             </TooltipProvider>
           </div>
-          <CardDescription className="text-xs mb-2 font-code">Navegação Rápida:</CardDescription>
           <div className="flex gap-2 mb-2">
             <Input
               type="number"
