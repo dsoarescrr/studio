@@ -346,38 +346,40 @@ export default function PixelGrid() {
 
   // Effect to draw crisp outlines on a separate canvas
   useEffect(() => {
-      if (!mapData || !strokeColor || !outlineCanvasRef.current || containerSize.width === 0) return;
-      const canvas = outlineCanvasRef.current;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      
-      const logicalToSvgScale = canvasDrawWidth / SVG_VIEWBOX_WIDTH;
-      
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.save();
+    if (!mapData || !strokeColor || !outlineCanvasRef.current || containerSize.width === 0) return;
+    const canvas = outlineCanvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-      // Apply pan and zoom
-      ctx.translate(position.x, position.y);
-      ctx.scale(zoom, zoom);
-      
-      // Scale from logical grid to SVG coordinate space for drawing
-      ctx.scale(logicalToSvgScale, logicalToSvgScale);
+    const logicalToSvgScale = canvasDrawWidth / SVG_VIEWBOX_WIDTH;
 
-      // Set line properties
-      ctx.strokeStyle = `hsl(${strokeColor})`;
-      // Calculate lineWidth to be a consistent 1.0px on screen regardless of zoom.
-      ctx.lineWidth = 1.0 / (zoom * logicalToSvgScale);
-      ctx.imageSmoothingEnabled = true;
-      
-      mapData.pathStrings.forEach(pathString => {
-          try {
-              const path = new Path2D(pathString);
-              ctx.stroke(path);
-          } catch(e) {
-              // console.warn('Could not draw outline path', e)
-          }
-      });
-      ctx.restore();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+
+    // Apply pan and zoom
+    ctx.translate(position.x, position.y);
+    ctx.scale(zoom, zoom);
+
+    // Scale from logical grid to SVG coordinate space for drawing
+    ctx.scale(logicalToSvgScale, logicalToSvgScale);
+
+    // Set line properties for smooth rendering
+    ctx.strokeStyle = `hsl(${strokeColor})`;
+    // Calculate lineWidth to be a consistent visual width on screen regardless of zoom.
+    ctx.lineWidth = 0.5 / (zoom * logicalToSvgScale);
+    ctx.imageSmoothingEnabled = true;
+    ctx.lineJoin = 'round'; // Smooths out corners
+    ctx.lineCap = 'round';  // Smooths out line ends
+
+    mapData.pathStrings.forEach(pathString => {
+        try {
+            const path = new Path2D(pathString);
+            ctx.stroke(path);
+        } catch(e) {
+            // console.warn('Could not draw outline path', e)
+        }
+    });
+    ctx.restore();
   }, [mapData, zoom, position, strokeColor, containerSize]);
 
 
