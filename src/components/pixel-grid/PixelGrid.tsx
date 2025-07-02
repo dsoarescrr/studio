@@ -8,6 +8,7 @@ import {
   Image as ImageIcon, XCircle, TagsIcon, Link as LinkIconLucide, Pencil,
   Eraser, PaintBucket, Trash2, Heart, Flag, BadgePercent, Star, MapPin as MapPinIconLucide, ScrollText, Gem, Globe, AlertTriangle,
 } from 'lucide-react';
+import NextImage from 'next/image';
 import PortugalMapSvg, { type MapData } from './PortugalMapSvg';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -28,7 +29,6 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import NextImage from 'next/image';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '../ui/separator';
@@ -188,66 +188,64 @@ export default function PixelGrid() {
     setProgressMessage("A processar mapa interativo...");
     setIsLoadingMap(true);
   
-    // Resize canvas if needed
-    if (canvas.width !== canvasDrawWidth || canvas.height !== canvasDrawHeight) {
-      canvas.width = canvasDrawWidth;
-      canvas.height = canvasDrawHeight;
-    }
-  
-    // 1. Draw the base map for visual representation
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const scaleFactor = canvasDrawWidth / SVG_VIEWBOX_WIDTH;
-    ctx.save();
-    ctx.scale(scaleFactor, scaleFactor);
-    ctx.fillStyle = `hsl(${unsoldColor})`;
-    ctx.strokeStyle = `hsl(${strokeColor})`;
-    ctx.lineWidth = 5; // Use a fixed, thin line width for consistency
-  
-    mapData.pathStrings.forEach(d => {
-      try {
-        const path = new Path2D(d);
-        ctx.fill(path);
-        ctx.stroke(path);
-      } catch (e) {
-        // console.warn("Skipping invalid path string during draw:", d);
-      }
-    });
-    ctx.restore();
-  
-    // 2. Generate the bitmap from the drawn canvas
-    try {
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const data = imageData.data;
-      const newBitmap = new Uint8Array(LOGICAL_GRID_COLS_CONFIG * logicalGridRows);
-      let activePixels = 0;
-  
-      for (let row = 0; row < logicalGridRows; row++) {
-        for (let col = 0; col < LOGICAL_GRID_COLS_CONFIG; col++) {
-          const canvasX = Math.floor((col + 0.5) * RENDERED_PIXEL_SIZE_CONFIG);
-          const canvasY = Math.floor((row + 0.5) * RENDERED_PIXEL_SIZE_CONFIG);
-          const index = (canvasY * canvas.width + canvasX) * 4;
-          
-          // Check the alpha channel to see if the pixel has been painted
-          if (data[index + 3] > 0) {
-            newBitmap[row * LOGICAL_GRID_COLS_CONFIG + col] = 1;
-            activePixels++;
-          }
+    const drawMap = () => {
+        if (canvas.width !== canvasDrawWidth || canvas.height !== canvasDrawHeight) {
+          canvas.width = canvasDrawWidth;
+          canvas.height = canvasDrawHeight;
         }
-      }
-      setPixelBitmap(newBitmap);
-      setActivePixelsInMap(activePixels);
-    } catch(e) {
-      console.error("Error generating pixel bitmap:", e);
-      toast({ title: "Erro na Grelha", description: "Não foi possível gerar a grelha interativa.", variant: "destructive" });
-    } finally {
-      setIsLoadingMap(false);
-      setProgressMessage("");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const scaleFactor = canvasDrawWidth / SVG_VIEWBOX_WIDTH;
+        ctx.save();
+        ctx.scale(scaleFactor, scaleFactor);
+        ctx.fillStyle = `hsl(${unsoldColor})`;
+        ctx.strokeStyle = `hsl(${strokeColor})`;
+        ctx.lineWidth = 5;
+
+        mapData.pathStrings.forEach(pathString => {
+            try {
+                const path = new Path2D(pathString);
+                ctx.fill(path);
+                ctx.stroke(path);
+            } catch (e) {
+                // console.warn("Could not draw path", e);
+            }
+        });
+
+        ctx.restore();
+    };
+
+    const createBitmapFromCanvas = () => {
+        try {
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const data = imageData.data;
+          const newBitmap = new Uint8Array(LOGICAL_GRID_COLS_CONFIG * logicalGridRows);
+          let activePixels = 0;
+      
+          for (let row = 0; row < logicalGridRows; row++) {
+            for (let col = 0; col < LOGICAL_GRID_COLS_CONFIG; col++) {
+              const canvasX = Math.floor((col + 0.5) * RENDERED_PIXEL_SIZE_CONFIG);
+              const canvasY = Math.floor((row + 0.5) * RENDERED_PIXEL_SIZE_CONFIG);
+              const index = (canvasY * canvas.width + canvasX) * 4;
+              
+              if (data[index + 3] > 0) {
+                newBitmap[row * LOGICAL_GRID_COLS_CONFIG + col] = 1;
+                activePixels++;
+              }
+            }
+          }
+          setPixelBitmap(newBitmap);
+          setActivePixelsInMap(activePixels);
+        } catch(e) {
+          console.error("Error generating pixel bitmap:", e);
+          toast({ title: "Erro na Grelha", description: "Não foi possível gerar a grelha interativa.", variant: "destructive" });
+        } finally {
+          setIsLoadingMap(false);
+          setProgressMessage("");
+        }
     }
-  
-    // 3. Draw sold pixels on top
-    if (soldPixelsCanvasRef.current) {
-        ctx.drawImage(soldPixelsCanvasRef.current, 0, 0);
-    }
+    
+    drawMap();
+    createBitmapFromCanvas();
   
   }, [isClient, mapData, unsoldColor, strokeColor, toast]);
 
@@ -278,7 +276,6 @@ export default function PixelGrid() {
       offCtx.fillRect(renderX, renderY, RENDERED_PIXEL_SIZE_CONFIG, RENDERED_PIXEL_SIZE_CONFIG);
     });
 
-    // Re-draw the main canvas to show the updated sold pixels
     const mainCanvas = canvasRef.current;
     if (mainCanvas && mainCanvas.getContext('2d')) {
         const mainCtx = mainCanvas.getContext('2d');
@@ -286,7 +283,7 @@ export default function PixelGrid() {
             mainCtx.drawImage(offscreenCanvas, 0, 0);
         }
     }
-  }, [soldPixels, canvasDrawWidth, canvasDrawHeight]);
+  }, [soldPixels, canvasDrawWidth, canvasDrawHeight, pixelBitmap]); // Re-draw when pixelBitmap is ready
 
   useEffect(() => { 
     if (isClient && containerRef.current && mapData?.pathStrings && !defaultView && canvasDrawWidth > 0 && canvasDrawHeight > 0) {
@@ -777,7 +774,8 @@ export default function PixelGrid() {
           <p>Zoom: {zoom.toFixed(2)}x</p>
           <p>X: {Math.round(position.x)}, Y: {Math.round(position.y)}</p>
           {selectedPixelCoordsForDisplay && <p>Pixel Lógico: ({selectedPixelCoordsForDisplay.x}, {selectedPixelCoordsForDisplay.y})</p>}
-          <p>Grelha: {(totalLogicalPixels / 1000000).toFixed(1)}M</p>
+          <p>Píxeis no Mapa: {activePixelsInMap > 0 ? activePixelsInMap.toLocaleString('pt-PT') : '...'}</p>
+          <p>Grelha Total: {(totalLogicalPixels / 1000000).toFixed(1)}M</p>
         </div>
       </div>
       
