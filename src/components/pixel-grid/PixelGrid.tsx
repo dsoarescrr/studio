@@ -39,7 +39,7 @@ import { mapPixelToApproxGps, cn } from '@/lib/utils';
 const SVG_VIEWBOX_WIDTH = 12969;
 const SVG_VIEWBOX_HEIGHT = 26674;
 const LOGICAL_GRID_COLS_CONFIG = 1273;
-const RENDERED_PIXEL_SIZE_CONFIG = 0.6;
+const RENDERED_PIXEL_SIZE_CONFIG = 1;
 
 // Derived constants
 const canvasDrawWidth = LOGICAL_GRID_COLS_CONFIG * RENDERED_PIXEL_SIZE_CONFIG;
@@ -250,7 +250,7 @@ export default function PixelGrid() {
   }, [isClient, mapData, unsoldColor, strokeColor, toast]);
 
 
-  useEffect(() => {
+  useEffect(() => { 
     if (!soldPixels || !canvasDrawWidth || !canvasDrawHeight) return;
 
     if (!soldPixelsCanvasRef.current) {
