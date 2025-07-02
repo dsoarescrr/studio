@@ -28,34 +28,26 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import Image from 'next/image';
+import NextImage from 'next/image';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '../ui/separator';
 import { mapPixelToApproxGps, cn } from '@/lib/utils';
 
-// DB Caching constants
-const DB_NAME = "PixelUniverseMapDB";
-const DB_VERSION = 1;
-const BITMAP_STORE_NAME = "pixelBitmapStore";
-const BITMAP_DATA_KEY = "mapBitmapData";
 
 // Configuration constants
 const SVG_VIEWBOX_WIDTH = 12969;
 const SVG_VIEWBOX_HEIGHT = 26674;
-const LOGICAL_GRID_COLS_CONFIG = 1273; // Changed from 2250 to target ~3.3M
+const LOGICAL_GRID_COLS_CONFIG = 1273;
 const RENDERED_PIXEL_SIZE_CONFIG = 0.6;
 
 // Derived constants
-const canvasDrawWidth = LOGICAL_GRID_COLS_CONFIG * RENDERED_PIXEL_SIZE_CONFIG; // Should be approx 764
-const canvasDrawHeight = Math.floor(canvasDrawWidth * (SVG_VIEWBOX_HEIGHT / SVG_VIEWBOX_WIDTH)); // Should be approx 1570
-const logicalGridRows = Math.floor(canvasDrawHeight / RENDERED_PIXEL_SIZE_CONFIG); // Should be approx 2616
-const totalLogicalPixels = LOGICAL_GRID_COLS_CONFIG * logicalGridRows; // Approx 3.3M
+const canvasDrawWidth = LOGICAL_GRID_COLS_CONFIG * RENDERED_PIXEL_SIZE_CONFIG;
+const canvasDrawHeight = Math.floor(canvasDrawWidth * (SVG_VIEWBOX_HEIGHT / SVG_VIEWBOX_WIDTH));
+const logicalGridRows = Math.floor(canvasDrawHeight / RENDERED_PIXEL_SIZE_CONFIG);
+const totalLogicalPixels = LOGICAL_GRID_COLS_CONFIG * logicalGridRows;
 
 const PLACEHOLDER_IMAGE_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
-
-const UNSOLD_PIXEL_COLOR = 'rgba(0, 255, 0, 0.3)'; // semi-transparent green for debug
-const UNSOLD_PIXEL_STROKE_COLOR = 'magenta'; // magenta for debug
 
 const USER_BOUGHT_PIXEL_COLOR = 'hsl(var(--primary))';
 
@@ -108,81 +100,6 @@ const mockLoreSnippets: string[] = [
 ];
 
 
-/** Opens the IndexedDB and ensures the object store exists. */
-function openDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains(BITMAP_STORE_NAME)) {
-        db.createObjectStore(BITMAP_STORE_NAME);
-      }
-    };
-    request.onsuccess = (event) => resolve((event.target as IDBOpenDBRequest).result);
-    request.onerror = (event) => reject(`IndexedDB error: ${(event.target as IDBOpenDBRequest).error}`);
-  });
-}
-
-/** Saves the generated bitmap data to IndexedDB. */
-async function saveBitmapToDB(data: {
-  bitmapBuffer: ArrayBuffer;
-  activePixels: number;
-  cols: number;
-  rows: number;
-}): Promise<void> {
-  try {
-    const db = await openDB();
-    const transaction = db.transaction(BITMAP_STORE_NAME, "readwrite");
-    const store = transaction.objectStore(BITMAP_STORE_NAME);
-    store.put(data, BITMAP_DATA_KEY);
-    return new Promise((resolve, reject) => {
-      transaction.oncomplete = () => {
-        resolve();
-      };
-      transaction.onerror = (event) => {
-        reject(`DB Transaction error: ${(event.target as IDBTransaction).error}`);
-      };
-    });
-  } catch (error) {
-    console.error("PixelGrid: Failed to save bitmap to DB:", error);
-  }
-}
-
-/** Loads the bitmap data from IndexedDB. */
-async function loadBitmapFromDB(): Promise<{
-  bitmap: Uint8Array;
-  activePixels: number;
-} | null> {
-  try {
-    const db = await openDB();
-    const transaction = db.transaction(BITMAP_STORE_NAME, "readonly");
-    const store = transaction.objectStore(BITMAP_STORE_NAME);
-    const request = store.get(BITMAP_DATA_KEY);
-
-    return new Promise((resolve, reject) => {
-      request.onsuccess = (event) => {
-        const data = (event.target as IDBRequest).result;
-        // Validate cache against current grid configuration
-        if (data && data.cols === LOGICAL_GRID_COLS_CONFIG && data.rows === logicalGridRows) {
-          resolve({
-            bitmap: new Uint8Array(data.bitmapBuffer),
-            activePixels: data.activePixels
-          });
-        } else {
-          // Cache is invalid or doesn't exist
-          resolve(null);
-        }
-      };
-      request.onerror = (event) => {
-        resolve(null); // Resolve with null on error to proceed with worker
-      };
-    });
-  } catch (error) {
-    return null;
-  }
-}
-
-
 export default function PixelGrid() {
   const [isClient, setIsClient] = useState(false);
   const [zoom, setZoom] = useState(1);
@@ -212,18 +129,14 @@ export default function PixelGrid() {
   const [mapData, setMapData] = useState<MapData | null>(null);
   const [pixelBitmap, setPixelBitmap] = useState<Uint8Array | null>(null);
   const [activePixelsInMap, setActivePixelsInMap] = useState(0);
-  const [workerStatus, setWorkerStatus] = useState<'idle' | 'loading-cache' | 'processing-worker' | 'done' | 'error'>('idle');
-  const [overallProgress, setOverallProgress] = useState(0);
+  const [isLoadingMap, setIsLoadingMap] = useState(true);
   const [progressMessage, setProgressMessage] = useState("Aguardando cliente...");
-  const [workerErrorMessage, setWorkerErrorMessage] = useState<string | null>(null);
   
   const [soldPixels, setSoldPixels] = useState<SoldPixel[]>([
       { x: Math.floor(LOGICAL_GRID_COLS_CONFIG * 0.451), y: Math.floor(logicalGridRows * 0.302), color: 'hsl(var(--accent))', title: 'Pixel especial LIS', ownerId: 'user123' },
       { x: Math.floor(LOGICAL_GRID_COLS_CONFIG * 0.503), y: Math.floor(logicalGridRows * 0.204), color: 'magenta', title: 'Pixel especial POR', ownerId: MOCK_CURRENT_USER_ID },
       { x: Math.floor(LOGICAL_GRID_COLS_CONFIG * 0.555), y: Math.floor(logicalGridRows * 0.756), color: 'cyan', title: 'Pixel especial FAR', ownerId: 'user456' },
-  ]); 
-
-  const workerRef = useRef<Worker | null>(null);
+  ]);
 
   const [editMode, setEditMode] = useState(false);
   const [editableColor, setEditableColor] = useState('#FFFFFF');
@@ -238,18 +151,94 @@ export default function PixelGrid() {
 
   const autoResetTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const [unsoldColor, setUnsoldColor] = useState('');
+  const [strokeColor, setStrokeColor] = useState('');
+
   const clearAutoResetTimeout = useCallback(() => {
     if (autoResetTimeoutRef.current) {
       clearTimeout(autoResetTimeoutRef.current);
       autoResetTimeoutRef.current = null;
     }
   }, []);
+  
+  useEffect(() => {
+    setIsClient(true);
+     if (typeof window !== 'undefined') {
+      const computedStyle = getComputedStyle(document.documentElement);
+      setUnsoldColor(computedStyle.getPropertyValue('--secondary').trim());
+      setStrokeColor(computedStyle.getPropertyValue('--border').trim());
+    }
+  }, []);
+
+  const handleMapDataLoaded = useCallback((data: MapData) => {
+    setMapData(data);
+  }, []);
+
+  useEffect(() => {
+    if (!mapData || !mapData.pathStrings.length || !isClient) {
+      return;
+    }
+
+    const processMap = () => {
+      setProgressMessage("A processar mapa interativo...");
+      
+      try {
+        const offscreenCanvas = new OffscreenCanvas(canvasDrawWidth, canvasDrawHeight);
+        const ctx = offscreenCanvas.getContext('2d');
+        if (!ctx) {
+          throw new Error("Could not create offscreen canvas context.");
+        }
+
+        const scaleX = canvasDrawWidth / SVG_VIEWBOX_WIDTH;
+        const scaleY = canvasDrawHeight / SVG_VIEWBOX_HEIGHT;
+        ctx.scale(scaleX, scaleY);
+        ctx.fillStyle = 'black';
+
+        mapData.pathStrings.forEach(d => {
+          try {
+            ctx.fill(new Path2D(d));
+          } catch (e) {
+            console.warn("Skipping invalid path string during bitmap calculation:", d);
+          }
+        });
+
+        const imageData = ctx.getImageData(0, 0, canvasDrawWidth, canvasDrawHeight);
+        const data = imageData.data;
+        const newBitmap = new Uint8Array(LOGICAL_GRID_COLS_CONFIG * logicalGridRows);
+        let activePixels = 0;
+
+        for (let row = 0; row < logicalGridRows; row++) {
+          for (let col = 0; col < LOGICAL_GRID_COLS_CONFIG; col++) {
+            const canvasX = Math.floor((col + 0.5) * RENDERED_PIXEL_SIZE_CONFIG);
+            const canvasY = Math.floor((row + 0.5) * RENDERED_PIXEL_SIZE_CONFIG);
+            const index = (canvasY * canvasDrawWidth + canvasX) * 4;
+            if (data[index + 3] > 0) {
+              newBitmap[row * LOGICAL_GRID_COLS_CONFIG + col] = 1;
+              activePixels++;
+            }
+          }
+        }
+        setPixelBitmap(newBitmap);
+        setActivePixelsInMap(activePixels);
+      } catch (error) {
+        console.error("Failed to process map:", error);
+        setProgressMessage("Erro ao processar o mapa.");
+      } finally {
+        setIsLoadingMap(false);
+        setProgressMessage("");
+      }
+    };
+
+    const timerId = setTimeout(processMap, 50);
+    return () => clearTimeout(timerId);
+
+  }, [isClient, mapData]);
 
   const drawMap = useCallback(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d', { willReadFrequently: true });
 
-    if (!ctx || !canvas) return;
+    if (!ctx || !canvas || !mapData?.pathStrings.length || !unsoldColor) return;
     
     if (canvas.width !== canvasDrawWidth || canvas.height !== canvasDrawHeight) {
       canvas.width = canvasDrawWidth;
@@ -259,127 +248,33 @@ export default function PixelGrid() {
     ctx.imageSmoothingEnabled = false;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    if (mapData?.path2D) {
-      const scaleFactor = canvasDrawWidth / SVG_VIEWBOX_WIDTH;
-      ctx.save();
-      ctx.scale(scaleFactor, scaleFactor);
-      ctx.fillStyle = UNSOLD_PIXEL_COLOR;
-      ctx.strokeStyle = UNSOLD_PIXEL_STROKE_COLOR;
-      ctx.lineWidth = Math.max(0.2, 0.5 / zoom);
-      ctx.fill(mapData.path2D);
-      ctx.stroke(mapData.path2D);
-      ctx.restore();
-    }
+    const scaleFactor = canvasDrawWidth / SVG_VIEWBOX_WIDTH;
+    ctx.save();
+    ctx.scale(scaleFactor, scaleFactor);
+    ctx.fillStyle = `hsl(${unsoldColor})`;
+    ctx.strokeStyle = `hsl(${strokeColor})`;
+    ctx.lineWidth = Math.max(2, 5 / zoom);
+
+    mapData.pathStrings.forEach(d => {
+      try {
+        const path = new Path2D(d);
+        ctx.fill(path);
+        ctx.stroke(path);
+      } catch(e) {
+        // console.warn("Skipping invalid path string during draw:", d);
+      }
+    });
+
+    ctx.restore();
     
     if (soldPixelsCanvasRef.current) {
       ctx.drawImage(soldPixelsCanvasRef.current, 0, 0);
     }
-  }, [mapData, zoom, position, canvasDrawWidth, canvasDrawHeight]);
+  }, [mapData, zoom, position, unsoldColor, strokeColor]);
 
   useEffect(() => {
     drawMap();
   }, [drawMap]);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  const handleMapDataLoaded = useCallback((data: MapData) => {
-    setMapData(data);
-  }, []);
-
-  useEffect(() => {
-    const initMapProcessing = async () => {
-      if (workerRef.current || workerStatus !== 'idle') return;
-
-      setWorkerStatus('loading-cache');
-      const cachedData = await loadBitmapFromDB();
-
-      if (cachedData) {
-        setPixelBitmap(cachedData.bitmap);
-        setActivePixelsInMap(cachedData.activePixels);
-        setOverallProgress(100);
-        setWorkerStatus('done');
-        return;
-      }
-      
-      setWorkerStatus('processing-worker');
-      try {
-        const worker = new Worker(new URL('../../workers/pixel-map-worker.ts', import.meta.url));
-        workerRef.current = worker;
-        
-        worker.onmessage = (event: MessageEvent<any>) => {
-          if (!event.data || typeof event.data.type === 'undefined') {
-            setWorkerStatus('error');
-            setWorkerErrorMessage('Comunicação inválida do worker.');
-            return;
-          }
-          
-          const { type, progress, bitmap, activePixelsInBitmap, error: workerErrorMsg } = event.data;
-          
-          if (type === 'progress') {
-            setOverallProgress(Math.max(0, Math.min(100, Number(progress) || 0)));
-          } else if (type === 'done') {
-            const newBitmap = new Uint8Array(bitmap);
-            setPixelBitmap(newBitmap);
-            setActivePixelsInMap(activePixelsInBitmap);
-            setWorkerStatus('done');
-            setOverallProgress(100);
-            
-            saveBitmapToDB({
-              bitmapBuffer: bitmap,
-              activePixels: activePixelsInBitmap,
-              cols: LOGICAL_GRID_COLS_CONFIG,
-              rows: logicalGridRows,
-            }).catch(err => console.error("Error saving to DB post-worker:", err));
-            
-          } else if (type === 'error') {
-            setWorkerStatus('error');
-            setWorkerErrorMessage(workerErrorMsg || 'Erro desconhecido no worker.');
-          }
-        };
-
-        worker.onerror = (err: ErrorEvent) => {
-          const errorMessage = `PixelGrid: Error from worker script: ${err.message || "Ocorreu um erro crítico no worker."}`;
-          setWorkerStatus('error');
-          setWorkerErrorMessage(errorMessage);
-          if (workerRef.current) {
-            workerRef.current.terminate();
-            workerRef.current = null;
-          }
-        };
-
-        const workerInputData = {
-          pathStrings: mapData!.pathStrings,
-          canvasWidth: canvasDrawWidth,
-          canvasHeight: canvasDrawHeight,
-          svgViewBoxWidth: SVG_VIEWBOX_WIDTH,
-          svgViewBoxHeight: SVG_VIEWBOX_HEIGHT,
-          logicalCols: LOGICAL_GRID_COLS_CONFIG,
-          logicalRows: logicalGridRows,
-          pixelSize: RENDERED_PIXEL_SIZE_CONFIG,
-        };
-        worker.postMessage(workerInputData);
-
-      } catch (e: any) {
-        const errorMsg = e instanceof Error ? e.message : String(e);
-        setWorkerStatus('error');
-        setWorkerErrorMessage(`Falha ao criar Worker: ${errorMsg}`);
-      }
-    };
-    
-    if (isClient && mapData && !workerErrorMessage) {
-      initMapProcessing();
-    }
-    
-    return () => {
-      if (workerRef.current) {
-        workerRef.current.terminate();
-        workerRef.current = null;
-      }
-    };
-  }, [isClient, mapData, workerErrorMessage]);
-
 
   useEffect(() => {
     if (!soldPixels || !canvasDrawWidth || !canvasDrawHeight) return;
@@ -407,11 +302,11 @@ export default function PixelGrid() {
       offCtx.fillRect(renderX, renderY, RENDERED_PIXEL_SIZE_CONFIG, RENDERED_PIXEL_SIZE_CONFIG);
     });
 
-    drawMap(); // Redraw main canvas after updating the offscreen one
+    drawMap();
   }, [soldPixels, canvasDrawWidth, canvasDrawHeight, drawMap]);
 
   useEffect(() => { 
-    if (isClient && containerRef.current && mapData?.path2D && !defaultView && canvasDrawWidth > 0 && canvasDrawHeight > 0) {
+    if (isClient && containerRef.current && mapData?.pathStrings && !defaultView && canvasDrawWidth > 0 && canvasDrawHeight > 0) {
       const containerWidth = containerRef.current.offsetWidth;
       const effectiveContainerHeight = window.innerHeight - HEADER_HEIGHT_PX - BOTTOM_NAV_HEIGHT_PX;
       
@@ -442,7 +337,7 @@ export default function PixelGrid() {
     if (defaultView) {
       setZoom(defaultView.zoom);
       setPosition(defaultView.position);
-    } else if (isClient && containerRef.current && mapData?.path2D && canvasDrawWidth > 0 && canvasDrawHeight > 0) { 
+    } else if (isClient && containerRef.current && mapData?.pathStrings && canvasDrawWidth > 0 && canvasDrawHeight > 0) { 
         const containerWidth = containerRef.current.offsetWidth;
         const effectiveContainerHeight = window.innerHeight - HEADER_HEIGHT_PX - BOTTOM_NAV_HEIGHT_PX;
         if (containerWidth > 0 && effectiveContainerHeight > 0) {
@@ -501,26 +396,6 @@ export default function PixelGrid() {
     };
   }, [isGeneratingDesc, showPixelModal, pixelDescription, initialAiProgressTrigger, editMode]);
 
-  useEffect(() => {
-    if (workerStatus === 'error') {
-      setProgressMessage(workerErrorMessage || "Erro no processamento do mapa.");
-    } else if (workerStatus === 'done' && pixelBitmap) {
-       setProgressMessage("Mapa interativo carregado do cache!");
-       setTimeout(() => setProgressMessage(""), 3000);
-    } else if (workerStatus === 'processing-worker') {
-      setProgressMessage(`A calcular grelha interativa de alta precisão: ${overallProgress.toFixed(0)}%`);
-    } else if (workerStatus === 'loading-cache') {
-      setProgressMessage("A verificar cache local do mapa...");
-    } else if (isClient && !mapData && !workerErrorMessage) {
-      setProgressMessage("A carregar contorno do mapa...");
-    } else if (!isClient) {
-      setProgressMessage("Aguardando cliente...");
-    } else if (workerStatus === 'idle' && isClient && mapData && !workerErrorMessage) {
-       setProgressMessage("A iniciar processamento da grelha interativa...");
-    }
-
-  }, [isClient, mapData, workerStatus, overallProgress, workerErrorMessage, pixelBitmap]);
-
 
   const handleZoomIn = () => { clearAutoResetTimeout(); setZoom((prevZoom) => Math.min(prevZoom * 1.2, MAX_ZOOM)); };
   const handleZoomOut = () => { clearAutoResetTimeout(); setZoom((prevZoom) => Math.max(prevZoom / 1.2, MIN_ZOOM)); };
@@ -565,10 +440,10 @@ export default function PixelGrid() {
     }
     if (!canvasRef.current) return;
 
-    if (workerStatus !== 'done' || !pixelBitmap) {
+    if (isLoadingMap || !pixelBitmap) {
       toast({
-        title: "Grelha Interativa a Carregar",
-        description: `Mapa base visível. Grelha de píxeis detalhada a ser preparada (${overallProgress.toFixed(0)}%). Interação precisa em breve.`,
+        title: "Mapa a Carregar",
+        description: "A grelha interativa está a ser processada. Por favor, aguarde.",
         variant: "default",
       });
       return;
@@ -629,7 +504,7 @@ export default function PixelGrid() {
                 y: logicalRow,
                 owner: 'Disponível (Sistema)',
                 price: Math.floor(Math.random() * 50) + 10, 
-                color: UNSOLD_PIXEL_COLOR,
+                color: `hsl(${unsoldColor})`,
                 isOwnedByCurrentUser: false,
                 isForSaleBySystem: true,
                 history: [],
@@ -885,7 +760,7 @@ export default function PixelGrid() {
     };
   }, [zoom, position, handleResetView, defaultView, showPixelModal, isDragging]);
   
-  const showProgressIndicator = (workerStatus !== 'done' || (workerStatus === 'done' && progressMessage !== "" && overallProgress < 100)) && workerStatus !== 'error';
+  const showProgressIndicator = isLoadingMap || (progressMessage !== "");
   
 
   return (
@@ -931,18 +806,8 @@ export default function PixelGrid() {
                 <Sparkles className="h-5 w-5 text-primary animate-pulse mr-2" />
                 <p className="text-sm font-headline text-foreground">{progressMessage}</p>
             </div>
-            {workerStatus === 'processing-worker' && overallProgress < 100 && <Progress value={overallProgress} className="w-48 mx-auto h-1 mt-1" />}
           </div>
         )}
-
-      {workerStatus === 'error' && workerErrorMessage && (
-         <div className="absolute inset-0 flex flex-col items-center justify-center z-20 bg-background/90 pointer-events-none p-4">
-            <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
-            <p className="text-xl font-headline text-destructive-foreground mb-2">Erro ao Carregar o Mapa Interativo</p>
-            <p className="text-sm text-muted-foreground max-w-md text-center mb-1">{workerErrorMessage}</p>
-            <p className="text-sm text-muted-foreground">Por favor, tente recarregar a página.</p>
-          </div>
-      )}
       
       <Dialog open={showPixelModal} onOpenChange={(isOpen) => {
           setShowPixelModal(isOpen);
@@ -1052,7 +917,7 @@ export default function PixelGrid() {
                       <div className="pt-1">
                         <span className="font-semibold">Imagem do Pixel:</span>
                         <div className="mt-1 relative w-24 h-24 rounded border border-border overflow-hidden shadow-sm animate-scale-in">
-                          <Image src={selectedPixelDetails.pixelImageUrl} alt="Imagem do Pixel" layout="fill" objectFit="cover" data-ai-hint={selectedPixelDetails.dataAiHint || 'pixel image'}/>
+                          <NextImage src={selectedPixelDetails.pixelImageUrl} alt="Imagem do Pixel" layout="fill" objectFit="cover" data-ai-hint={selectedPixelDetails.dataAiHint || 'pixel image'}/>
                         </div>
                       </div>
                     )}
@@ -1284,7 +1149,7 @@ export default function PixelGrid() {
                             </div>
                             {editablePixelImagePreview && (
                                 <div className="mt-2 relative w-24 h-24 rounded border border-border overflow-hidden group shadow-sm animate-scale-in">
-                                <Image src={editablePixelImagePreview} alt="Pré-visualização da Imagem" layout="fill" objectFit="cover" data-ai-hint="pixel image preview"/>
+                                <NextImage src={editablePixelImagePreview} alt="Pré-visualização da Imagem" layout="fill" objectFit="cover" data-ai-hint="pixel image preview"/>
                                 </div>
                             )}
                             <p className="text-xs text-muted-foreground mt-1">Envie uma imagem para associar a este pixel.</p>

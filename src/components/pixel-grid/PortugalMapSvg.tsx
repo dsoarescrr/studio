@@ -4,7 +4,6 @@
 import React, { useEffect, useRef } from 'react';
 
 export interface MapData {
-  path2D: Path2D;
   pathStrings: string[];
 }
 
@@ -19,30 +18,20 @@ export default function PortugalMapSvg({ onMapDataLoaded, className }: PortugalM
 
   useEffect(() => {
     if (landmassPathsRef.current && typeof onMapDataLoaded === 'function') {
-      const combinedPath2D = new Path2D();
       const pathStrings: string[] = [];
       const pathElements = landmassPathsRef.current.querySelectorAll('path');
       
       pathElements.forEach((pathEl) => {
         const d = pathEl.getAttribute('d');
         if (d) {
-          try {
-            combinedPath2D.addPath(new Path2D(d));
-            pathStrings.push(d);
-          } catch (e) {
-            console.error("PortugalMapSvg: Error creating Path2D from d attribute:", d, e);
-          }
+          pathStrings.push(d);
         }
       });
 
       if (pathStrings.length > 0) {
-        onMapDataLoaded({ path2D: combinedPath2D, pathStrings });
+        onMapDataLoaded({ pathStrings });
       } else {
         console.warn("PortugalMapSvg: No valid path strings found.");
-      }
-    } else {
-       if (typeof onMapDataLoaded !== 'function') {
-        console.error("PortugalMapSvg: onMapDataLoaded prop is not a function. Type:", typeof onMapDataLoaded);
       }
     }
   }, [onMapDataLoaded]);
@@ -149,7 +138,6 @@ export default function PortugalMapSvg({ onMapDataLoaded, className }: PortugalM
             <path data-z="291" className="z z291" d="M7385 12974l33 97 99 33 99 -98c136,-90 189,-95 346,-139l75 225 65 98 131 65 -123 109 0 131 -66 65c-130,-43 -79,-33 -230,-33l-66 131 66 195 -33 98 -99 65c44,129 33,79 33,228l-99 65 -99 -65 -33 -98 -33 -98 -197 98 -33 98 -66 65 -198 98 66 -131 0 -130 -99 -32 -99 -66 -99 -32 -65 -98 -99 -65 -33 -98 66 -97 66 32 65 -98 132 -65 66 -97 99 -66 33 -97 99 -33 33 -98 99 -130 98 -32z"/>
             <path data-z="290" className="z z290" d="M6726 14016l99 32 99 66 99 32 0 130 -66 131c-132,43 -263,87 -395,130l-33 98 -198 -131 -99 -32 -33 -98 99 -163 -66 -97 -99 -66 -98 -97 -33 -65 33 -131 98 -65c33,-98 66,-195 99,-293l99 65 99 33 99 65 66 98 -66 97 33 98 99 65 65 98z"/>
           </g>
-          {/* ... (Repeat for all other <g id="DXX-DistrictName"> groups and their paths) ... */}
           <g id="D12-Santarem">
             <path data-z="289" className="z z289" d="M4881 17012l-98 33 -264 65 -33 98 -231 130 -197 0 -66 65 -115 113 -215 -15 -33 -98 0 -130 -98 -33 -33 65 -99 -32 0 -130 -33 -98 66 -196 -33 -97 -198 -65 -66 -98 66 -130 99 32 97 -21 199 -142 165 -195 -66 -196 66 -97 198 -65 99 65 99 -33 164 0 99 33 33 97 132 -65 103 -71 95 39 98 65 33 98 99 65 0 130 99 228 33 98 -66 195 -99 65 99 65 99 33 66 98 99 -33 99 65 -99 65 33 98 66 98 98 -33 99 0 -66 98 -66 98 -197 -66 -33 -97 -99 -65 -99 32 -66 -32 -33 -98 -99 -98z"/>
             <path data-z="288" className="z z288" d="M3432 16849l-66 196 33 98 0 130 -132 -98 -99 98 -33 97 -66 98 0 130 -66 98 -131 0 -99 33 0 -98 -99 -65 -132 65 -99 33 -99 -33 -32 -98 16 -146 -49 -95 -174 -53 141 -96 33 -98 197 -391 99 -65 -33 -98 99 -195 -33 -98 132 0 66 -98 66 228 98 65 231 66 -66 130 66 98 198 65 33 97z"/>
@@ -180,7 +168,7 @@ export default function PortugalMapSvg({ onMapDataLoaded, className }: PortugalM
             <path data-z="265" className="z z265" d="M2048 14635l33 65 0 130 -165 0 -33 -98 -132 0 -65 98 -33 -98 0 -65 131 -32 -33 -98 -131 -130 -99 -33 -198 -98 -132 0 -66 -97 -108 23 195 -196 164 -261 130 -98 -51 141 132 195 197 -65 297 98 0 130 -99 33 66 97 0 359z"/>
             <path data-z="264" className="z z264" d="M2081 13006l33 98 -66 130 40 102 -77 79 -103 -35 -94 68 -28 68 59 199 -143 -25 -98 -141 164 -261 65 -98 -65 -130 49 11 99 -32 165 -33z"/>
             <path data-z="263" className="z z263" d="M3201 13006l33 98 66 98 0 195 -66 98 -132 -261 -197 -130 -132 0 -198 -65 0 -65 -33 -98 99 -65 132 0 99 65 98 -33 198 66 33 97z"/>
-            <path data-z="262" className="z z262" d="M2575 12974l0 65 198 65 132 0 197 130 132 261 33 97 -198 131 33 97 -99 98 -131 -32 -297 0 -99 32 -33 -98 33 -97 0 -131 66 -97 -33 -131 -99 66 -66 -196 27 -145 105 -83 99 -32z"/>
+            <path data-z="262" className="z z262" d="M2575 12974l0 65 198 65 132 0 197 130 132 261 33 97 -198 131 33 97 -99 98 -131 -32 -297 0 -99 32 -33 -98 33 -97 0 -131 -66 -97 -33 -131 -99 66 -66 -196 27 -145 105 -83 99 -32z"/>
             <path data-z="261" className="z z261" d="M2371 13089l-27 145 66 196 99 -66 33 131 -66 97 0 131 -33 97 33 98 -99 130 -65 131 -66 163 -99 -33 -99 -33 -66 -97 99 -33 0 -130 -297 -98 -197 65 -132 -195 51 -141 98 -98 98 141 143 25 -59 -199 28 -68 94 -68 103 35 77 -79 -40 -102 66 -130 -33 -98 -165 33 -99 32 -49 -11 97 -229 74 -258 76 75 99 33 192 97 38 131 27 180z"/>
             <path data-z="260" className="z z260" d="M2344 12681l-38 97 -192 -97 -99 -33 -76 -75 57 -199 221 -588 62 15 98 -32 66 97 -66 131 66 65 -33 228 99 32 33 98 -33 98 -66 97 -99 66z"/>
             <path data-z="259" className="z z259" d="M3234 13104l-66 -195 -198 -66 -98 33 -99 -65 -132 0 -99 65 33 98 -99 32 -105 83 -27 -180 -38 -131 38 -97 99 0 132 -195 197 -33 99 33 231 65z"/>
