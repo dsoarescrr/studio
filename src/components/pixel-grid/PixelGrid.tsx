@@ -157,6 +157,8 @@ export default function PixelGrid() {
 
   const [loadedPixelImages, setLoadedPixelImages] = useState<Record<string, HTMLImageElement>>({});
 
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+
   const clearAutoResetTimeout = useCallback(() => {
     if (autoResetTimeoutRef.current) {
       clearTimeout(autoResetTimeoutRef.current);
@@ -315,28 +317,57 @@ export default function PixelGrid() {
     });
 
   }, [soldPixels, loadedPixelImages, pixelBitmap]); // Depends on pixelBitmap to ensure base is drawn first
+  
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const resizeObserver = new ResizeObserver(entries => {
+      for (let entry of entries) {
+        setContainerSize({
+          width: entry.contentRect.width,
+          height: entry.contentRect.height,
+        });
+      }
+    });
+
+    resizeObserver.observe(container);
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  // Effect to resize the outline canvas when the container size changes
+  useEffect(() => {
+    const canvas = outlineCanvasRef.current;
+    if (canvas) {
+      canvas.width = containerSize.width;
+      canvas.height = containerSize.height;
+    }
+  }, [containerSize]);
 
   // Effect to draw crisp outlines on a separate canvas
   useEffect(() => {
-      if (!mapData || !strokeColor) return;
+      if (!mapData || !strokeColor || !outlineCanvasRef.current || containerSize.width === 0) return;
       const canvas = outlineCanvasRef.current;
-      if (!canvas) return;
-
-      if (canvas.width !== canvasDrawWidth || canvas.height !== canvasDrawHeight) {
-          canvas.width = canvasDrawWidth;
-          canvas.height = canvasDrawHeight;
-      }
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.strokeStyle = `hsl(${strokeColor})`;
-      // Dynamically adjust line width for a crisp look at any zoom level
-      ctx.lineWidth = 20 / zoom;
+      const logicalToSvgScale = canvasDrawWidth / SVG_VIEWBOX_WIDTH;
       
-      const scaleFactor = canvasDrawWidth / SVG_VIEWBOX_WIDTH;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.save();
-      ctx.scale(scaleFactor, scaleFactor);
+
+      // Apply pan and zoom
+      ctx.translate(position.x, position.y);
+      ctx.scale(zoom, zoom);
+      
+      // Scale from logical grid to SVG coordinate space for drawing
+      ctx.scale(logicalToSvgScale, logicalToSvgScale);
+
+      // Set line properties
+      ctx.strokeStyle = `hsl(${strokeColor})`;
+      // Calculate lineWidth to be a consistent 1.5px on screen regardless of zoom.
+      ctx.lineWidth = 1.5 / (zoom * logicalToSvgScale);
+      ctx.imageSmoothingEnabled = true;
       
       mapData.pathStrings.forEach(pathString => {
           try {
@@ -347,7 +378,7 @@ export default function PixelGrid() {
           }
       });
       ctx.restore();
-  }, [mapData, zoom, strokeColor]);
+  }, [mapData, zoom, position, strokeColor, containerSize]);
 
 
   useEffect(() => { 
@@ -1327,14 +1358,13 @@ export default function PixelGrid() {
             className="absolute top-0 left-0 w-full h-full z-10" 
             style={{ imageRendering: 'pixelated' }} 
           />
-          <canvas
+          {(!mapData && isClient) && <PortugalMapSvg onMapDataLoaded={handleMapDataLoaded} className="invisible absolute" />}
+        </div>
+        <canvas
             ref={outlineCanvasRef}
             className="absolute top-0 left-0 w-full h-full z-20 pointer-events-none"
             style={{ imageRendering: 'auto' }}
-          />
-          
-          {(!mapData && isClient) && <PortugalMapSvg onMapDataLoaded={handleMapDataLoaded} className="invisible absolute" />}
-        </div>
+        />
       </div>
 
       <div className="absolute bottom-6 right-6 z-20 animate-scale-in animation-delay-500" pointerEvents="auto">
