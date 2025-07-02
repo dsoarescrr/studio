@@ -59,6 +59,7 @@ interface SoldPixel {
   color: string;
   ownerId?: string;
   title?: string;
+  pixelImageUrl?: string;
 }
 
 interface SelectedPixelDetails {
@@ -87,7 +88,7 @@ interface SelectedPixelDetails {
 }
 
 const MIN_ZOOM = 0.05;
-const MAX_ZOOM = 10;
+const MAX_ZOOM = 50; // Increased zoom level
 const ZOOM_SENSITIVITY_FACTOR = 1.1;
 const HEADER_HEIGHT_PX = 64;
 const BOTTOM_NAV_HEIGHT_PX = 64;
@@ -154,6 +155,8 @@ export default function PixelGrid() {
   const [unsoldColor, setUnsoldColor] = useState('');
   const [strokeColor, setStrokeColor] = useState('');
 
+  const [loadedPixelImages, setLoadedPixelImages] = useState<Record<string, HTMLImageElement>>({});
+
   const clearAutoResetTimeout = useCallback(() => {
     if (autoResetTimeoutRef.current) {
       clearTimeout(autoResetTimeoutRef.current);
@@ -166,7 +169,7 @@ export default function PixelGrid() {
      if (typeof window !== 'undefined') {
       const computedStyle = getComputedStyle(document.documentElement);
       setUnsoldColor(computedStyle.getPropertyValue('--secondary').trim());
-      setStrokeColor(computedStyle.getPropertyValue('--border').trim());
+      setStrokeColor(computedStyle.getPropertyValue('--muted-foreground').trim());
     }
   }, []);
 
@@ -174,10 +177,49 @@ export default function PixelGrid() {
     setMapData(data);
   }, []);
 
+  const drawMap = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !mapData) return;
+  
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return;
+  
+    if (canvas.width !== canvasDrawWidth || canvas.height !== canvasDrawHeight) {
+      canvas.width = canvasDrawWidth;
+      canvas.height = canvasDrawHeight;
+    }
+  
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const scaleFactor = canvasDrawWidth / SVG_VIEWBOX_WIDTH;
+    ctx.save();
+    ctx.scale(scaleFactor, scaleFactor);
+    ctx.fillStyle = `hsl(${unsoldColor})`;
+    ctx.strokeStyle = `hsl(${strokeColor})`;
+    ctx.lineWidth = 20; // Increased stroke width for better visibility
+  
+    mapData.pathStrings.forEach(pathString => {
+      try {
+        const path = new Path2D(pathString);
+        ctx.fill(path);
+        ctx.stroke(path);
+      } catch (e) {
+        // console.warn("Could not draw path", e);
+      }
+    });
+  
+    ctx.restore();
+  }, [mapData, unsoldColor, strokeColor]);
+
+
   useEffect(() => {
-    if (!isClient || !mapData || !mapData.pathStrings.length || !unsoldColor || !strokeColor) {
+    if (!isClient || !mapData || !unsoldColor || !strokeColor) {
       return;
     }
+  
+    setProgressMessage("A processar mapa interativo...");
+    setIsLoadingMap(true);
+    
+    drawMap();
   
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -185,73 +227,60 @@ export default function PixelGrid() {
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
   
-    setProgressMessage("A processar mapa interativo...");
-    setIsLoadingMap(true);
+    try {
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      const newBitmap = new Uint8Array(LOGICAL_GRID_COLS_CONFIG * logicalGridRows);
+      let activePixels = 0;
   
-    const drawMap = () => {
-        if (canvas.width !== canvasDrawWidth || canvas.height !== canvasDrawHeight) {
-          canvas.width = canvasDrawWidth;
-          canvas.height = canvasDrawHeight;
-        }
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const scaleFactor = canvasDrawWidth / SVG_VIEWBOX_WIDTH;
-        ctx.save();
-        ctx.scale(scaleFactor, scaleFactor);
-        ctx.fillStyle = `hsl(${unsoldColor})`;
-        ctx.strokeStyle = `hsl(${strokeColor})`;
-        ctx.lineWidth = 5;
-
-        mapData.pathStrings.forEach(pathString => {
-            try {
-                const path = new Path2D(pathString);
-                ctx.fill(path);
-                ctx.stroke(path);
-            } catch (e) {
-                // console.warn("Could not draw path", e);
-            }
-        });
-
-        ctx.restore();
-    };
-
-    const createBitmapFromCanvas = () => {
-        try {
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const data = imageData.data;
-          const newBitmap = new Uint8Array(LOGICAL_GRID_COLS_CONFIG * logicalGridRows);
-          let activePixels = 0;
-      
-          for (let row = 0; row < logicalGridRows; row++) {
-            for (let col = 0; col < LOGICAL_GRID_COLS_CONFIG; col++) {
-              const canvasX = Math.floor((col + 0.5) * RENDERED_PIXEL_SIZE_CONFIG);
-              const canvasY = Math.floor((row + 0.5) * RENDERED_PIXEL_SIZE_CONFIG);
-              const index = (canvasY * canvas.width + canvasX) * 4;
-              
-              if (data[index + 3] > 0) {
-                newBitmap[row * LOGICAL_GRID_COLS_CONFIG + col] = 1;
-                activePixels++;
-              }
-            }
+      for (let row = 0; row < logicalGridRows; row++) {
+        for (let col = 0; col < LOGICAL_GRID_COLS_CONFIG; col++) {
+          const canvasX = Math.floor((col + 0.5) * RENDERED_PIXEL_SIZE_CONFIG);
+          const canvasY = Math.floor((row + 0.5) * RENDERED_PIXEL_SIZE_CONFIG);
+          const index = (canvasY * canvas.width + canvasX) * 4;
+          
+          if (data[index + 3] > 0) { // Check alpha channel
+            newBitmap[row * LOGICAL_GRID_COLS_CONFIG + col] = 1;
+            activePixels++;
           }
-          setPixelBitmap(newBitmap);
-          setActivePixelsInMap(activePixels);
-        } catch(e) {
-          console.error("Error generating pixel bitmap:", e);
-          toast({ title: "Erro na Grelha", description: "Não foi possível gerar a grelha interativa.", variant: "destructive" });
-        } finally {
-          setIsLoadingMap(false);
-          setProgressMessage("");
         }
+      }
+      setPixelBitmap(newBitmap);
+      setActivePixelsInMap(activePixels);
+    } catch(e) {
+      console.error("Error generating pixel bitmap:", e);
+      toast({ title: "Erro na Grelha", description: "Não foi possível gerar a grelha interativa.", variant: "destructive" });
+    } finally {
+      setIsLoadingMap(false);
+      setProgressMessage("");
     }
-    
-    drawMap();
-    createBitmapFromCanvas();
   
-  }, [isClient, mapData, unsoldColor, strokeColor, toast]);
+  }, [isClient, drawMap, mapData, unsoldColor, strokeColor, toast]);
 
 
+  // Effect to load images for sold pixels
+  useEffect(() => {
+    soldPixels.forEach(pixel => {
+        if (pixel.pixelImageUrl && !loadedPixelImages[pixel.pixelImageUrl]) {
+            const img = new window.Image();
+            img.src = pixel.pixelImageUrl;
+            img.onload = () => {
+                setLoadedPixelImages(prevImages => ({
+                    ...prevImages,
+                    [pixel.pixelImageUrl!]: img,
+                }));
+            };
+            img.onerror = () => {
+                console.error(`Failed to load pixel image: ${pixel.pixelImageUrl}`);
+            };
+        }
+    });
+  }, [soldPixels, loadedPixelImages]);
+
+
+  // Effect to draw sold pixels (colors or images)
   useEffect(() => { 
-    if (!soldPixels || !canvasDrawWidth || !canvasDrawHeight) return;
+    if (!soldPixels || !canvasDrawWidth || !canvasDrawHeight || !pixelBitmap) return;
 
     if (!soldPixelsCanvasRef.current) {
       soldPixelsCanvasRef.current = document.createElement('canvas');
@@ -270,20 +299,29 @@ export default function PixelGrid() {
     offCtx.imageSmoothingEnabled = false;
 
     soldPixels.forEach(pixel => {
-      offCtx.fillStyle = pixel.color;
       const renderX = pixel.x * RENDERED_PIXEL_SIZE_CONFIG;
       const renderY = pixel.y * RENDERED_PIXEL_SIZE_CONFIG;
-      offCtx.fillRect(renderX, renderY, RENDERED_PIXEL_SIZE_CONFIG, RENDERED_PIXEL_SIZE_CONFIG);
+      
+      if (pixel.pixelImageUrl && loadedPixelImages[pixel.pixelImageUrl]) {
+          const img = loadedPixelImages[pixel.pixelImageUrl];
+          offCtx.drawImage(img, renderX, renderY, RENDERED_PIXEL_SIZE_CONFIG, RENDERED_PIXEL_SIZE_CONFIG);
+      } else {
+          offCtx.fillStyle = pixel.color;
+          offCtx.fillRect(renderX, renderY, RENDERED_PIXEL_SIZE_CONFIG, RENDERED_PIXEL_SIZE_CONFIG);
+      }
     });
 
     const mainCanvas = canvasRef.current;
     if (mainCanvas && mainCanvas.getContext('2d')) {
         const mainCtx = mainCanvas.getContext('2d');
         if (mainCtx) {
+            // Redraw base map first to ensure it's clean
+            drawMap();
+            // Then draw the sold pixels on top
             mainCtx.drawImage(offscreenCanvas, 0, 0);
         }
     }
-  }, [soldPixels, canvasDrawWidth, canvasDrawHeight, pixelBitmap]); // Re-draw when pixelBitmap is ready
+  }, [soldPixels, loadedPixelImages, canvasDrawWidth, canvasDrawHeight, pixelBitmap, drawMap]);
 
   useEffect(() => { 
     if (isClient && containerRef.current && mapData?.pathStrings && !defaultView && canvasDrawWidth > 0 && canvasDrawHeight > 0) {
@@ -454,7 +492,7 @@ export default function PixelGrid() {
                 isOwnedByCurrentUser: (existingSoldPixel.ownerId || MOCK_CURRENT_USER_ID) === MOCK_CURRENT_USER_ID,
                 isForSaleBySystem: false,
                 manualDescription: 'Este é o meu pixel especial!',
-                pixelImageUrl: Math.random() > 0.6 ? `https://placehold.co/150x150.png?text=${logicalCol}x${logicalRow}` : undefined,
+                pixelImageUrl: existingSoldPixel.pixelImageUrl,
                 dataAiHint: 'pixel image',
                 title: existingSoldPixel.title || `Pixel de ${existingSoldPixel.ownerId || MOCK_CURRENT_USER_ID}`,
                 tags: ['meu', 'favorito'],
@@ -585,7 +623,7 @@ export default function PixelGrid() {
 
     setSoldPixels(prevSold => prevSold.map(p =>
       p.x === selectedPixelDetails.x && p.y === selectedPixelDetails.y
-        ? { ...p, color: editableColor, title: editableTitle }
+        ? { ...p, color: editableColor, title: editableTitle, pixelImageUrl: editablePixelImagePreview || undefined }
         : p
     ));
 
