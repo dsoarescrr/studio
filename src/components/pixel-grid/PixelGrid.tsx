@@ -1375,37 +1375,40 @@ export default function PixelGrid() {
         </DialogContent>
       </Dialog>
 
-      <div
-        ref={containerRef}
-        className="flex-grow w-full h-full cursor-grab active:cursor-grabbing overflow-hidden bg-background relative"
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUpOrLeave}
-        onMouseLeave={handleMouseUpOrLeave}
-      >
+      <div className="flex-grow w-full h-full p-4 md:p-8 flex items-center justify-center">
         <div
-          style={{
-            transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`,
-            transition: isDragging ? 'none' : 'transform 0.05s ease-out',
-            width: `${canvasDrawWidth}px`,
-            height: `${canvasDrawHeight}px`,
-            transformOrigin: 'top left',
-            position: 'relative', 
-          }}
+            ref={containerRef}
+            className="w-full h-full cursor-grab active:cursor-grabbing overflow-hidden bg-background relative rounded-xl map-shadow"
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUpOrLeave}
+            onMouseLeave={handleMouseUpOrLeave}
         >
-          <canvas
-            ref={pixelCanvasRef}
-            className="absolute top-0 left-0 w-full h-full z-10" 
-            style={{ imageRendering: 'pixelated' }} 
-          />
-          {(!mapData && isClient) && <PortugalMapSvg onMapDataLoaded={handleMapDataLoaded} className="invisible absolute" />}
+            <div
+            style={{
+                transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`,
+                transition: isDragging ? 'none' : 'transform 0.05s ease-out',
+                width: `${canvasDrawWidth}px`,
+                height: `${canvasDrawHeight}px`,
+                transformOrigin: 'top left',
+                position: 'relative', 
+            }}
+            >
+            <canvas
+                ref={pixelCanvasRef}
+                className="absolute top-0 left-0 w-full h-full z-10" 
+                style={{ imageRendering: 'pixelated' }} 
+            />
+            {(!mapData && isClient) && <PortugalMapSvg onMapDataLoaded={handleMapDataLoaded} className="invisible absolute" />}
+            </div>
+            <canvas
+                ref={outlineCanvasRef}
+                className="absolute top-0 left-0 w-full h-full z-20 pointer-events-none"
+                style={{ imageRendering: 'auto' }}
+            />
         </div>
-        <canvas
-            ref={outlineCanvasRef}
-            className="absolute top-0 left-0 w-full h-full z-20 pointer-events-none"
-            style={{ imageRendering: 'auto' }}
-        />
       </div>
+
 
       <div className="absolute bottom-6 right-6 z-20 animate-scale-in animation-delay-500" pointerEvents="auto">
         <Dialog>

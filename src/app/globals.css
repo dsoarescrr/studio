@@ -105,11 +105,12 @@
     @apply border-border;
   }
   body {
+    background-color: hsl(220 20% 8%);
+    background-image: radial-gradient(ellipse 100% 70% at 50% 0%, hsl(220 15% 12%), transparent);
     @apply bg-background text-foreground;
-    /* overflow-hidden removed from here to allow page-specific scroll */
   }
   html, body {
-    @apply h-full; /* Ensure html and body take full height */
+    @apply h-full;
   }
 }
 
@@ -159,6 +160,10 @@
   }
   .epic-shadow {
     box-shadow: 0 0 15px 2px hsla(var(--accent), 0.4);
+  }
+  .map-shadow {
+    box-shadow: 0 50px 100px -20px rgba(0, 0, 0, 0.4), 
+                inset 0 0 10px rgba(0,0,0,0.2);
   }
 
   .animation-delay-100 { animation-delay: 100ms; }
