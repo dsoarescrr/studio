@@ -7,6 +7,7 @@ import {
   History as HistoryIcon, DollarSign, ShoppingCart, Edit3, Palette as PaletteIconLucide, FileText, Upload, Save,
   Image as ImageIcon, XCircle, TagsIcon, Link as LinkIconLucide, Pencil,
   Eraser, PaintBucket, Trash2, Heart, Flag, BadgePercent, Star, MapPin as MapPinIconLucide, ScrollText, Gem, Globe, AlertTriangle,
+  Map as MapIcon,
 } from 'lucide-react';
 import NextImage from 'next/image';
 import PortugalMapSvg, { type MapData } from './PortugalMapSvg';
@@ -863,6 +864,15 @@ export default function PixelGrid() {
     toast({ title: "Localização Encontrada!", description: "Centrado no pixel mais próximo da sua localização." });
   };
   
+  const handleViewOnRealMap = () => {
+    if (selectedPixelDetails?.gpsCoords) {
+      const { lat, lon } = selectedPixelDetails.gpsCoords;
+      const url = `https://www.google.com/maps?q=${lat},${lon}&z=18&t=k`; // z=18 for high zoom, t=k for satellite
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } else {
+      toast({ title: "Coordenadas não disponíveis", description: "Não foi possível determinar a localização GPS para este pixel." });
+    }
+  };
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden relative animate-fade-in">
@@ -978,18 +988,21 @@ export default function PixelGrid() {
                     </div>
                     {selectedPixelDetails.gpsCoords && (
                       <div className="flex justify-between items-center">
-                        <span>GPS (Aprox.):</span>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="font-code flex items-center cursor-help">
-                                {selectedPixelDetails.gpsCoords.lat.toFixed(4)}, {selectedPixelDetails.gpsCoords.lon.toFixed(4)}
-                                <Globe className="inline h-3.5 w-3.5 ml-1.5 text-primary/80" />
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent align="end"><p>Coordenadas GPS aproximadas. Não para navegação precisa.</p></TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
+                        <div className="flex items-center">
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                    <span className="font-code flex items-center cursor-help">
+                                        GPS (Aprox.): {selectedPixelDetails.gpsCoords.lat.toFixed(4)}, {selectedPixelDetails.gpsCoords.lon.toFixed(4)}
+                                    </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent align="start"><p>Coordenadas GPS aproximadas. Não para navegação precisa.</p></TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </div>
+                        <Button variant="outline" size="sm" className="h-7 text-xs ml-2" onClick={handleViewOnRealMap}>
+                            <MapIcon className="h-3 w-3 mr-1.5" /> Ver no Mapa
+                        </Button>
                       </div>
                     )}
                     {selectedPixelDetails.manualDescription && (
