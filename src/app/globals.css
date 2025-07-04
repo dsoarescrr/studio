@@ -112,3 +112,85 @@
     @apply h-full; /* Ensure html and body take full height */
   }
 }
+
+@layer utilities {
+  .text-shadow-gold-sm {
+    text-shadow: 0 1px 2px hsla(var(--primary), 0.3);
+  }
+  .text-shadow-gold-xs {
+    text-shadow: 0 1px 1px hsla(var(--primary), 0.2);
+  }
+
+  .dialog-header-gold-accent {
+      @apply p-4 border-b border-primary/20 bg-gradient-to-br from-card to-primary/5;
+  }
+  .dialog-footer-gold-accent {
+      @apply p-3 border-t border-primary/20 bg-gradient-to-tr from-card to-primary/5;
+  }
+  .card-header-accent {
+      @apply p-3 border-b border-primary/10 bg-gradient-to-r from-card to-primary/5;
+  }
+  .card-inset-shadow {
+    @apply bg-background/50 border border-border/70 rounded-lg shadow-[inset_0_1px_2px_rgba(0,0,0,0.3)];
+  }
+
+  .button-gradient-gold {
+      @apply bg-gradient-to-br from-primary via-amber-500 to-yellow-600 text-primary-foreground;
+  }
+  .button-gradient-orange {
+      @apply bg-gradient-to-br from-orange-500 via-amber-500 to-yellow-500 text-white;
+  }
+  .button-gradient-green {
+      @apply bg-gradient-to-br from-green-600 to-green-500 text-white;
+  }
+
+  .button-3d-effect {
+      @apply transform transition-transform duration-150 hover:scale-105 active:scale-95 shadow-md hover:shadow-lg;
+  }
+  .button-3d-effect-outline {
+      @apply transform transition-transform duration-150 hover:scale-105 active:scale-95 shadow-sm hover:shadow-md;
+  }
+
+  .button-gold-glow {
+      @apply hover:shadow-[0_0_15px_hsl(var(--primary),0.5)] transition-shadow duration-300;
+  }
+  .legendary-glow-strong {
+    box-shadow: 0 0 20px 5px hsla(var(--primary), 0.5), inset 0 0 10px hsla(var(--primary), 0.3);
+  }
+  .epic-shadow {
+    box-shadow: 0 0 15px 2px hsla(var(--accent), 0.4);
+  }
+
+  .animation-delay-100 { animation-delay: 100ms; }
+  .animation-delay-200 { animation-delay: 200ms; }
+  .animation-delay-300 { animation-delay: 300ms; }
+  .animation-delay-400 { animation-delay: 400ms; }
+  .animation-delay-500 { animation-delay: 500ms; }
+
+  .animate-scale-in {
+    animation: scale-in 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  }
+  .animate-slide-in-up {
+    animation: slide-in-up 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  }
+  .animate-fade-in {
+    animation: fade-in 0.5s ease-in-out both;
+  }
+
+  @keyframes scale-in {
+    0% { transform: scale(0); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  @keyframes slide-in-up {
+    0% { transform: translateY(20px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+  @keyframes fade-in {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+  }
+
+  .input-shadow {
+    @apply shadow-[inset_0_1px_2px_rgba(0,0,0,0.5)];
+  }
+}
