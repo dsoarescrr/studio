@@ -1,20 +1,18 @@
 
-// Removed UserProfileHeader from here as it's now in MainLayout
 import PixelGrid from '@/components/pixel-grid/PixelGrid';
-import MinimapPanel from '@/components/panels/MinimapPanel';
-// import StatisticsPanel from '@/components/panels/StatisticsPanel'; // Removed StatisticsPanel import
-// import ActivityFeedPanel from '@/components/panels/ActivityFeedPanel'; // ActivityFeedPanel was already removed
+import { SidebarProvider } from '@/components/ui/sidebar';
+import { SidebarInset } from '@/components/ui/sidebar';
+import MapSidebar from '@/components/layout/MapSidebar';
 
 export default function HomePage() {
   return (
-    <div className="relative flex-1 w-full h-full overflow-hidden"> {/* overflow-hidden specific to map page */}
-      {/* UserProfileHeader is now in MainLayout.tsx */}
-      <PixelGrid />
-      <MinimapPanel />
-      {/* <ActivityFeedPanel /> */} {/* ActivityFeedPanel instance was already removed */}
-      {/* <StatisticsPanel /> */} {/* Removed StatisticsPanel instance */}
-      {/* Other floating panels can be added here */}
-    </div>
+    <SidebarProvider>
+      <div className="relative flex-1 w-full h-full overflow-hidden">
+        <MapSidebar />
+        <SidebarInset>
+          <PixelGrid />
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
   );
 }
-
