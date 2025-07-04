@@ -105,8 +105,11 @@
     @apply border-border;
   }
   body {
-    background-color: hsl(220 20% 8%);
-    background-image: radial-gradient(ellipse 100% 70% at 50% 0%, hsl(220 15% 12%), transparent);
+    /* A very dark, deep space blue as the absolute base color. */
+    background-color: hsl(220 20% 5%);
+    /* A very large, soft glow emanating from behind the content, fading into the dark base.
+       This creates the illusion of a vast, open space with the content area being illuminated. */
+    background-image: radial-gradient(ellipse 140% 90% at 50% 10%, hsl(var(--card)), transparent);
     @apply bg-background text-foreground;
   }
   html, body {
@@ -162,8 +165,9 @@
     box-shadow: 0 0 15px 2px hsla(var(--accent), 0.4);
   }
   .map-shadow {
-    box-shadow: 0 50px 100px -20px rgba(0, 0, 0, 0.4), 
-                inset 0 0 10px rgba(0,0,0,0.2);
+    box-shadow: 0 50px 100px -20px rgba(0, 0, 0, 0.4), /* The deep, far shadow for depth */
+                0 0 60px -10px hsla(var(--primary), 0.2), /* A subtle gold glow */
+                inset 0 0 10px rgba(0,0,0,0.2); /* The inner shadow */
   }
 
   .animation-delay-100 { animation-delay: 100ms; }
