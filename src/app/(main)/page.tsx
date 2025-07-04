@@ -7,12 +7,10 @@ import MapSidebar from '@/components/layout/MapSidebar';
 export default function HomePage() {
   return (
     <SidebarProvider>
-      <div className="relative flex-1 w-full h-full overflow-hidden">
-        <MapSidebar />
-        <SidebarInset>
-          <PixelGrid />
-        </SidebarInset>
-      </div>
+      <MapSidebar />
+      <SidebarInset>
+        <PixelGrid />
+      </SidebarInset>
     </SidebarProvider>
   );
 }
