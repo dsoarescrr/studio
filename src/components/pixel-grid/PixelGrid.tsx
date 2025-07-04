@@ -88,7 +88,7 @@ interface SelectedPixelDetails {
 }
 
 const MIN_ZOOM = 0.05;
-const MAX_ZOOM = 50; // Increased zoom level
+const MAX_ZOOM = 50;
 const ZOOM_SENSITIVITY_FACTOR = 1.1;
 const HEADER_HEIGHT_PX = 64;
 const BOTTOM_NAV_HEIGHT_PX = 64;
@@ -112,7 +112,7 @@ export default function PixelGrid() {
   const didDragRef = useRef(false);
   const dragThreshold = 5;
 
-  const [selectedPixelCoordsForDisplay, setSelectedPixelCoordsForDisplay] = useState<{ x: number; y: number } | null>(null);
+  const [highlightedPixel, setHighlightedPixel] = useState<{ x: number; y: number } | null>(null);
   const [selectedPixelDetails, setSelectedPixelDetails] = useState<SelectedPixelDetails | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
 
@@ -123,8 +123,8 @@ export default function PixelGrid() {
   const [initialAiProgressTrigger, setInitialAiProgressTrigger] = useState(0);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const pixelCanvasRef = useRef<HTMLCanvasElement>(null); // For pixelated content
-  const outlineCanvasRef = useRef<HTMLCanvasElement>(null); // For smooth outlines
+  const pixelCanvasRef = useRef<HTMLCanvasElement>(null);
+  const outlineCanvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
 
   const [mapData, setMapData] = useState<MapData | null>(null);
@@ -179,14 +179,12 @@ export default function PixelGrid() {
     setMapData(data);
   }, []);
 
-  // Effect for generating the interactive bitmap from map data
   useEffect(() => {
     if (!isClient || !mapData) return;
   
     setProgressMessage("A processar mapa interativo...");
     setIsLoadingMap(true);
     
-    // Create an off-screen canvas to generate the bitmap without affecting the UI
     const offscreenCanvas = document.createElement('canvas');
     offscreenCanvas.width = canvasDrawWidth;
     offscreenCanvas.height = canvasDrawHeight;
@@ -199,15 +197,13 @@ export default function PixelGrid() {
     const scaleFactor = canvasDrawWidth / SVG_VIEWBOX_WIDTH;
     ctx.save();
     ctx.scale(scaleFactor, scaleFactor);
-    ctx.fillStyle = 'black'; // Use a solid color for easy bitmap creation
+    ctx.fillStyle = 'black';
     
-    // Fill the paths to define the clickable area
     mapData.pathStrings.forEach(pathString => {
       try {
         const path = new Path2D(pathString);
         ctx.fill(path);
       } catch (e) {
-        // console.warn("Could not draw path for bitmap", e);
       }
     });
     ctx.restore();
@@ -224,7 +220,7 @@ export default function PixelGrid() {
           const canvasY = Math.floor((row + 0.5) * RENDERED_PIXEL_SIZE_CONFIG);
           const index = (canvasY * offscreenCanvas.width + canvasX) * 4;
           
-          if (data[index + 3] > 0) { // Check alpha channel
+          if (data[index + 3] > 0) {
             newBitmap[row * LOGICAL_GRID_COLS_CONFIG + col] = 1;
             activePixels++;
           }
@@ -242,7 +238,6 @@ export default function PixelGrid() {
   
   }, [isClient, mapData, toast]);
 
-  // Effect to draw the base pixel layer (unsold pixels)
   useEffect(() => {
       if (!pixelBitmap || !unsoldColor) return;
       const canvas = pixelCanvasRef.current;
@@ -273,8 +268,6 @@ export default function PixelGrid() {
       }
   }, [pixelBitmap, unsoldColor]);
 
-
-  // Effect to load images for sold pixels
   useEffect(() => {
     soldPixels.forEach(pixel => {
         if (pixel.pixelImageUrl && !loadedPixelImages[pixel.pixelImageUrl]) {
@@ -293,8 +286,6 @@ export default function PixelGrid() {
     });
   }, [soldPixels, loadedPixelImages]);
 
-
-  // Effect to draw sold pixels (colors or images) over the base layer
   useEffect(() => { 
     if (!soldPixels || !pixelCanvasRef.current) return;
 
@@ -316,7 +307,7 @@ export default function PixelGrid() {
       }
     });
 
-  }, [soldPixels, loadedPixelImages, pixelBitmap]); // Depends on pixelBitmap to ensure base is drawn first
+  }, [soldPixels, loadedPixelImages, pixelBitmap]);
   
   useEffect(() => {
     const container = containerRef.current;
@@ -335,7 +326,6 @@ export default function PixelGrid() {
     return () => resizeObserver.disconnect();
   }, []);
 
-  // Effect to resize the outline canvas when the container size changes
   useEffect(() => {
     const canvas = outlineCanvasRef.current;
     if (canvas) {
@@ -344,44 +334,53 @@ export default function PixelGrid() {
     }
   }, [containerSize]);
 
-  // Effect to draw crisp outlines on a separate canvas
   useEffect(() => {
     if (!mapData || !strokeColor || !outlineCanvasRef.current || containerSize.width === 0) return;
     const canvas = outlineCanvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-
+  
     const logicalToSvgScale = canvasDrawWidth / SVG_VIEWBOX_WIDTH;
-
+  
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.save();
-
-    // Apply pan and zoom
+  
     ctx.translate(position.x, position.y);
     ctx.scale(zoom, zoom);
-
-    // Scale from logical grid to SVG coordinate space for drawing
+  
+    // Draw district outlines
+    ctx.save();
     ctx.scale(logicalToSvgScale, logicalToSvgScale);
-
-    // Set line properties for smooth rendering
     ctx.strokeStyle = `hsl(${strokeColor})`;
-    // Calculate lineWidth to be a consistent visual width on screen regardless of zoom.
     ctx.lineWidth = 0.5 / (zoom * logicalToSvgScale);
     ctx.imageSmoothingEnabled = true;
-    ctx.lineJoin = 'round'; // Smooths out corners
-    ctx.lineCap = 'round';  // Smooths out line ends
-
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+  
     mapData.pathStrings.forEach(pathString => {
         try {
             const path = new Path2D(pathString);
             ctx.stroke(path);
         } catch(e) {
-            // console.warn('Could not draw outline path', e)
         }
     });
     ctx.restore();
-  }, [mapData, zoom, position, strokeColor, containerSize]);
-
+  
+    // Draw highlighted pixel border
+    if (highlightedPixel) {
+        ctx.strokeStyle = 'hsl(var(--foreground))';
+        ctx.lineWidth = (0.5 / zoom) * RENDERED_PIXEL_SIZE_CONFIG; // Make it a consistent screen-space width
+        ctx.strokeRect(
+            highlightedPixel.x * RENDERED_PIXEL_SIZE_CONFIG,
+            highlightedPixel.y * RENDERED_PIXEL_SIZE_CONFIG,
+            RENDERED_PIXEL_SIZE_CONFIG,
+            RENDERED_PIXEL_SIZE_CONFIG
+        );
+    }
+  
+    ctx.restore();
+  }, [mapData, zoom, position, strokeColor, containerSize, highlightedPixel]);
+  
 
   useEffect(() => { 
     if (isClient && containerRef.current && mapData?.pathStrings && !defaultView && canvasDrawWidth > 0 && canvasDrawHeight > 0) {
@@ -532,7 +531,7 @@ export default function PixelGrid() {
       const bitmapIdx = logicalRow * LOGICAL_GRID_COLS_CONFIG + logicalCol;
 
       if (pixelBitmap[bitmapIdx] === 1) {
-        setSelectedPixelCoordsForDisplay({ x: logicalCol, y: logicalRow });
+        setHighlightedPixel({ x: logicalCol, y: logicalRow });
 
         const existingSoldPixel = soldPixels.find(p => p.x === logicalCol && p.y === logicalRow);
         let mockDetails: SelectedPixelDetails;
@@ -598,12 +597,12 @@ export default function PixelGrid() {
         setEditMode(false);
         setInitialAiProgressTrigger(prev => prev + 1);
       } else { 
-        setSelectedPixelCoordsForDisplay(null);
+        setHighlightedPixel(null);
         setSelectedPixelDetails(null);
         toast({ title: "Fora da Área Interativa", description: `Clicou fora da área interativa de Portugal. Coords Lógicas: (${logicalCol}, ${logicalRow}).`, variant: "default" });
       }
     } else { 
-      setSelectedPixelCoordsForDisplay(null);
+      setHighlightedPixel(null);
       setSelectedPixelDetails(null);
       toast({ title: "Fora dos Limites do Mapa", description: `Clicou fora dos limites do mapa. Coords Lógicas: (${logicalCol}, ${logicalRow}).`, variant: "default" });
     }
@@ -612,7 +611,6 @@ export default function PixelGrid() {
   const handleMouseUpOrLeave = (event: React.MouseEvent) => {
     if (isDragging) {
       if (!didDragRef.current) {
-        // This was a click, not a drag.
         handleCanvasClick(event);
       }
       setIsDragging(false);
@@ -837,6 +835,33 @@ export default function PixelGrid() {
   }, [zoom, position, handleResetView, defaultView, showPixelModal, isDragging]);
   
   const showProgressIndicator = isLoadingMap || (progressMessage !== "");
+
+  const handleGoToMyLocation = () => {
+    if (!containerRef.current || !pixelBitmap) return;
+
+    // Simulate finding a location in Lisbon
+    const myLocationPixel = { x: 579, y: 1358 };
+
+    // Check if the pixel is valid and on the map
+    const bitmapIdx = myLocationPixel.y * LOGICAL_GRID_COLS_CONFIG + myLocationPixel.x;
+    if (pixelBitmap[bitmapIdx] !== 1) {
+        toast({ title: "Localização não encontrada", description: "Não foi possível encontrar um pixel ativo na sua localização simulada."});
+        return;
+    }
+
+    setHighlightedPixel(myLocationPixel);
+
+    const targetZoom = 15;
+    const containerWidth = containerRef.current.offsetWidth;
+    const effectiveContainerHeight = window.innerHeight - HEADER_HEIGHT_PX - BOTTOM_NAV_HEIGHT_PX;
+
+    const targetX = -myLocationPixel.x * RENDERED_PIXEL_SIZE_CONFIG * targetZoom + containerWidth / 2;
+    const targetY = -myLocationPixel.y * RENDERED_PIXEL_SIZE_CONFIG * targetZoom + effectiveContainerHeight / 2;
+    
+    setPosition({ x: targetX, y: targetY });
+    setZoom(targetZoom);
+    toast({ title: "Localização Encontrada!", description: "Centrado no pixel mais próximo da sua localização." });
+  };
   
 
   return (
@@ -871,9 +896,8 @@ export default function PixelGrid() {
         <div className="mt-2 p-2 bg-background/50 rounded-md text-xs font-code">
           <p>Zoom: {zoom.toFixed(2)}x</p>
           <p>X: {Math.round(position.x)}, Y: {Math.round(position.y)}</p>
-          {selectedPixelCoordsForDisplay && <p>Pixel Lógico: ({selectedPixelCoordsForDisplay.x}, {selectedPixelCoordsForDisplay.y})</p>}
+          {highlightedPixel && <p>Pixel: ({highlightedPixel.x}, {highlightedPixel.y})</p>}
           <p>Píxeis no Mapa: {activePixelsInMap > 0 ? activePixelsInMap.toLocaleString('pt-PT') : '...'}</p>
-          <p>Grelha Total: {(totalLogicalPixels / 1000000).toFixed(1)}M</p>
         </div>
       </div>
       
@@ -890,6 +914,7 @@ export default function PixelGrid() {
           setShowPixelModal(isOpen);
           if (!isOpen) {
               setSelectedPixelDetails(null);
+              setHighlightedPixel(null);
               setPixelDescription(null);
               setIsGeneratingDesc(false);
               setAiModalProgressValue(0);
@@ -1387,7 +1412,7 @@ export default function PixelGrid() {
               <Button pointerEvents="auto" variant="outline" className="button-3d-effect-outline"><Search className="mr-2 h-4 w-4" />Explorar Pixel por Coordenadas</Button>
               <Button pointerEvents="auto" variant="outline" className="button-3d-effect-outline"><PaletteIconLucide className="mr-2 h-4 w-4" />Filtros de Visualização</Button>
               <Button pointerEvents="auto" variant="outline" className="button-3d-effect-outline"><Sparkles className="mr-2 h-4 w-4" />Ver Eventos Atuais</Button>
-               <Button pointerEvents="auto" variant="outline" className="button-3d-effect-outline"><MapPinIconLucide className="mr-2 h-4 w-4" />Ir para Minha Localização</Button>
+               <Button pointerEvents="auto" variant="outline" onClick={handleGoToMyLocation} className="button-3d-effect-outline"><MapPinIconLucide className="mr-2 h-4 w-4" />Ir para Minha Localização</Button>
             </div>
             <DialogFooter className="dialog-footer-gold-accent rounded-b-lg">
             </DialogFooter>
