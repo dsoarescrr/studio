@@ -105,8 +105,7 @@
     @apply border-border;
   }
   body {
-    /* The fallback color in case the image doesn't load */
-    background-color: hsl(var(--background));
+    /* The body is now transparent, allowing the ::before pseudo-element to be visible */
     @apply text-foreground;
   }
   body::before {
@@ -121,6 +120,8 @@
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
+    /* This color will show if the image fails to load */
+    background-color: hsl(var(--background));
   }
   html, body {
     @apply h-full;
