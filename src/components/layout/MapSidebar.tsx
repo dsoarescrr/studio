@@ -7,6 +7,7 @@ import {
   SidebarContent,
   SidebarHeader,
   SidebarTrigger,
+  SidebarSeparator,
 } from '@/components/ui/sidebar';
 import {
   Activity,
@@ -26,10 +27,10 @@ import {
   Users2,
 } from 'lucide-react';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 // Types and data from ActivityFeedPanel
 type ActivityItem = {
@@ -49,23 +50,23 @@ const initialActivities: ActivityItem[] = [
 ];
 
 const activityIcons = {
-  login: <LogIn className="h-4 w-4 text-green-400" />,
-  logout: <LogOut className="h-4 w-4 text-red-400" />,
-  purchase: <ShoppingCart className="h-4 w-4 text-primary" />,
-  color_change: <Palette className="h-4 w-4 text-accent" />,
-  view: <Eye className="h-4 w-4 text-blue-400" />,
-  custom: <Activity className="h-4 w-4 text-purple-400" />,
-  achievement: <Trophy className="h-4 w-4 text-yellow-400" />
+  login: <LogIn className="h-3.5 w-3.5 text-green-400" />,
+  logout: <LogOut className="h-3.5 w-3.5 text-red-400" />,
+  purchase: <ShoppingCart className="h-3.5 w-3.5 text-primary" />,
+  color_change: <Palette className="h-3.5 w-3.5 text-accent" />,
+  view: <Eye className="h-3.5 w-3.5 text-blue-400" />,
+  custom: <Activity className="h-3.5 w-3.5 text-purple-400" />,
+  achievement: <Trophy className="h-3.5 w-3.5 text-yellow-400" />
 };
 
 const activityLabels = {
-  login: 'Login',
-  logout: 'Logout',
-  purchase: 'Compra',
-  color_change: 'Edição de Cor',
-  view: 'Visualização',
-  custom: 'Evento',
-  achievement: 'Conquista'
+  login: 'Iniciou sessão',
+  logout: 'Terminou sessão',
+  purchase: 'Comprou um pixel',
+  color_change: 'Editou uma cor',
+  view: 'Visualizou uma área',
+  custom: 'Evento na comunidade',
+  achievement: 'Desbloqueou uma conquista'
 };
 
 
@@ -80,9 +81,9 @@ type StatItem = {
 };
 
 const initialStats: StatItem[] = [
-  { label: 'Pixels Comprados', value: 12543, icon: <Package className="h-4 w-4 text-primary" />, trend: 'up', trendValue: '+5%', tooltip: "Total de pixels que já foram adquiridos por utilizadores." },
-  { label: 'Pixels Livres', value: 8745723, icon: <PackageOpen className="h-4 w-4 text-green-400" />, trend: 'down', trendValue: '-0.2%', tooltip: "Total de pixels ainda disponíveis para compra no mapa."},
-  { label: 'Utilizadores Ativos (24h)', value: 342, icon: <Users2 className="h-4 w-4 text-accent" />, trend: 'neutral', tooltip: "Utilizadores que interagiram com a plataforma nas últimas 24 horas." },
+  { label: 'Utilizadores Online', value: 137, icon: <Users2 className="h-4 w-4 text-green-400" />, trend: 'neutral', tooltip: "Utilizadores atualmente na plataforma." },
+  { label: 'Pixels Comprados', value: 12543, icon: <Package className="h-4 w-4 text-primary" />, trend: 'up', trendValue: '+5%', tooltip: "Total de pixels que já foram adquiridos." },
+  { label: 'Pixels Livres', value: 8745723, icon: <PackageOpen className="h-4 w-4 text-accent" />, trend: 'down', trendValue: '-0.2%', tooltip: "Total de pixels ainda disponíveis para compra."},
 ];
 
 
@@ -102,22 +103,16 @@ const FormattedStatValue: React.FC<{ value: number | string }> = ({ value }) => 
   useEffect(() => {
     setDisplayValue(typeof value === 'number' ? value.toLocaleString('pt-PT') : value);
   }, [value]);
-  if (displayValue === null) return <span className="text-md font-semibold font-code">...</span>;
+  if (displayValue === null) return <span className="font-mono text-sm font-semibold">...</span>;
   return <>{displayValue}</>;
 };
 
 export default function MapSidebar() {
-  // State from ActivityFeedPanel
   const [activities, setActivities] = useState<ActivityItem[]>(initialActivities);
-  const [onlineUsers, setOnlineUsers] = useState(137);
-
-  // State from StatisticsPanel
   const [stats, setStats] = useState<StatItem[]>(initialStats);
 
-  // Effects from panels
   useEffect(() => {
     const activityInterval = setInterval(() => {
-      setOnlineUsers(prev => Math.max(50, prev + Math.floor(Math.random() * 21) - 10));
       const randomActivityTypes: ActivityItem['type'][] = ['login', 'purchase', 'color_change', 'view', 'achievement'];
       const newActivity: ActivityItem = {
         id: String(Date.now()),
@@ -130,10 +125,24 @@ export default function MapSidebar() {
     }, 8000);
 
     const statsInterval = setInterval(() => {
-      setStats(prevStats => prevStats.map(stat => ({
-        ...stat,
-        value: typeof stat.value === 'number' ? stat.value + Math.floor(Math.random() * (stat.label === 'Pixels Livres' ? 100 : 10)) - (stat.label === 'Pixels Livres' ? 40 : 4) : stat.value
-      })));
+      setStats(prevStats => prevStats.map(stat => {
+        if (typeof stat.value !== 'number') return stat;
+        
+        let change = 0;
+        if (stat.label === 'Utilizadores Online') {
+           change = Math.floor(Math.random() * 11) - 5; 
+        } else if (stat.label === 'Pixels Livres') {
+            change = (Math.floor(Math.random() * 100) - 40) * -1;
+        } else {
+            change = Math.floor(Math.random() * 10);
+        }
+        
+        const newValue = stat.label === 'Utilizadores Online' 
+          ? Math.max(50, stat.value + change) 
+          : stat.value + change;
+        
+        return { ...stat, value: newValue };
+      }));
     }, 7000);
 
     return () => {
@@ -157,84 +166,92 @@ export default function MapSidebar() {
         </CardTitle>
       </SidebarHeader>
       <SidebarContent>
-        <ScrollArea className="h-full p-3">
+        <ScrollArea className="h-full px-2 py-3">
           {/* Stats Section */}
-          <div className="space-y-3 mb-6">
-            <h3 className="text-md font-headline flex items-center text-primary px-1 group-data-[collapsible=icon]:hidden">
-              <BarChart2 className="mr-2 h-4 w-4" /> Estatísticas
+          <div className="space-y-1 p-1">
+            <h3 className="text-xs font-medium text-muted-foreground px-2 mb-1 group-data-[collapsible=icon]:hidden">
+              Estatísticas
             </h3>
-            <div className="flex justify-between items-center text-sm px-1 group-data-[collapsible=icon]:justify-center">
-              <div className="flex items-center text-green-400">
-                  <Users className="h-4 w-4 mr-1.5" />
-                  <span className="font-semibold mr-1">{onlineUsers}</span>
-                  <span className="text-muted-foreground group-data-[collapsible=icon]:hidden">online</span>
-              </div>
-              <Badge variant="outline" className="font-code text-xs group-data-[collapsible=icon]:hidden">Global</Badge>
-            </div>
             {stats.map((stat) => (
-              <Card key={stat.label} className="bg-card-foreground/5 relative group p-3 group-data-[collapsible=icon]:p-2">
-                <div className="flex items-start justify-between group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:gap-1">
-                  <div className="flex flex-1 items-start gap-3">
-                    <div className="p-1.5 bg-muted rounded-md">{stat.icon}</div>
-                    <div className="group-data-[collapsible=icon]:hidden">
-                      <p className="text-sm text-foreground">{stat.label}</p>
-                      <p className="text-md font-semibold font-code text-primary">
-                        <FormattedStatValue value={stat.value} />
-                      </p>
-                    </div>
-                  </div>
-                   <div className="text-right group-data-[collapsible=icon]:hidden">
-                    {stat.trend && (
-                      <div className="flex items-center text-xs text-muted-foreground">
-                        {getTrendIcon(stat.trend)}
-                        <span className="ml-1">{stat.trendValue || ''}</span>
+              <TooltipProvider key={stat.label}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center justify-between rounded-md p-2 hover:bg-muted/60 cursor-default">
+                      <div className="flex items-center gap-2.5">
+                        {stat.icon}
+                        <p className="text-sm font-medium group-data-[collapsible=icon]:hidden">{stat.label}</p>
                       </div>
-                    )}
-                  </div>
-                   <div className="hidden group-data-[collapsible=icon]:block text-center">
-                     <p className="text-xs font-semibold font-code text-primary">
-                        <FormattedStatValue value={stat.value} />
-                      </p>
-                   </div>
-                </div>
-              </Card>
+                      <div className="flex items-center gap-2">
+                         <p className="font-mono text-sm font-semibold text-primary group-data-[collapsible=icon]:hidden">
+                            <FormattedStatValue value={stat.value} />
+                         </p>
+                        <div className="group-data-[collapsible=icon]:hidden">{getTrendIcon(stat.trend)}</div>
+                      </div>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" align="center" className="group-data-[collapsible=icon]:block hidden">
+                    <div className="flex flex-col gap-1 text-center">
+                      <p className="font-semibold">{stat.label}</p>
+                      <p className="text-lg font-bold text-primary"><FormattedStatValue value={stat.value} /></p>
+                      {stat.tooltip && <p className="text-xs text-muted-foreground">{stat.tooltip}</p>}
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             ))}
-             <Card className="bg-card-foreground/5 p-3 group-data-[collapsible=icon]:hidden">
-                <CardDescription className="text-xs mb-1 font-code">Densidade de Pixels:</CardDescription>
-                <div className="space-y-1.5">
-                    <div>
-                        <div className="flex justify-between text-xs mb-0.5 font-code"><span>Norte</span><span className="text-primary">75%</span></div>
-                        <Progress value={75} className="h-1.5 [&>div]:bg-primary" />
-                    </div>
-                    <div>
-                        <div className="flex justify-between text-xs mb-0.5 font-code"><span>Centro</span><span className="text-accent">50%</span></div>
-                        <Progress value={50} className="h-1.5 [&>div]:bg-accent" />
-                    </div>
-                </div>
-            </Card>
           </div>
-          
+
+          <div className="p-1 group-data-[collapsible=icon]:hidden">
+            <div className="bg-card-foreground/5 p-3 rounded-lg mt-2 space-y-2">
+              <h4 className="text-xs font-medium text-muted-foreground">Densidade de Pixels</h4>
+              <div>
+                  <div className="flex justify-between text-xs mb-0.5 font-code"><span>Norte</span><span className="text-primary">75%</span></div>
+                  <Progress value={75} className="h-1.5 [&>div]:bg-primary" />
+              </div>
+              <div>
+                  <div className="flex justify-between text-xs mb-0.5 font-code"><span>Centro</span><span className="text-accent">50%</span></div>
+                  <Progress value={50} className="h-1.5 [&>div]:bg-accent" />
+              </div>
+            </div>
+          </div>
+
+          <SidebarSeparator className="my-3" />
+
           {/* Activity Section */}
-          <div className="space-y-1">
-            <h3 className="text-md font-headline flex items-center text-primary px-1 mb-2 group-data-[collapsible=icon]:hidden">
-              <Activity className="mr-2 h-4 w-4" /> Atividade Global
+          <div className="space-y-1 p-1">
+            <h3 className="text-xs font-medium text-muted-foreground px-2 mb-2 group-data-[collapsible=icon]:hidden">
+              Atividade Global
             </h3>
             {activities.map((activity) => (
-              <div key={activity.id} className="flex items-start space-x-3 p-2 rounded-lg hover:bg-muted/60">
-                <Avatar className="h-8 w-8 mt-0.5 border-2 border-border">
-                  <AvatarImage src={activity.user.avatarUrl || `https://placehold.co/40x40.png?text=${activity.user.name.substring(0,1)}`} alt={activity.user.name} data-ai-hint={activity.user.dataAiHint || "avatar user"}/>
-                  <AvatarFallback>{activity.user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1 group-data-[collapsible=icon]:hidden">
-                  <p className="text-sm leading-tight">
-                    <span className="font-semibold text-primary">{activity.user.name}</span>
-                    <span className="text-muted-foreground ml-1 text-xs">{activityLabels[activity.type].toLowerCase()}</span>
-                  </p>
-                  {activity.details && <p className="text-xs text-muted-foreground font-code -mt-0.5">{activity.details}</p>}
-                  <FormattedTimestamp timestamp={activity.timestamp} />
-                </div>
-                <div className="mt-1 text-muted-foreground group-data-[collapsible=icon]:hidden">{activityIcons[activity.type]}</div>
-              </div>
+              <TooltipProvider key={activity.id}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted/60">
+                        <div className="relative">
+                          <Avatar className="h-8 w-8 border-2 border-border">
+                            <AvatarImage src={activity.user.avatarUrl || `https://placehold.co/40x40.png?text=${activity.user.name.substring(0,1)}`} alt={activity.user.name} data-ai-hint={activity.user.dataAiHint || "avatar user"}/>
+                            <AvatarFallback>{activity.user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                          <span className="absolute -bottom-1 -right-1 p-0.5 bg-background rounded-full">
+                            {activityIcons[activity.type]}
+                          </span>
+                        </div>
+                        <div className="flex-1 overflow-hidden group-data-[collapsible=icon]:hidden">
+                          <p className="text-sm leading-tight truncate">
+                            <span className="font-semibold text-primary">{activity.user.name}</span>
+                          </p>
+                          <p className="text-xs text-muted-foreground font-code truncate">
+                            {activityLabels[activity.type]}
+                          </p>
+                        </div>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" align="center" className="group-data-[collapsible=icon]:block hidden">
+                      <p><span className="font-semibold">{activity.user.name}</span> {activityLabels[activity.type].toLowerCase()}.</p>
+                      {activity.details && <p className="text-xs text-muted-foreground">{activity.details}</p>}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             ))}
           </div>
         </ScrollArea>
@@ -242,5 +259,3 @@ export default function MapSidebar() {
     </Sidebar>
   );
 }
-
-  
