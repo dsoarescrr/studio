@@ -4,8 +4,8 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: 'Dourado',
-  description: 'A collaborative pixel art gallery.',
+  title: 'Pixel Universe',
+  description: 'A collaborative pixel art map of Portugal.',
 };
 
 export default function RootLayout({

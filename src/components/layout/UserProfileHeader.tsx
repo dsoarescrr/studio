@@ -1,71 +1,9 @@
-
 'use client';
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Award, CreditCard, Sparkles, Gift } from "lucide-react"; 
 import React, { useState, useEffect } from 'react';
-
-const PixelStarLogo = ({ className }: { className?: string }) => (
-  <svg 
-    viewBox="0 0 15 15" 
-    xmlns="http://www.w3.org/2000/svg" 
-    className={className || "h-8 w-8"} // Default size, can be overridden
-    shapeRendering="crispEdges" // Ensures pixelated look when scaled
-  >
-    {/* Orange/Accent shadow pixels first (drawn below yellow) */}
-    <rect x="8" y="1" width="1" height="1" fill="hsl(var(--accent))" />
-    <rect x="9" y="2" width="1" height="1" fill="hsl(var(--accent))" />
-    <rect x="10" y="2" width="1" height="1" fill="hsl(var(--accent))" />
-    <rect x="11" y="3" width="1" height="1" fill="hsl(var(--accent))" />
-    <rect x="12" y="3" width="1" height="1" fill="hsl(var(--accent))" />
-    <rect x="13" y="4" width="1" height="1" fill="hsl(var(--accent))" />
-    <rect x="14" y="5" width="1" height="1" fill="hsl(var(--accent))" />
-    <rect x="13" y="6" width="1" height="1" fill="hsl(var(--accent))" />
-    <rect x="12" y="7" width="1" height="1" fill="hsl(var(--accent))" />
-    <rect x="11" y="8" width="1" height="1" fill="hsl(var(--accent))" />
-    <rect x="5" y="9" width="1" height="1" fill="hsl(var(--accent))" /> {/* Arm/Leg Shadows */}
-    <rect x="11" y="9" width="1" height="1" fill="hsl(var(--accent))" />
-    <rect x="4" y="10" width="1" height="1" fill="hsl(var(--accent))" />
-    <rect x="12" y="10" width="1" height="1" fill="hsl(var(--accent))" />
-    <rect x="3" y="11" width="1" height="1" fill="hsl(var(--accent))" />
-    <rect x="13" y="11" width="1" height="1" fill="hsl(var(--accent))" />
-    {/* Bottom Shadows */}
-    <rect x="7" y="12" width="1" height="1" fill="hsl(var(--accent))" />
-    <rect x="6" y="12" width="1" height="1" fill="hsl(var(--accent))" />
-    <rect x="8" y="12" width="1" height="1" fill="hsl(var(--accent))" />
-    <rect x="5" y="13" width="1" height="1" fill="hsl(var(--accent))" />
-    <rect x="9" y="13" width="1" height="1" fill="hsl(var(--accent))" />
-    <rect x="4" y="14" width="1" height="1" fill="hsl(var(--accent))" />
-    <rect x="10" y="14" width="1" height="1" fill="hsl(var(--accent))" />
-
-    {/* Yellow/Primary main body pixels */}
-    <rect x="7" y="0" width="1" height="1" fill="hsl(var(--primary))" />
-    <rect x="6" y="1" width="3" height="1" fill="hsl(var(--primary))" /> {/* Covers orange shadow at (7,1) if any */}
-    <rect x="5" y="2" width="5" height="1" fill="hsl(var(--primary))" />
-    <rect x="2" y="3" width="11" height="1" fill="hsl(var(--primary))" />
-    <rect x="1" y="4" width="13" height="1" fill="hsl(var(--primary))" />
-    {/* Row 5 (with eyes) */}
-    <rect x="0" y="5" width="5" height="1" fill="hsl(var(--primary))" />
-    <rect x="5" y="5" width="1" height="1" fill="hsl(var(--background))" /> {/* Eye 1 */}
-    <rect x="6" y="5" width="3" height="1" fill="hsl(var(--primary))" />
-    <rect x="9" y="5" width="1" height="1" fill="hsl(var(--background))" /> {/* Eye 2 */}
-    <rect x="10" y="5" width="5" height="1" fill="hsl(var(--primary))" />
-    {/* End Row 5 */}
-    <rect x="1" y="6" width="13" height="1" fill="hsl(var(--primary))" />
-    <rect x="2" y="7" width="11" height="1" fill="hsl(var(--primary))" />
-    <rect x="3" y="8" width="9" height="1" fill="hsl(var(--primary))" />
-    {/* Arms */}
-    <rect x="4" y="9" width="1" height="1" fill="hsl(var(--primary))" />
-    <rect x="10" y="9" width="1" height="1" fill="hsl(var(--primary))" />
-    {/* Legs */}
-    <rect x="3" y="10" width="1" height="1" fill="hsl(var(--primary))" />
-    <rect x="11" y="10" width="1" height="1" fill="hsl(var(--primary))" />
-    {/* Feet */}
-    <rect x="2" y="11" width="1" height="1" fill="hsl(var(--primary))" />
-    <rect x="12" y="11" width="1" height="1" fill="hsl(var(--primary))" />
-  </svg>
-);
-
+import Image from 'next/image';
 
 export default function UserProfileHeader() {
   const user = {
@@ -102,7 +40,7 @@ export default function UserProfileHeader() {
 
         {/* Centered Logo */}
         <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
-          <PixelStarLogo className="h-10 w-10" />
+          <Image src="/logo.png" alt="Pixel Universe Logo" width={40} height={40} />
         </div>
 
         {/* Right: Stats */}
