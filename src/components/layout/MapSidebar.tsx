@@ -163,9 +163,9 @@ export default function MapSidebar() {
         </p>
       </SidebarHeader>
       <SidebarContent>
-        <ScrollArea className="h-full px-2 py-3">
+        <ScrollArea className="h-full p-2 group-data-[collapsible=icon]:p-1">
           {/* Stats Section */}
-          <div className="space-y-1 p-1">
+          <div className="space-y-1">
             <h3 className="text-xs font-medium text-muted-foreground px-2 mb-1 group-data-[collapsible=icon]:hidden">
               Estatísticas
             </h3>
@@ -173,7 +173,7 @@ export default function MapSidebar() {
               <TooltipProvider key={stat.label} delayDuration={0}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="flex items-center justify-start h-9 rounded-md p-2 hover:bg-muted/60 cursor-default group-data-[collapsible=icon]:justify-center">
+                    <div className="flex items-center justify-start h-9 rounded-md hover:bg-muted/60 cursor-default px-2 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center">
                       <div className="flex-shrink-0">{stat.icon}</div>
                       <div className="ml-2.5 flex-1 overflow-hidden group-data-[collapsible=icon]:hidden">
                         <p className="text-sm font-medium truncate">{stat.label}</p>
@@ -198,7 +198,7 @@ export default function MapSidebar() {
             ))}
           </div>
 
-          <div className="p-1 group-data-[collapsible=icon]:hidden">
+          <div className="px-2 py-1 group-data-[collapsible=icon]:hidden">
             <div className="bg-card-foreground/5 p-3 rounded-lg mt-2 space-y-2">
               <h4 className="text-xs font-medium text-muted-foreground">Densidade de Pixels</h4>
               <div>
@@ -215,7 +215,7 @@ export default function MapSidebar() {
           <SidebarSeparator className="my-3" />
 
           {/* Activity Section */}
-          <div className="space-y-1 p-1">
+          <div className="space-y-1">
             <h3 className="text-xs font-medium text-muted-foreground px-2 mb-2 group-data-[collapsible=icon]:hidden">
               Atividade Global
             </h3>
@@ -223,7 +223,7 @@ export default function MapSidebar() {
               <TooltipProvider key={activity.id} delayDuration={0}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="flex items-center h-10 p-2 rounded-md hover:bg-muted/60 cursor-default group-data-[collapsible=icon]:justify-center">
+                    <div className="flex items-center h-10 rounded-md hover:bg-muted/60 cursor-default px-2 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center">
                         <div className="relative">
                           <Avatar className="h-8 w-8 border-2 border-border">
                             <AvatarImage src={activity.user.avatarUrl || `https://placehold.co/40x40.png?text=${activity.user.name.substring(0,1)}`} alt={activity.user.name} data-ai-hint={activity.user.dataAiHint || "avatar user"}/>
