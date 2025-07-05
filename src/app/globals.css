@@ -104,25 +104,21 @@
   * {
     @apply border-border;
   }
-  body {
-    /* The body is now transparent, allowing the ::before pseudo-element to be visible */
-    @apply text-foreground;
-  }
-  body::before {
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    z-index: -1;
+
+  html {
     background-image: url('/Fundo.jpg');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    /* This color will show if the image fails to load */
+    background-attachment: fixed;
     background-color: hsl(var(--background));
   }
+
+  body {
+    @apply text-foreground;
+    background-color: transparent !important;
+  }
+  
   html, body {
     @apply h-full;
   }
