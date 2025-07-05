@@ -6,7 +6,7 @@ import MapSidebar from '@/components/layout/MapSidebar';
 
 export default function HomePage() {
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={false}>
       <MapSidebar />
       <SidebarInset>
         <PixelGrid />
