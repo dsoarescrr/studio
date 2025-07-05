@@ -11,8 +11,6 @@ import {
 } from '@/components/ui/sidebar';
 import {
   Activity,
-  BarChart2,
-  Users,
   TrendingUp,
   TrendingDown,
   Minus,
@@ -26,7 +24,6 @@ import {
   PackageOpen,
   Users2,
 } from 'lucide-react';
-import { Card, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
@@ -161,9 +158,9 @@ export default function MapSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <SidebarTrigger />
-        <CardTitle className="font-headline text-lg group-data-[collapsible=icon]:hidden">
+        <p className="font-headline text-lg group-data-[collapsible=icon]:hidden">
           Painel de Controlo
-        </CardTitle>
+        </p>
       </SidebarHeader>
       <SidebarContent>
         <ScrollArea className="h-full px-2 py-3">
@@ -173,23 +170,23 @@ export default function MapSidebar() {
               Estatísticas
             </h3>
             {stats.map((stat) => (
-              <TooltipProvider key={stat.label}>
+              <TooltipProvider key={stat.label} delayDuration={0}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="flex items-center justify-between rounded-md p-2 hover:bg-muted/60 cursor-default">
-                      <div className="flex items-center gap-2.5">
-                        {stat.icon}
-                        <p className="text-sm font-medium group-data-[collapsible=icon]:hidden">{stat.label}</p>
+                    <div className="flex items-center justify-start h-9 rounded-md p-2 hover:bg-muted/60 cursor-default group-data-[collapsible=icon]:justify-center">
+                      <div className="flex-shrink-0">{stat.icon}</div>
+                      <div className="ml-2.5 flex-1 overflow-hidden group-data-[collapsible=icon]:hidden">
+                        <p className="text-sm font-medium truncate">{stat.label}</p>
                       </div>
-                      <div className="flex items-center gap-2">
-                         <p className="font-mono text-sm font-semibold text-primary group-data-[collapsible=icon]:hidden">
-                            <FormattedStatValue value={stat.value} />
-                         </p>
-                        <div className="group-data-[collapsible=icon]:hidden">{getTrendIcon(stat.trend)}</div>
+                      <div className="ml-auto flex items-center gap-2 group-data-[collapsible=icon]:hidden">
+                        <p className="font-mono text-sm font-semibold text-primary">
+                           <FormattedStatValue value={stat.value} />
+                        </p>
+                        {getTrendIcon(stat.trend)}
                       </div>
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent side="right" align="center" className="group-data-[collapsible=icon]:block hidden">
+                  <TooltipContent side="right" align="center">
                     <div className="flex flex-col gap-1 text-center">
                       <p className="font-semibold">{stat.label}</p>
                       <p className="text-lg font-bold text-primary"><FormattedStatValue value={stat.value} /></p>
@@ -223,10 +220,10 @@ export default function MapSidebar() {
               Atividade Global
             </h3>
             {activities.map((activity) => (
-              <TooltipProvider key={activity.id}>
+              <TooltipProvider key={activity.id} delayDuration={0}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted/60">
+                    <div className="flex items-center h-10 p-2 rounded-md hover:bg-muted/60 cursor-default group-data-[collapsible=icon]:justify-center">
                         <div className="relative">
                           <Avatar className="h-8 w-8 border-2 border-border">
                             <AvatarImage src={activity.user.avatarUrl || `https://placehold.co/40x40.png?text=${activity.user.name.substring(0,1)}`} alt={activity.user.name} data-ai-hint={activity.user.dataAiHint || "avatar user"}/>
@@ -236,7 +233,7 @@ export default function MapSidebar() {
                             {activityIcons[activity.type]}
                           </span>
                         </div>
-                        <div className="flex-1 overflow-hidden group-data-[collapsible=icon]:hidden">
+                        <div className="ml-3 flex-1 overflow-hidden group-data-[collapsible=icon]:hidden">
                           <p className="text-sm leading-tight truncate">
                             <span className="font-semibold text-primary">{activity.user.name}</span>
                           </p>
@@ -246,7 +243,7 @@ export default function MapSidebar() {
                         </div>
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent side="right" align="center" className="group-data-[collapsible=icon]:block hidden">
+                  <TooltipContent side="right" align="center">
                       <p><span className="font-semibold">{activity.user.name}</span> {activityLabels[activity.type].toLowerCase()}.</p>
                       {activity.details && <p className="text-xs text-muted-foreground">{activity.details}</p>}
                   </TooltipContent>
