@@ -105,18 +105,21 @@
     @apply border-border;
   }
   body {
-    /* A fallback background color */
+    /* A fallback background color in case the image doesn't load */
     background-color: hsl(var(--background));
-    /* A multi-layered gradient to create a deep, complex universe effect */
-    background-image: 
-      radial-gradient(ellipse at 50% 20%, hsla(var(--primary), 0.2) 0%, transparent 50%),
-      radial-gradient(ellipse at 90% 80%, hsla(var(--accent), 0.15) 0%, transparent 50%),
-      radial-gradient(circle at 10% 80%, hsla(var(--secondary), 0.15) 0%, transparent 40%);
-    /* Fix the background so it doesn't scroll with the content, creating a parallax effect. */
-    background-attachment: fixed;
+    
+    /* Reference your image from the 'public' folder. 
+       SUBSTITUA 'my-background.jpg' pelo nome do seu ficheiro! */
+    background-image: url('/my-background.jpg');
+
+    /* Ensure the image covers the entire background */
     background-size: cover;
     background-position: center;
+    
+    /* Fix the background so it doesn't scroll with the content */
+    background-attachment: fixed;
     background-repeat: no-repeat;
+    
     @apply text-foreground;
   }
   html, body {
