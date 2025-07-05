@@ -22,7 +22,7 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;700&display=swap" rel="stylesheet" />
       </head>
       {/* h-full on body, overflow-hidden removed to allow MainLayout's overflow-y-auto to work */}
-      <body className="font-body antialiased h-full bg-background">
+      <body className="font-body antialiased h-full">
         {children}
         <Toaster />
       </body>

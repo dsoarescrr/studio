@@ -105,12 +105,12 @@
     @apply border-border;
   }
   body {
-    /* A very dark, deep space blue as the absolute base color. */
-    background-color: hsl(220 20% 5%);
+    /* The base background color, a very dark, deep space blue. */
+    background-color: hsl(var(--background));
     /* A very large, soft glow emanating from behind the content, fading into the dark base.
        This creates the illusion of a vast, open space with the content area being illuminated. */
     background-image: radial-gradient(ellipse 140% 90% at 50% 10%, hsl(var(--card)), transparent);
-    @apply bg-background text-foreground;
+    @apply text-foreground;
   }
   html, body {
     @apply h-full;
