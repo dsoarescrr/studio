@@ -172,18 +172,18 @@ export default function MapSidebar() {
               <Badge variant="outline" className="font-code text-xs group-data-[collapsible=icon]:hidden">Global</Badge>
             </div>
             {stats.map((stat) => (
-              <Card key={stat.label} className="bg-card-foreground/5 relative group p-3">
-                <div className="flex items-start justify-between group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:gap-2">
-                  <div className="flex flex-1 items-start gap-3 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:gap-1">
+              <Card key={stat.label} className="bg-card-foreground/5 relative group p-3 group-data-[collapsible=icon]:p-2">
+                <div className="flex items-start justify-between group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:gap-1">
+                  <div className="flex flex-1 items-start gap-3">
                     <div className="p-1.5 bg-muted rounded-md">{stat.icon}</div>
-                    <div className="group-data-[collapsible=icon]:text-center">
-                      <p className="text-sm text-foreground group-data-[collapsible=icon]:hidden">{stat.label}</p>
+                    <div className="group-data-[collapsible=icon]:hidden">
+                      <p className="text-sm text-foreground">{stat.label}</p>
                       <p className="text-md font-semibold font-code text-primary">
                         <FormattedStatValue value={stat.value} />
                       </p>
                     </div>
                   </div>
-                  <div className="text-right group-data-[collapsible=icon]:hidden">
+                   <div className="text-right group-data-[collapsible=icon]:hidden">
                     {stat.trend && (
                       <div className="flex items-center text-xs text-muted-foreground">
                         {getTrendIcon(stat.trend)}
@@ -191,6 +191,11 @@ export default function MapSidebar() {
                       </div>
                     )}
                   </div>
+                   <div className="hidden group-data-[collapsible=icon]:block text-center">
+                     <p className="text-xs font-semibold font-code text-primary">
+                        <FormattedStatValue value={stat.value} />
+                      </p>
+                   </div>
                 </div>
               </Card>
             ))}
@@ -237,3 +242,5 @@ export default function MapSidebar() {
     </Sidebar>
   );
 }
+
+  
