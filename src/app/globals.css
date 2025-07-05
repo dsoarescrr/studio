@@ -105,18 +105,18 @@
     @apply border-border;
   }
   body {
-    /* Set the background image to the provided universe image. */
-    background-image: url('/images/universe-bg.jpg');
-    /* Ensure the image covers the entire background. */
-    background-size: cover;
-    /* Center the image. */
-    background-position: center center;
-    /* Fix the background so it doesn't scroll with the content. */
-    background-attachment: fixed;
-    /* Prevent the image from repeating. */
-    background-repeat: no-repeat;
-    /* A fallback background color in case the image fails to load. */
+    /* A fallback background color */
     background-color: hsl(var(--background));
+    /* A multi-layered gradient to create a deep, complex universe effect */
+    background-image: 
+      radial-gradient(ellipse at 50% 20%, hsla(var(--primary), 0.2) 0%, transparent 50%),
+      radial-gradient(ellipse at 90% 80%, hsla(var(--accent), 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 10% 80%, hsla(var(--secondary), 0.15) 0%, transparent 40%);
+    /* Fix the background so it doesn't scroll with the content, creating a parallax effect. */
+    background-attachment: fixed;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
     @apply text-foreground;
   }
   html, body {
