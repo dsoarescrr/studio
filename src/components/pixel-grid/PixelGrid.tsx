@@ -344,14 +344,11 @@ export default function PixelGrid() {
     const logicalToSvgScale = canvasDrawWidth / SVG_VIEWBOX_WIDTH;
   
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.save();
-  
-    ctx.translate(position.x, position.y);
-    ctx.scale(zoom, zoom);
-  
+    
     // Draw district outlines
     ctx.save();
-    ctx.scale(logicalToSvgScale, logicalToSvgScale);
+    ctx.translate(position.x, position.y);
+    ctx.scale(zoom * logicalToSvgScale, zoom * logicalToSvgScale);
     ctx.strokeStyle = `hsl(${strokeColor})`;
     ctx.lineWidth = 0.5 / (zoom * logicalToSvgScale);
     ctx.imageSmoothingEnabled = true;
@@ -368,9 +365,12 @@ export default function PixelGrid() {
     ctx.restore();
   
     // Draw highlighted pixel border
+    ctx.save();
+    ctx.translate(position.x, position.y);
+    ctx.scale(zoom, zoom);
     if (highlightedPixel) {
         ctx.strokeStyle = 'hsl(var(--foreground))';
-        ctx.lineWidth = (0.5 / zoom) * RENDERED_PIXEL_SIZE_CONFIG; // Make it a consistent screen-space width
+        ctx.lineWidth = (0.5 / zoom) * RENDERED_PIXEL_SIZE_CONFIG;
         ctx.strokeRect(
             highlightedPixel.x * RENDERED_PIXEL_SIZE_CONFIG,
             highlightedPixel.y * RENDERED_PIXEL_SIZE_CONFIG,
@@ -378,8 +378,8 @@ export default function PixelGrid() {
             RENDERED_PIXEL_SIZE_CONFIG
         );
     }
-  
     ctx.restore();
+
   }, [mapData, zoom, position, strokeColor, containerSize, highlightedPixel]);
   
 
