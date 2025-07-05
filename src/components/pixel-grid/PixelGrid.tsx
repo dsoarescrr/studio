@@ -1378,7 +1378,7 @@ export default function PixelGrid() {
       <div className="flex-grow w-full h-full p-4 md:p-8 flex items-center justify-center">
         <div
             ref={containerRef}
-            className="w-full h-full cursor-grab active:cursor-grabbing overflow-hidden bg-background relative rounded-xl map-shadow"
+            className="w-full h-full cursor-grab active:cursor-grabbing overflow-hidden relative rounded-xl map-shadow"
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUpOrLeave}
