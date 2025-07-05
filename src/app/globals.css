@@ -105,22 +105,22 @@
     @apply border-border;
   }
   body {
-    /* A fallback background color in case the image doesn't load */
+    /* The fallback color in case the image doesn't load */
     background-color: hsl(var(--background));
-    
-    /* Reference your image from the 'public' folder. 
-       Assumes your image is called 'Fundo.jpg'. */
+    @apply text-foreground;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -1;
     background-image: url('/Fundo.jpg');
-
-    /* Ensure the image covers the entire background */
     background-size: cover;
     background-position: center;
-    
-    /* Fix the background so it doesn't scroll with the content */
-    background-attachment: fixed;
     background-repeat: no-repeat;
-    
-    @apply text-foreground;
   }
   html, body {
     @apply h-full;
