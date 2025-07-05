@@ -105,15 +105,18 @@
     @apply border-border;
   }
   body {
-    /* The base background color, a very dark, deep space blue. */
+    /* Set the background image to the provided universe image. */
+    background-image: url('/images/universe-bg.jpg');
+    /* Ensure the image covers the entire background. */
+    background-size: cover;
+    /* Center the image. */
+    background-position: center center;
+    /* Fix the background so it doesn't scroll with the content. */
+    background-attachment: fixed;
+    /* Prevent the image from repeating. */
+    background-repeat: no-repeat;
+    /* A fallback background color in case the image fails to load. */
     background-color: hsl(var(--background));
-    /* A layered background for a deeper "universe" effect.
-       1. A large, soft primary-colored glow from the top-center for atmosphere.
-       2. A secondary, wider, accent-colored glow behind it for more color depth.
-       This creates a more dynamic and deeper background than a single gradient. */
-    background-image: 
-      radial-gradient(ellipse 80% 60% at 50% -10%, hsl(var(--primary) / 0.15), transparent),
-      radial-gradient(ellipse 120% 70% at 50% -20%, hsl(var(--accent) / 0.1), transparent);
     @apply text-foreground;
   }
   html, body {
