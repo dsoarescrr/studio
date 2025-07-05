@@ -181,10 +181,20 @@ export default function PixelGrid() {
   }, []);
 
   useEffect(() => {
-    if (!isClient || !mapData) return;
+    if (!isClient || !mapData || !mapData.svgElement) return;
   
-    setProgressMessage("A processar mapa interativo...");
+    setProgressMessage("A renderizar mapa melhorado...");
     setIsLoadingMap(true);
+    
+    const { svgElement } = mapData;
+    
+    // Serialize the SVG to a string
+    const serializer = new XMLSerializer();
+    const svgString = serializer.serializeToString(svgElement);
+    
+    // Create a Blob and a URL
+    const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
     
     const offscreenCanvas = document.createElement('canvas');
     offscreenCanvas.width = canvasDrawWidth;
@@ -192,50 +202,51 @@ export default function PixelGrid() {
     const ctx = offscreenCanvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) {
         setIsLoadingMap(false);
+        URL.revokeObjectURL(url);
         return;
     }
-  
-    const scaleFactor = canvasDrawWidth / SVG_VIEWBOX_WIDTH;
-    ctx.save();
-    ctx.scale(scaleFactor, scaleFactor);
-    ctx.fillStyle = 'black';
     
-    mapData.pathStrings.forEach(pathString => {
-      try {
-        const path = new Path2D(pathString);
-        ctx.fill(path);
-      } catch (e) {
-      }
-    });
-    ctx.restore();
-  
-    try {
-      const imageData = ctx.getImageData(0, 0, offscreenCanvas.width, offscreenCanvas.height);
-      const data = imageData.data;
-      const newBitmap = new Uint8Array(LOGICAL_GRID_COLS_CONFIG * logicalGridRows);
-      let activePixels = 0;
-  
-      for (let row = 0; row < logicalGridRows; row++) {
-        for (let col = 0; col < LOGICAL_GRID_COLS_CONFIG; col++) {
-          const canvasX = Math.floor((col + 0.5) * RENDERED_PIXEL_SIZE_CONFIG);
-          const canvasY = Math.floor((row + 0.5) * RENDERED_PIXEL_SIZE_CONFIG);
-          const index = (canvasY * offscreenCanvas.width + canvasX) * 4;
-          
-          if (data[index + 3] > 0) {
-            newBitmap[row * LOGICAL_GRID_COLS_CONFIG + col] = 1;
-            activePixels++;
+    const img = new Image();
+    img.onload = () => {
+        // Draw the SVG image onto the canvas
+        ctx.drawImage(img, 0, 0, canvasDrawWidth, canvasDrawHeight);
+        URL.revokeObjectURL(url); // Clean up the blob URL
+
+        try {
+          const imageData = ctx.getImageData(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+          const data = imageData.data;
+          const newBitmap = new Uint8Array(LOGICAL_GRID_COLS_CONFIG * logicalGridRows);
+          let activePixels = 0;
+      
+          for (let row = 0; row < logicalGridRows; row++) {
+            for (let col = 0; col < LOGICAL_GRID_COLS_CONFIG; col++) {
+              const canvasX = Math.floor((col + 0.5) * RENDERED_PIXEL_SIZE_CONFIG);
+              const canvasY = Math.floor((row + 0.5) * RENDERED_PIXEL_SIZE_CONFIG);
+              const index = (canvasY * offscreenCanvas.width + canvasX) * 4;
+              
+              if (data[index + 3] > 0) { // Check alpha channel
+                newBitmap[row * LOGICAL_GRID_COLS_CONFIG + col] = 1;
+                activePixels++;
+              }
+            }
           }
+          setPixelBitmap(newBitmap);
+          setActivePixelsInMap(activePixels);
+        } catch(e) {
+          console.error("Error generating pixel bitmap:", e);
+          toast({ title: "Erro na Grelha", description: "Não foi possível gerar a grelha interativa.", variant: "destructive" });
+        } finally {
+          setIsLoadingMap(false);
+          setProgressMessage("");
         }
-      }
-      setPixelBitmap(newBitmap);
-      setActivePixelsInMap(activePixels);
-    } catch(e) {
-      console.error("Error generating pixel bitmap:", e);
-      toast({ title: "Erro na Grelha", description: "Não foi possível gerar a grelha interativa.", variant: "destructive" });
-    } finally {
-      setIsLoadingMap(false);
-      setProgressMessage("");
-    }
+    };
+    img.onerror = () => {
+        console.error("Failed to load SVG as image.");
+        toast({ title: "Erro no Mapa", description: "Não foi possível carregar o SVG melhorado.", variant: "destructive" });
+        setIsLoadingMap(false);
+        URL.revokeObjectURL(url);
+    };
+    img.src = url;
   
   }, [isClient, mapData, toast]);
 
@@ -1378,7 +1389,7 @@ export default function PixelGrid() {
       <div className="flex-grow w-full h-full p-4 md:p-8 flex items-center justify-center">
         <div
             ref={containerRef}
-            className="w-full h-full cursor-grab active:cursor-grabbing overflow-hidden relative rounded-xl map-shadow"
+            className="w-full h-full cursor-grab active:cursor-grabbing overflow-hidden relative rounded-xl"
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUpOrLeave}

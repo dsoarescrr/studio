@@ -5,6 +5,7 @@ import React, { useEffect, useRef } from 'react';
 
 export interface MapData {
   pathStrings: string[];
+  svgElement: SVGSVGElement | null;
 }
 
 type PortugalMapSvgProps = {
@@ -14,10 +15,11 @@ type PortugalMapSvgProps = {
 
 // CC-BY-SA-4.0 Por: Afonso Gomes http://afonsogomes.com https://github.com/AfonsoFG/PortugalSVG
 export default function PortugalMapSvg({ onMapDataLoaded, className }: PortugalMapSvgProps) {
+  const svgRef = useRef<SVGSVGElement>(null);
   const landmassPathsRef = useRef<SVGGElement>(null);
 
   useEffect(() => {
-    if (landmassPathsRef.current && typeof onMapDataLoaded === 'function') {
+    if (landmassPathsRef.current && svgRef.current && typeof onMapDataLoaded === 'function') {
       const pathStrings: string[] = [];
       const pathElements = landmassPathsRef.current.querySelectorAll('path');
       
@@ -29,7 +31,7 @@ export default function PortugalMapSvg({ onMapDataLoaded, className }: PortugalM
       });
 
       if (pathStrings.length > 0) {
-        onMapDataLoaded({ pathStrings });
+        onMapDataLoaded({ pathStrings, svgElement: svgRef.current });
       } else {
         console.warn("PortugalMapSvg: No valid path strings found.");
       }
@@ -37,8 +39,18 @@ export default function PortugalMapSvg({ onMapDataLoaded, className }: PortugalM
   }, [onMapDataLoaded]);
 
   return (
-    <svg width="100%" height="100%" viewBox="0 0 12969 26674" preserveAspectRatio="xMidYMid meet">
-      <g id="portugal-landmass-paths" ref={landmassPathsRef} className={className} stroke="hsl(var(--border))" strokeWidth="20" fill="currentColor">
+    <svg ref={svgRef} width="100%" height="100%" viewBox="0 0 12969 26674" preserveAspectRatio="xMidYMid meet">
+       <defs>
+        <linearGradient id="mapGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" style={{ stopColor: "hsl(var(--accent))", stopOpacity: 1 }} />
+          <stop offset="100%" style={{ stopColor: "hsl(var(--primary))", stopOpacity: 1 }} />
+        </linearGradient>
+        <filter id="dropShadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="15" dy="15" stdDeviation="20" floodColor="hsl(var(--primary))" floodOpacity="0.3" />
+          <feDropShadow dx="-10" dy="-10" stdDeviation="15" floodColor="hsl(var(--background))" floodOpacity="0.2" />
+        </filter>
+      </defs>
+      <g id="portugal-landmass-paths" ref={landmassPathsRef} className={className} stroke="hsl(var(--border))" strokeWidth="20" fill="url(#mapGradient)" filter="url(#dropShadow)">
           <g id="D18-Faro">
             <path data-z="376" className="z z376" d="M8112 25289l0 131 33 130 120 112 -288 144 -30 -126 33 -98 0 -130 0 -130 -66 -98 198 65zm382 308l-84 -82 12 -132 217 46 33 219 -178 -51z"/>
             <path data-z="375" className="z z375" d="M8265 25662l-120 -112 -33 -130 0 -131 -198 -65 -99 -65 -99 -65 -33 -98 132 -391 165 -65 428 131 118 -21 0 163 23 138 42 150 -32 137 65 98 15 93 -217 -46 -12 132 84 82 -229 65z"/>
