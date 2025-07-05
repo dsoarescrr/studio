@@ -158,7 +158,7 @@ export default function MapSidebar() {
   };
 
   return (
-    <Sidebar>
+    <Sidebar collapsible="icon">
       <SidebarHeader>
         <SidebarTrigger />
         <CardTitle className="font-headline text-lg group-data-[collapsible=icon]:hidden">
