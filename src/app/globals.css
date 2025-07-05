@@ -172,9 +172,7 @@
     box-shadow: 0 0 15px 2px hsla(var(--accent), 0.4);
   }
   .map-shadow {
-    box-shadow: 0 50px 100px -20px rgba(0, 0, 0, 0.4), /* The deep, far shadow for depth */
-                0 0 60px -10px hsla(var(--primary), 0.2), /* A subtle gold glow */
-                inset 0 0 10px rgba(0,0,0,0.2); /* The inner shadow */
+    animation: map-glow 5s ease-in-out infinite;
   }
 
   .animation-delay-100 { animation-delay: 100ms; }
@@ -204,6 +202,18 @@
   @keyframes fade-in {
     0% { opacity: 0; }
     100% { opacity: 1; }
+  }
+  @keyframes map-glow {
+    0%, 100% {
+      box-shadow: 0 50px 100px -20px rgba(0, 0, 0, 0.4),
+                  0 0 60px -10px hsla(var(--primary), 0.2),
+                  inset 0 0 10px rgba(0,0,0,0.2);
+    }
+    50% {
+      box-shadow: 0 50px 100px -20px rgba(0, 0, 0, 0.5),
+                  0 0 70px 0px hsla(var(--primary), 0.4),
+                  inset 0 0 10px rgba(0,0,0,0.2);
+    }
   }
 
   .input-shadow {
