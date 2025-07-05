@@ -173,23 +173,25 @@ export default function MapSidebar() {
             </div>
             {stats.map((stat) => (
               <Card key={stat.label} className="bg-card-foreground/5 relative group p-3">
-                  <div className="flex items-center justify-between group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:gap-2">
-                      <div className="flex items-center group-data-[collapsible=icon]:flex-col">
-                          <div className="p-1.5 bg-muted rounded-md mr-2 group-data-[collapsible=icon]:mr-0 group-data-[collapsible=icon]:mb-1">{stat.icon}</div>
-                          <span className="ml-1 text-sm text-foreground group-data-[collapsible=icon]:hidden">{stat.label}</span>
-                      </div>
-                      <div className="text-right group-data-[collapsible=icon]:text-center">
-                          <p className="text-md font-semibold font-code text-primary">
-                              <FormattedStatValue value={stat.value} />
-                          </p>
-                          {stat.trend && (
-                              <div className="flex items-center justify-end text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
-                              {getTrendIcon(stat.trend)}
-                              <span className="ml-1">{stat.trendValue || ''}</span>
-                              </div>
-                          )}
-                      </div>
+                <div className="flex items-start justify-between group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:gap-2">
+                  <div className="flex flex-1 items-start gap-3 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:gap-1">
+                    <div className="p-1.5 bg-muted rounded-md">{stat.icon}</div>
+                    <div className="group-data-[collapsible=icon]:text-center">
+                      <p className="text-sm text-foreground group-data-[collapsible=icon]:hidden">{stat.label}</p>
+                      <p className="text-md font-semibold font-code text-primary">
+                        <FormattedStatValue value={stat.value} />
+                      </p>
+                    </div>
                   </div>
+                  <div className="text-right group-data-[collapsible=icon]:hidden">
+                    {stat.trend && (
+                      <div className="flex items-center text-xs text-muted-foreground">
+                        {getTrendIcon(stat.trend)}
+                        <span className="ml-1">{stat.trendValue || ''}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </Card>
             ))}
              <Card className="bg-card-foreground/5 p-3 group-data-[collapsible=icon]:hidden">
