@@ -109,8 +109,8 @@
     background-color: hsl(var(--background));
     
     /* Reference your image from the 'public' folder. 
-       SUBSTITUA 'my-background.jpg' pelo nome do seu ficheiro! */
-    background-image: url('/my-background.jpg');
+       Assumes your image is called 'fundo.jpg'. */
+    background-image: url('/fundo.jpg');
 
     /* Ensure the image covers the entire background */
     background-size: cover;
