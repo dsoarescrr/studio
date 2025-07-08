@@ -186,6 +186,8 @@ export default function PixelGrid() {
   const lastTouchDistance = useRef<number>(0);
   const isDragging = useRef(false);
   const lastMousePos = useRef({ x: 0, y: 0 });
+  const dragStartRef = useRef<{ x: number, y: number, time: number } | null>(null);
+  const [isPanning, setIsPanning] = useState(false);
   
   const { toast } = useToast();
 
@@ -376,13 +378,21 @@ export default function PixelGrid() {
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button === 0) {
-      isDragging.current = true;
+      dragStartRef.current = { x: e.clientX, y: e.clientY, time: Date.now() };
       lastMousePos.current = { x: e.clientX, y: e.clientY };
       e.preventDefault();
     }
   }, []);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (dragStartRef.current && !isDragging.current) {
+        const distance = Math.sqrt(Math.pow(e.clientX - dragStartRef.current.x, 2) + Math.pow(e.clientY - dragStartRef.current.y, 2));
+        if (distance > 5) { 
+            isDragging.current = true;
+            setIsPanning(true);
+        }
+    }
+
     if (isDragging.current) {
       const deltaX = e.clientX - lastMousePos.current.x;
       const deltaY = e.clientY - lastMousePos.current.y;
@@ -406,9 +416,34 @@ export default function PixelGrid() {
     }
   }, [handlePan, viewport, pixels, handlePixelHover]);
 
-  const handleMouseUp = useCallback(() => {
+  const handleMouseUp = useCallback((e: React.MouseEvent) => {
+    if (isDragging.current) {
+        // This was a drag, so do nothing on mouseUp to trigger a click
+    } else if (dragStartRef.current) {
+        const distance = Math.sqrt(Math.pow(e.clientX - dragStartRef.current.x, 2) + Math.pow(e.clientY - dragStartRef.current.y, 2));
+        const duration = Date.now() - dragStartRef.current.time;
+        if (distance < 5 && duration < 200) {
+            const rect = canvasRef.current?.getBoundingClientRect();
+            if (rect) {
+                const clickX = (e.clientX - rect.left - viewport.x) / viewport.scale;
+                const clickY = (e.clientY - rect.top - viewport.y) / viewport.scale;
+                const pixelX = Math.floor(clickX / PIXEL_SIZE);
+                const pixelY = Math.floor(clickY / PIXEL_SIZE);
+
+                if (pixelX >= 0 && pixelX < GRID_SIZE && pixelY >= 0 && pixelY < GRID_SIZE) {
+                    const pixel = pixels.find(p => p.x === pixelX && p.y === pixelY);
+                    if (pixel) {
+                        handlePixelClick(pixel);
+                    }
+                }
+            }
+        }
+    }
+    
     isDragging.current = false;
-  }, []);
+    dragStartRef.current = null;
+    setIsPanning(false);
+  }, [handlePixelClick, viewport, pixels]);
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
@@ -767,7 +802,10 @@ export default function PixelGrid() {
 
       <div
         ref={containerRef}
-        className="absolute inset-0 cursor-move overflow-hidden map-glow"
+        className={cn(
+            "absolute inset-0 overflow-hidden map-glow",
+            isPanning ? "cursor-grabbing" : "cursor-move"
+        )}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
