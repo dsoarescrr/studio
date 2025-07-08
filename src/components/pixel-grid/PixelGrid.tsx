@@ -12,15 +12,7 @@ import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
-import { 
-  ZoomIn, ZoomOut, RotateCcw, MapPin, Palette, ShoppingCart, 
-  Eye, Sparkles, Target, Coins, Gift, Info, Wand2, 
-  MousePointer2, Crosshair, Move, Search, Filter,
-  Zap, Star, Crown, Gem, Heart, TrendingUp, Activity,
-  Layers, Grid3X3, Maximize2, Minimize2, RotateCw,
-  Paintbrush, Pipette, Save, Share2, Download, Upload,
-  Timer, Flame, Lightning, Rocket, Diamond, Trophy
-} from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, MapPin, Palette, ShoppingCart, Eye, Sparkles, Target, Coins, Gift, Info, Wand2, MousePointer2, Crosshair, Move, Search, Filter, Zap, Star, Crown, Gem, Heart, TrendingUp, Activity, Layers, Grid3X3, Maximize2, Minimize2, RotateCw, Paintbrush, Pipette, Save, Share2, Download, Upload, Timer, Flame, CloudLightning as Lightning, Rocket, Diamond, Trophy } from 'lucide-react';
 import { PortugalMapSvg } from './PortugalMapSvg';
 import { mapPixelToApproxGps } from '@/lib/utils';
 import { cn } from '@/lib/utils';
