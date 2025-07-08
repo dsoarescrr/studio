@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -46,8 +47,17 @@ export default function MemberPage() {
   const nextLevelXp = user.xpMax - user.xp;
   const [isLoading, setIsLoading] = useState(false);
   const [animationPhase, setAnimationPhase] = useState(0);
+  const [particleStyles, setParticleStyles] = useState<React.CSSProperties[]>([]);
 
   useEffect(() => {
+    const styles = Array.from({ length: 15 }).map(() => ({
+      left: `${Math.random() * 100}%`,
+      top: `${Math.random() * 100}%`,
+      animationDelay: `${Math.random() * 3}s`,
+      animationDuration: `${3 + Math.random() * 2}s`,
+    }));
+    setParticleStyles(styles);
+
     const interval = setInterval(() => {
       setAnimationPhase(prev => (prev + 1) % 4);
     }, 2000);
@@ -62,16 +72,11 @@ export default function MemberPage() {
     <div className="container mx-auto py-8 px-4 flex flex-col items-center mb-16 animate-fade-in">
       {/* Floating background elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        {Array.from({ length: 15 }).map((_, i) => (
+        {particleStyles.map((style, i) => (
           <div
             key={i}
             className="absolute w-2 h-2 bg-primary/20 rounded-full animate-float"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 3}s`,
-              animationDuration: `${3 + Math.random() * 2}s`
-            }}
+            style={style}
           />
         ))}
       </div>

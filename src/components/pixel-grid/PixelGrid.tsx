@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -177,6 +178,7 @@ export default function PixelGrid() {
   const [animationFrame, setAnimationFrame] = useState(0);
   const [pulsePhase, setPulsePhase] = useState(0);
   const [sparklePositions, setSparklePositions] = useState<Array<{x: number, y: number, intensity: number}>>([]);
+  const [particleStyles, setParticleStyles] = useState<React.CSSProperties[]>([]);
   
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -206,6 +208,16 @@ export default function PixelGrid() {
         console.error("Failed to load map image for texture.");
     }
     img.src = dataUrl;
+  }, []);
+
+  useEffect(() => {
+    const styles = Array.from({ length: 20 }).map(() => ({
+      left: `${Math.random() * 100}%`,
+      top: `${Math.random() * 100}%`,
+      animationDelay: `${Math.random() * 3}s`,
+      animationDuration: `${2 + Math.random() * 2}s`,
+    }));
+    setParticleStyles(styles);
   }, []);
 
   useEffect(() => {
@@ -519,16 +531,11 @@ export default function PixelGrid() {
 
       {/* Floating Particles */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {Array.from({ length: 20 }).map((_, i) => (
+        {particleStyles.map((style, i) => (
           <div
             key={i}
             className="absolute w-1 h-1 bg-primary/30 rounded-full animate-pulse"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 3}s`,
-              animationDuration: `${2 + Math.random() * 2}s`
-            }}
+            style={style}
           />
         ))}
       </div>
