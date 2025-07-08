@@ -1,11 +1,10 @@
-
 // src/components/pixel-grid/PortugalMapSvg.tsx
 'use client';
 
 import React, { useEffect, useRef } from 'react';
 
 type PortugalMapSvgProps = {
-  onDataReady: (imageData: ImageData) => void;
+  onDataReady: (data: { imageData: ImageData; pathStrings: string[] }) => void;
   width: number;
   height: number;
 };
@@ -16,10 +15,16 @@ export default function PortugalMapSvg({ onDataReady, width, height }: PortugalM
 
   useEffect(() => {
     const svgElement = svgRef.current;
-    if (!svgElement || width === 0 || height === 0) return;
+    const w = Math.round(width);
+    const h = Math.round(height);
+    
+    if (!svgElement || w === 0 || h === 0) return;
 
     // Use a timeout to ensure styles are loaded and DOM is ready
     const timer = setTimeout(() => {
+      const pathElements = Array.from(svgElement.querySelectorAll('path'));
+      const pathStrings = pathElements.map(p => p.getAttribute('d') || '').filter(Boolean);
+      
       const computedStyle = getComputedStyle(document.documentElement);
       const primaryColor = computedStyle.getPropertyValue('--primary').trim();
       const accentColor = computedStyle.getPropertyValue('--accent').trim();
@@ -44,20 +49,20 @@ export default function PortugalMapSvg({ onDataReady, width, height }: PortugalM
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
+        canvas.width = w;
+        canvas.height = h;
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
         if (!ctx) {
             URL.revokeObjectURL(url);
             return;
         }
 
-        ctx.drawImage(img, 0, 0, width, height);
+        ctx.drawImage(img, 0, 0, w, h);
         URL.revokeObjectURL(url);
         
         try {
-            const imageData = ctx.getImageData(0, 0, width, height);
-            onDataReady(imageData);
+            const imageData = ctx.getImageData(0, 0, w, h);
+            onDataReady({ imageData, pathStrings });
         } catch (error) {
             console.error("Could not get image data from canvas:", error);
         }
