@@ -10,7 +10,7 @@ import {
   Map as MapIcon,
 } from 'lucide-react';
 import NextImage from 'next/image';
-import PortugalMapSvg from './PortugalMapSvg';
+import PortugalMapSvg, { type MapData } from './PortugalMapSvg';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { generatePixelDescription, type GeneratePixelDescriptionInput } from '@/ai/flows/generate-pixel-description';
@@ -45,7 +45,7 @@ const RENDERED_PIXEL_SIZE_CONFIG = 1;
 // Derived constants
 const canvasDrawWidth = LOGICAL_GRID_COLS_CONFIG * RENDERED_PIXEL_SIZE_CONFIG;
 const canvasDrawHeight = Math.floor(canvasDrawWidth * (SVG_VIEWBOX_HEIGHT / SVG_VIEWBOX_WIDTH));
-const logicalGridRows = canvasDrawHeight;
+const logicalGridRows = Math.floor(canvasDrawHeight / RENDERED_PIXEL_SIZE_CONFIG);
 const totalLogicalPixels = LOGICAL_GRID_COLS_CONFIG * logicalGridRows;
 
 const PLACEHOLDER_IMAGE_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
@@ -128,8 +128,8 @@ export default function PixelGrid() {
   const outlineCanvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
 
+  const [mapData, setMapData] = useState<MapData | null>(null);
   const [pixelBitmap, setPixelBitmap] = useState<Uint8Array | null>(null);
-  const [pathStrings, setPathStrings] = useState<string[]>([]);
   const [activePixelsInMap, setActivePixelsInMap] = useState(0);
   const [isLoadingMap, setIsLoadingMap] = useState(true);
   const [progressMessage, setProgressMessage] = useState("Aguardando cliente...");
@@ -176,35 +176,82 @@ export default function PixelGrid() {
     }
   }, []);
 
-  const handleMapDataLoaded = useCallback(({ imageData, pathStrings: newPathStrings }: { imageData: ImageData, pathStrings: string[] }) => {
-    if (!imageData) {
-      setIsLoadingMap(false);
-      return;
-    }
-    
-    setProgressMessage("A analisar a topografia...");
-    const data = imageData.data;
-    const newBitmap = new Uint8Array(imageData.width * imageData.height);
-    let activePixels = 0;
-
-    for (let i = 0; i < data.length; i += 4) {
-      if (data[i + 3] > 128) {
-        newBitmap[i / 4] = 1;
-        activePixels++;
-      }
-    }
-    
-    setPixelBitmap(newBitmap);
-    setPathStrings(newPathStrings);
-    setActivePixelsInMap(activePixels);
-    setIsLoadingMap(false);
-    setProgressMessage("");
+  const handleMapDataLoaded = useCallback((data: MapData) => {
+    setMapData(data);
   }, []);
 
+  useEffect(() => {
+    if (!isClient || !mapData || !mapData.svgElement) return;
+  
+    setProgressMessage("A renderizar mapa melhorado...");
+    setIsLoadingMap(true);
+    
+    const { svgElement } = mapData;
+    
+    // Serialize the SVG to a string
+    const serializer = new XMLSerializer();
+    const svgString = serializer.serializeToString(svgElement);
+    
+    // Create a Blob and a URL
+    const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+    
+    const offscreenCanvas = document.createElement('canvas');
+    offscreenCanvas.width = canvasDrawWidth;
+    offscreenCanvas.height = canvasDrawHeight;
+    const ctx = offscreenCanvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) {
+        setIsLoadingMap(false);
+        URL.revokeObjectURL(url);
+        return;
+    }
+    
+    const img = new Image();
+    img.onload = () => {
+        // Draw the SVG image onto the canvas
+        ctx.drawImage(img, 0, 0, canvasDrawWidth, canvasDrawHeight);
+        URL.revokeObjectURL(url); // Clean up the blob URL
+
+        try {
+          const imageData = ctx.getImageData(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+          const data = imageData.data;
+          const newBitmap = new Uint8Array(LOGICAL_GRID_COLS_CONFIG * logicalGridRows);
+          let activePixels = 0;
+      
+          for (let row = 0; row < logicalGridRows; row++) {
+            for (let col = 0; col < LOGICAL_GRID_COLS_CONFIG; col++) {
+              const canvasX = Math.floor((col + 0.5) * RENDERED_PIXEL_SIZE_CONFIG);
+              const canvasY = Math.floor((row + 0.5) * RENDERED_PIXEL_SIZE_CONFIG);
+              const index = (canvasY * offscreenCanvas.width + canvasX) * 4;
+              
+              if (data[index + 3] > 0) { // Check alpha channel
+                newBitmap[row * LOGICAL_GRID_COLS_CONFIG + col] = 1;
+                activePixels++;
+              }
+            }
+          }
+          setPixelBitmap(newBitmap);
+          setActivePixelsInMap(activePixels);
+        } catch(e) {
+          console.error("Error generating pixel bitmap:", e);
+          toast({ title: "Erro na Grelha", description: "Não foi possível gerar a grelha interativa.", variant: "destructive" });
+        } finally {
+          setIsLoadingMap(false);
+          setProgressMessage("");
+        }
+    };
+    img.onerror = () => {
+        console.error("Failed to load SVG as image.");
+        toast({ title: "Erro no Mapa", description: "Não foi possível carregar o SVG melhorado.", variant: "destructive" });
+        setIsLoadingMap(false);
+        URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  
+  }, [isClient, mapData, toast]);
 
   useEffect(() => {
       if (!pixelBitmap || !unsoldColor) return;
-      
       const canvas = pixelCanvasRef.current;
       if (!canvas) return;
 
@@ -219,19 +266,19 @@ export default function PixelGrid() {
       ctx.fillStyle = `hsl(${unsoldColor})`;
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      for (let i = 0; i < pixelBitmap.length; i++) {
-        if (pixelBitmap[i] === 1) {
-            const x = i % canvasDrawWidth;
-            const y = Math.floor(i / canvasDrawWidth);
-            ctx.fillRect(
-                x * RENDERED_PIXEL_SIZE_CONFIG,
-                y * RENDERED_PIXEL_SIZE_CONFIG,
-                RENDERED_PIXEL_SIZE_CONFIG,
-                RENDERED_PIXEL_SIZE_CONFIG
-            );
-        }
+      for (let row = 0; row < logicalGridRows; row++) {
+          for (let col = 0; col < LOGICAL_GRID_COLS_CONFIG; col++) {
+              if (pixelBitmap[row * LOGICAL_GRID_COLS_CONFIG + col] === 1) {
+                  ctx.fillRect(
+                      col * RENDERED_PIXEL_SIZE_CONFIG,
+                      row * RENDERED_PIXEL_SIZE_CONFIG,
+                      RENDERED_PIXEL_SIZE_CONFIG,
+                      RENDERED_PIXEL_SIZE_CONFIG
+                  );
+              }
+          }
       }
-  }, [pixelBitmap, unsoldColor, canvasDrawWidth, canvasDrawHeight]);
+  }, [pixelBitmap, unsoldColor]);
 
   useEffect(() => {
     soldPixels.forEach(pixel => {
@@ -300,7 +347,7 @@ export default function PixelGrid() {
   }, [containerSize]);
 
   useEffect(() => {
-    if (!pathStrings.length || !strokeColor || !outlineCanvasRef.current || containerSize.width === 0) return;
+    if (!mapData || !strokeColor || !outlineCanvasRef.current || containerSize.width === 0) return;
     const canvas = outlineCanvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -319,7 +366,7 @@ export default function PixelGrid() {
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
   
-    pathStrings.forEach(pathString => {
+    mapData.pathStrings.forEach(pathString => {
         try {
             const path = new Path2D(pathString);
             ctx.stroke(path);
@@ -344,11 +391,11 @@ export default function PixelGrid() {
     }
     ctx.restore();
 
-  }, [pathStrings, zoom, position, strokeColor, containerSize, highlightedPixel, canvasDrawWidth]);
+  }, [mapData, zoom, position, strokeColor, containerSize, highlightedPixel]);
   
 
   useEffect(() => { 
-    if (isClient && containerRef.current && pathStrings.length > 0 && !defaultView && canvasDrawWidth > 0 && canvasDrawHeight > 0) {
+    if (isClient && containerRef.current && mapData?.pathStrings && !defaultView && canvasDrawWidth > 0 && canvasDrawHeight > 0) {
       const containerWidth = containerRef.current.offsetWidth;
       const effectiveContainerHeight = window.innerHeight - HEADER_HEIGHT_PX - BOTTOM_NAV_HEIGHT_PX;
       
@@ -371,7 +418,7 @@ export default function PixelGrid() {
         setPosition(calculatedPosition);
       }
     }
-  }, [isClient, pathStrings, defaultView, canvasDrawWidth, canvasDrawHeight]);
+  }, [isClient, mapData, defaultView, canvasDrawWidth, canvasDrawHeight]);
 
 
  const handleResetView = useCallback(() => {
@@ -379,7 +426,7 @@ export default function PixelGrid() {
     if (defaultView) {
       setZoom(defaultView.zoom);
       setPosition(defaultView.position);
-    } else if (isClient && containerRef.current && pathStrings.length > 0 && canvasDrawWidth > 0 && canvasDrawHeight > 0) { 
+    } else if (isClient && containerRef.current && mapData?.pathStrings && canvasDrawWidth > 0 && canvasDrawHeight > 0) { 
         const containerWidth = containerRef.current.offsetWidth;
         const effectiveContainerHeight = window.innerHeight - HEADER_HEIGHT_PX - BOTTOM_NAV_HEIGHT_PX;
         if (containerWidth > 0 && effectiveContainerHeight > 0) {
@@ -399,7 +446,7 @@ export default function PixelGrid() {
             setDefaultView({ zoom: fallbackZoom, position: fallbackPosition }); 
         }
     }
-  }, [defaultView, pathStrings, clearAutoResetTimeout, canvasDrawWidth, canvasDrawHeight, isClient]); 
+  }, [defaultView, mapData, clearAutoResetTimeout, canvasDrawWidth, canvasDrawHeight, isClient]); 
 
 
  useEffect(() => { 
@@ -492,8 +539,8 @@ export default function PixelGrid() {
     const logicalCol = Math.floor(xOnContent / RENDERED_PIXEL_SIZE_CONFIG);
     const logicalRow = Math.floor(yOnContent / RENDERED_PIXEL_SIZE_CONFIG);
 
-    if (logicalCol >= 0 && logicalCol < canvasDrawWidth && logicalRow >= 0 && logicalRow < canvasDrawHeight) {
-      const bitmapIdx = logicalRow * canvasDrawWidth + logicalCol;
+    if (logicalCol >= 0 && logicalCol < LOGICAL_GRID_COLS_CONFIG && logicalRow >= 0 && logicalRow < logicalGridRows) {
+      const bitmapIdx = logicalRow * LOGICAL_GRID_COLS_CONFIG + logicalCol;
 
       if (pixelBitmap[bitmapIdx] === 1) {
         setHighlightedPixel({ x: logicalCol, y: logicalRow });
@@ -800,7 +847,7 @@ export default function PixelGrid() {
   }, [zoom, position, handleResetView, defaultView, showPixelModal, isDragging]);
   
   const showProgressIndicator = isLoadingMap || (progressMessage !== "");
-  
+
   const handleGoToMyLocation = () => {
     if (!containerRef.current || !pixelBitmap) return;
 
@@ -808,7 +855,7 @@ export default function PixelGrid() {
     const myLocationPixel = { x: 579, y: 1358 };
 
     // Check if the pixel is valid and on the map
-    const bitmapIdx = myLocationPixel.y * canvasDrawWidth + myLocationPixel.x;
+    const bitmapIdx = myLocationPixel.y * LOGICAL_GRID_COLS_CONFIG + myLocationPixel.x;
     if (pixelBitmap[bitmapIdx] !== 1) {
         toast({ title: "Localização não encontrada", description: "Não foi possível encontrar um pixel ativo na sua localização simulada."});
         return;
@@ -1363,13 +1410,7 @@ export default function PixelGrid() {
                 className="absolute top-0 left-0 w-full h-full z-10" 
                 style={{ imageRendering: 'pixelated' }} 
             />
-            {(!pixelBitmap && isClient) && (
-              <PortugalMapSvg
-                onDataReady={handleMapDataLoaded}
-                width={canvasDrawWidth}
-                height={canvasDrawHeight}
-              />
-            )}
+            {(!mapData && isClient) && <PortugalMapSvg onMapDataLoaded={handleMapDataLoaded} className="invisible absolute" />}
             </div>
             <canvas
                 ref={outlineCanvasRef}
