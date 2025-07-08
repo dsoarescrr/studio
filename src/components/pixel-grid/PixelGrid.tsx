@@ -153,7 +153,7 @@ const generatePixelData = (): Pixel[] => {
 
 export default function PixelGrid() {
   const [pixels, setPixels] = useState<Pixel[]>([]);
-  const [mapTexture, setMapTexture] = useState<CanvasPattern | null>(null);
+  const [mapImage, setMapImage] = useState<HTMLImageElement | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
   const [viewport, setViewport] = useState<ViewportState>({ x: 0, y: 0, scale: 1, rotation: 0 });
   const [tools, setTools] = useState<ToolState>({
@@ -192,18 +192,10 @@ export default function PixelGrid() {
   const { toast } = useToast();
 
   const handleImageReady = useCallback((dataUrl: string) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
     const img = new Image();
     img.onload = () => {
-      const pattern = ctx.createPattern(img, 'repeat');
-      if (pattern) {
-        setMapTexture(pattern);
-        setIsMapReady(true);
-      }
+      setMapImage(img);
+      setIsMapReady(true);
       URL.revokeObjectURL(dataUrl); // Clean up
     };
     img.onerror = () => {
@@ -267,7 +259,7 @@ export default function PixelGrid() {
 
     const drawGrid = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !mapTexture) return;
+    if (!canvas || !mapImage) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -282,9 +274,8 @@ export default function PixelGrid() {
     ctx.translate(viewport.x, viewport.y);
     ctx.scale(viewport.scale, viewport.scale);
 
-    // Draw map background using the texture
-    ctx.fillStyle = mapTexture;
-    ctx.fillRect(0, 0, GRID_SIZE * PIXEL_SIZE, GRID_SIZE * PIXEL_SIZE);
+    // Draw map background using the image
+    ctx.drawImage(mapImage, 0, 0, GRID_SIZE * PIXEL_SIZE, GRID_SIZE * PIXEL_SIZE);
 
     // Draw owned pixels over the map
     pixels.forEach(pixel => {
@@ -297,13 +288,13 @@ export default function PixelGrid() {
     });
 
     ctx.restore();
-  }, [viewport, pixels, mapTexture]);
+  }, [viewport, pixels, mapImage]);
 
   useEffect(() => {
-    if (isMapReady) {
+    if (isMapReady && mapImage) {
       drawGrid();
     }
-  }, [drawGrid, isMapReady, viewport]);
+  }, [drawGrid, isMapReady, mapImage]);
 
 
   const handlePixelClick = useCallback((pixel: Pixel) => {
@@ -961,3 +952,5 @@ export default function PixelGrid() {
     </div>
   );
 }
+
+    
