@@ -1,21 +1,24 @@
+
 // src/components/pixel-grid/PortugalMapSvg.tsx
 'use client';
 
 import React, { useEffect, useRef } from 'react';
 
 type PortugalMapSvgProps = {
-  onImageReady: (dataUrl: string) => void;
+  onDataReady: (imageData: ImageData) => void;
+  width: number;
+  height: number;
 };
 
 // CC-BY-SA-4.0 Por: Afonso Gomes http://afonsogomes.com https://github.com/AfonsoFG/PortugalSVG
-export default function PortugalMapSvg({ onImageReady }: PortugalMapSvgProps) {
+export default function PortugalMapSvg({ onDataReady, width, height }: PortugalMapSvgProps) {
   const svgRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
     const svgElement = svgRef.current;
-    if (!svgElement) return;
+    if (!svgElement || width === 0 || height === 0) return;
 
-    // Use a timeout to ensure styles are loaded
+    // Use a timeout to ensure styles are loaded and DOM is ready
     const timer = setTimeout(() => {
       const computedStyle = getComputedStyle(document.documentElement);
       const primaryColor = computedStyle.getPropertyValue('--primary').trim();
@@ -38,12 +41,38 @@ export default function PortugalMapSvg({ onImageReady }: PortugalMapSvgProps) {
       const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
       const url = URL.createObjectURL(svgBlob);
 
-      onImageReady(url);
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (!ctx) {
+            URL.revokeObjectURL(url);
+            return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        URL.revokeObjectURL(url);
+        
+        try {
+            const imageData = ctx.getImageData(0, 0, width, height);
+            onDataReady(imageData);
+        } catch (error) {
+            console.error("Could not get image data from canvas:", error);
+        }
+      };
+      img.onerror = () => {
+        console.error("Failed to load SVG as image.");
+        URL.revokeObjectURL(url);
+      }
+      img.src = url;
+
     }, 100); // 100ms delay to wait for CSS variables
 
     return () => clearTimeout(timer);
     
-  }, [onImageReady]);
+  }, [onDataReady, width, height]);
 
   return (
     <svg ref={svgRef} className="invisible absolute -z-10" width="1024" height="2105" viewBox="0 0 12969 26674" preserveAspectRatio="xMidYMid meet">

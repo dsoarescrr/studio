@@ -108,52 +108,67 @@ const RARITY_CONFIG = {
 };
 
 // Generate enhanced pixel data based on new grid dimensions
-const generatePixelData = (width: number, height: number): Pixel[] => {
+const generatePixelData = (width: number, height: number, mapData: ImageData): Pixel[] => {
   const pixels: Pixel[] = [];
   const regions = ['Norte', 'Centro', 'Lisboa', 'Alentejo', 'Algarve', 'Açores', 'Madeira'];
-  
+  const landmassCoords = new Set<string>();
+
+  // Determine which pixels are part of the landmass
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      const rand = Math.random();
-      let rarity: Pixel['rarity'] = 'common';
-      
-      if (rand < RARITY_CONFIG.legendary.probability) rarity = 'legendary';
-      else if (rand < RARITY_CONFIG.epic.probability + RARITY_CONFIG.legendary.probability) rarity = 'epic';
-      else if (rand < RARITY_CONFIG.rare.probability + RARITY_CONFIG.epic.probability + RARITY_CONFIG.legendary.probability) rarity = 'rare';
-      
-      const config = RARITY_CONFIG[rarity];
-      const coordinates = mapPixelToApproxGps(x, y, width, height);
-      
-      pixels.push({
-        id: `pixel-${x}-${y}`,
-        x,
-        y,
-        color: config.color,
-        price: config.price + Math.floor(Math.random() * config.price * 0.5),
-        rarity,
-        isOwned: Math.random() < 0.15,
-        owner: Math.random() < 0.15 ? `User${Math.floor(Math.random() * 1000)}` : undefined,
-        lastModified: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
-        views: Math.floor(Math.random() * 1000),
-        likes: Math.floor(Math.random() * 100),
-        description: Math.random() < 0.3 ? `Pixel especial em ${regions[Math.floor(Math.random() * regions.length)]}` : undefined,
-        tags: Math.random() < 0.4 ? ['arte', 'paisagem', 'cidade'].slice(0, Math.floor(Math.random() * 3) + 1) : undefined,
-        region: regions[Math.floor(Math.random() * regions.length)],
-        coordinates,
-        specialEffects: config.effects,
-        isHot: Math.random() < 0.05,
-        isTrending: Math.random() < 0.03,
-        isNew: Math.random() < 0.08
-      });
+      // Index for the alpha value in the ImageData array
+      const alphaIndex = (y * width + x) * 4 + 3;
+      if (mapData.data[alphaIndex] > 0) { // Check if pixel is not transparent
+        landmassCoords.add(`${x},${y}`);
+      }
     }
   }
+
+  // Generate pixel details only for landmass coordinates
+  landmassCoords.forEach(coord => {
+    const [xStr, yStr] = coord.split(',');
+    const x = parseInt(xStr, 10);
+    const y = parseInt(yStr, 10);
+
+    const rand = Math.random();
+    let rarity: Pixel['rarity'] = 'common';
+    
+    if (rand < RARITY_CONFIG.legendary.probability) rarity = 'legendary';
+    else if (rand < RARITY_CONFIG.epic.probability + RARITY_CONFIG.legendary.probability) rarity = 'epic';
+    else if (rand < RARITY_CONFIG.rare.probability + RARITY_CONFIG.epic.probability + RARITY_CONFIG.legendary.probability) rarity = 'rare';
+    
+    const config = RARITY_CONFIG[rarity];
+    const coordinates = mapPixelToApproxGps(x, y, width, height);
+    
+    pixels.push({
+      id: `pixel-${x}-${y}`,
+      x,
+      y,
+      color: config.color,
+      price: config.price + Math.floor(Math.random() * config.price * 0.5),
+      rarity,
+      isOwned: Math.random() < 0.15,
+      owner: Math.random() < 0.15 ? `User${Math.floor(Math.random() * 1000)}` : undefined,
+      lastModified: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
+      views: Math.floor(Math.random() * 1000),
+      likes: Math.floor(Math.random() * 100),
+      description: Math.random() < 0.3 ? `Pixel especial em ${regions[Math.floor(Math.random() * regions.length)]}` : undefined,
+      tags: Math.random() < 0.4 ? ['arte', 'paisagem', 'cidade'].slice(0, Math.floor(Math.random() * 3) + 1) : undefined,
+      region: regions[Math.floor(Math.random() * regions.length)],
+      coordinates,
+      specialEffects: config.effects,
+      isHot: Math.random() < 0.05,
+      isTrending: Math.random() < 0.03,
+      isNew: Math.random() < 0.08
+    });
+  });
   
   return pixels;
 };
 
 export default function PixelGrid() {
   const [pixels, setPixels] = useState<Pixel[]>([]);
-  const [mapImage, setMapImage] = useState<HTMLImageElement | null>(null);
+  const [mapBitmap, setMapBitmap] = useState<ImageBitmap | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
   const [viewport, setViewport] = useState<ViewportState>({ x: 0, y: 0, scale: 1, rotation: 0 });
   const [tools, setTools] = useState<ToolState>({
@@ -198,20 +213,18 @@ export default function PixelGrid() {
       animationDuration: `${2 + Math.random() * 2}s`,
     }));
     setParticleStyles(styles);
-    setPixels(generatePixelData(GRID_WIDTH, GRID_HEIGHT));
   }, []);
 
-  const handleImageReady = useCallback((dataUrl: string) => {
-    const img = new Image();
-    img.onload = () => {
-      setMapImage(img);
-      setIsMapReady(true);
-      URL.revokeObjectURL(dataUrl);
-    };
-    img.onerror = () => {
-      console.error("Failed to load map image for texture.");
-    }
-    img.src = dataUrl;
+  const handleMapDataReady = useCallback(async (imageData: ImageData) => {
+    // Create a bitmap for efficient drawing
+    const bitmap = await createImageBitmap(imageData);
+    setMapBitmap(bitmap);
+
+    // Generate pixels only for landmass
+    const generatedPixels = generatePixelData(GRID_WIDTH, GRID_HEIGHT, imageData);
+    setPixels(generatedPixels);
+
+    setIsMapReady(true);
   }, []);
 
   // Effect to set the initial centered and scaled viewport
@@ -238,7 +251,7 @@ export default function PixelGrid() {
   // Main drawing logic
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !mapImage) return;
+    if (!canvas || !mapBitmap) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -257,7 +270,7 @@ export default function PixelGrid() {
     ctx.imageSmoothingEnabled = false;
 
     // Draw map background
-    ctx.drawImage(mapImage, 0, 0, GRID_WIDTH * PIXEL_SIZE, GRID_HEIGHT * PIXEL_SIZE);
+    ctx.drawImage(mapBitmap, 0, 0, GRID_WIDTH * PIXEL_SIZE, GRID_HEIGHT * PIXEL_SIZE);
 
     // Draw owned pixels
     pixels.forEach(pixel => {
@@ -277,7 +290,7 @@ export default function PixelGrid() {
     }
     
     ctx.restore();
-  }, [viewport, mapImage, pixels, hoveredPixel]);
+  }, [viewport, mapBitmap, pixels, hoveredPixel]);
   
   // Animation loop using requestAnimationFrame
   useEffect(() => {
@@ -427,7 +440,11 @@ export default function PixelGrid() {
 
   return (
     <div className="relative w-full h-full bg-gradient-to-br from-background via-background/95 to-primary/5 overflow-hidden">
-      <PortugalMapSvg onImageReady={handleImageReady} />
+      <PortugalMapSvg 
+        onDataReady={handleMapDataReady} 
+        width={GRID_WIDTH * PIXEL_SIZE}
+        height={GRID_HEIGHT * PIXEL_SIZE}
+      />
 
       {/* Floating Particles */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
