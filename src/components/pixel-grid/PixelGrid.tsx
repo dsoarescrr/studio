@@ -1,1451 +1,1020 @@
-// src/components/pixel-grid/PixelGrid.tsx
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import {
-  ZoomIn, ZoomOut, Expand, Search, Sparkles, Info, User, CalendarDays,
-  History as HistoryIcon, DollarSign, ShoppingCart, Edit3, Palette as PaletteIconLucide, FileText, Upload, Save,
-  Image as ImageIcon, XCircle, TagsIcon, Link as LinkIconLucide, Pencil,
-  Eraser, PaintBucket, Trash2, Heart, Flag, BadgePercent, Star, MapPin as MapPinIconLucide, ScrollText, Gem, Globe, AlertTriangle,
-  Map as MapIcon,
-} from 'lucide-react';
-import NextImage from 'next/image';
-import PortugalMapSvg, { type MapData } from './PortugalMapSvg';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { generatePixelDescription, type GeneratePixelDescriptionInput } from '@/ai/flows/generate-pixel-description';
-import { useToast } from '@/hooks/use-toast';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription as DialogDescriptionElement,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Progress } from '@/components/ui/progress';
-import { Card, CardContent, CardHeader, CardTitle as CardTitleElement, CardDescription } from "@/components/ui/card";
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Separator } from '../ui/separator';
-import { mapPixelToApproxGps, cn } from '@/lib/utils';
+import { Slider } from '@/components/ui/slider';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { Progress } from '@/components/ui/progress';
+import { 
+  ZoomIn, ZoomOut, RotateCcw, MapPin, Palette, ShoppingCart, 
+  Eye, Sparkles, Target, Coins, Gift, Info, Wand2, 
+  MousePointer2, Crosshair, Move, Search, Filter,
+  Zap, Star, Crown, Gem, Heart, TrendingUp, Activity,
+  Layers, Grid3X3, Maximize2, Minimize2, RotateCw,
+  Paintbrush, Pipette, Save, Share2, Download, Upload,
+  Timer, Flame, Lightning, Rocket, Diamond, Trophy
+} from 'lucide-react';
+import { PortugalMapSvg } from './PortugalMapSvg';
+import { mapPixelToApproxGps } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
-
-// Configuration constants
-const SVG_VIEWBOX_WIDTH = 12969;
-const SVG_VIEWBOX_HEIGHT = 26674;
-const LOGICAL_GRID_COLS_CONFIG = 1273;
-const RENDERED_PIXEL_SIZE_CONFIG = 1;
-
-// Derived constants
-const canvasDrawWidth = LOGICAL_GRID_COLS_CONFIG * RENDERED_PIXEL_SIZE_CONFIG;
-const canvasDrawHeight = Math.floor(canvasDrawWidth * (SVG_VIEWBOX_HEIGHT / SVG_VIEWBOX_WIDTH));
-const logicalGridRows = Math.floor(canvasDrawHeight / RENDERED_PIXEL_SIZE_CONFIG);
-const totalLogicalPixels = LOGICAL_GRID_COLS_CONFIG * logicalGridRows;
-
-const PLACEHOLDER_IMAGE_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
-
-const USER_BOUGHT_PIXEL_COLOR = 'hsl(var(--primary))';
-
-const MOCK_CURRENT_USER_ID = 'currentUserPixelMaster';
-
-interface SoldPixel {
+// Enhanced types and interfaces
+interface Pixel {
+  id: string;
   x: number;
   y: number;
   color: string;
-  ownerId?: string;
-  title?: string;
-  pixelImageUrl?: string;
+  owner?: string;
+  price: number;
+  rarity: 'common' | 'rare' | 'epic' | 'legendary';
+  isOwned: boolean;
+  lastModified: Date;
+  views: number;
+  likes: number;
+  description?: string;
+  tags?: string[];
+  region?: string;
+  coordinates?: { lat: number; lon: number };
+  specialEffects?: string[];
+  isHot?: boolean;
+  isTrending?: boolean;
+  isNew?: boolean;
 }
 
-interface SelectedPixelDetails {
+interface ViewportState {
   x: number;
   y: number;
-  owner?: string;
-  price?: number;
-  acquisitionDate?: string;
-  lastModifiedDate?: string;
-  color?: string;
-  history?: Array<{ owner: string; date: string; price?: number }>;
-  isOwnedByCurrentUser?: boolean;
-  isForSaleBySystem?: boolean;
-  manualDescription?: string;
-  pixelImageUrl?: string;
-  dataAiHint?: string;
-  title?: string;
-  tags?: string[];
-  linkUrl?: string;
-  isForSaleByOwner?: boolean;
-  salePrice?: number;
-  isFavorited?: boolean;
-  rarity?: 'Comum' | 'Raro' | 'Épico' | 'Lendário' | 'Marco Histórico';
-  loreSnippet?: string;
-  gpsCoords?: { lat: number; lon: number; } | null;
+  scale: number;
+  rotation: number;
 }
 
-const MIN_ZOOM = 0.05;
-const MAX_ZOOM = 50;
-const ZOOM_SENSITIVITY_FACTOR = 1.1;
-const HEADER_HEIGHT_PX = 64;
-const BOTTOM_NAV_HEIGHT_PX = 64;
+interface ToolState {
+  mode: 'view' | 'buy' | 'paint' | 'inspect' | 'measure';
+  brush: {
+    size: number;
+    opacity: number;
+    pattern: 'solid' | 'gradient' | 'texture';
+  };
+  filter: {
+    rarity: string[];
+    priceRange: [number, number];
+    owner: string;
+    region: string;
+    showOwned: boolean;
+    showAvailable: boolean;
+  };
+}
 
-const mockRarities: SelectedPixelDetails['rarity'][] = ['Comum', 'Raro', 'Épico', 'Lendário', 'Marco Histórico'];
-const mockLoreSnippets: string[] = [
-  "Dizem que este pixel brilha sob a lua cheia.",
-  "Um antigo mapa sugere um tesouro escondido perto daqui.",
-  "Sente-se uma energia estranha emanando deste local.",
-];
+// Enhanced constants
+const GRID_SIZE = 100;
+const PIXEL_SIZE = 8;
+const MIN_SCALE = 0.1;
+const MAX_SCALE = 20;
+const ANIMATION_DURATION = 300;
+const PULSE_INTERVAL = 2000;
+const SPARKLE_INTERVAL = 3000;
 
+// Rarity configurations
+const RARITY_CONFIG = {
+  common: { 
+    color: '#94a3b8', 
+    glow: 'rgba(148, 163, 184, 0.3)', 
+    price: 10,
+    probability: 0.7,
+    effects: []
+  },
+  rare: { 
+    color: '#3b82f6', 
+    glow: 'rgba(59, 130, 246, 0.5)', 
+    price: 50,
+    probability: 0.2,
+    effects: ['pulse']
+  },
+  epic: { 
+    color: '#8b5cf6', 
+    glow: 'rgba(139, 92, 246, 0.7)', 
+    price: 200,
+    probability: 0.08,
+    effects: ['pulse', 'sparkle']
+  },
+  legendary: { 
+    color: '#f59e0b', 
+    glow: 'rgba(245, 158, 11, 0.9)', 
+    price: 1000,
+    probability: 0.02,
+    effects: ['pulse', 'sparkle', 'rainbow']
+  }
+};
+
+// Generate enhanced pixel data
+const generatePixelData = (): Pixel[] => {
+  const pixels: Pixel[] = [];
+  const regions = ['Norte', 'Centro', 'Lisboa', 'Alentejo', 'Algarve', 'Açores', 'Madeira'];
+  
+  for (let x = 0; x < GRID_SIZE; x++) {
+    for (let y = 0; y < GRID_SIZE; y++) {
+      const rand = Math.random();
+      let rarity: Pixel['rarity'] = 'common';
+      
+      if (rand < RARITY_CONFIG.legendary.probability) rarity = 'legendary';
+      else if (rand < RARITY_CONFIG.epic.probability + RARITY_CONFIG.legendary.probability) rarity = 'epic';
+      else if (rand < RARITY_CONFIG.rare.probability + RARITY_CONFIG.epic.probability + RARITY_CONFIG.legendary.probability) rarity = 'rare';
+      
+      const config = RARITY_CONFIG[rarity];
+      const coordinates = mapPixelToApproxGps(x, y, GRID_SIZE, GRID_SIZE);
+      
+      pixels.push({
+        id: `pixel-${x}-${y}`,
+        x,
+        y,
+        color: config.color,
+        price: config.price + Math.floor(Math.random() * config.price * 0.5),
+        rarity,
+        isOwned: Math.random() < 0.15,
+        owner: Math.random() < 0.15 ? `User${Math.floor(Math.random() * 1000)}` : undefined,
+        lastModified: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
+        views: Math.floor(Math.random() * 1000),
+        likes: Math.floor(Math.random() * 100),
+        description: Math.random() < 0.3 ? `Pixel especial em ${regions[Math.floor(Math.random() * regions.length)]}` : undefined,
+        tags: Math.random() < 0.4 ? ['arte', 'paisagem', 'cidade'].slice(0, Math.floor(Math.random() * 3) + 1) : undefined,
+        region: regions[Math.floor(Math.random() * regions.length)],
+        coordinates,
+        specialEffects: config.effects,
+        isHot: Math.random() < 0.05,
+        isTrending: Math.random() < 0.03,
+        isNew: Math.random() < 0.08
+      });
+    }
+  }
+  
+  return pixels;
+};
 
 export default function PixelGrid() {
-  const [isClient, setIsClient] = useState(false);
-  const [zoom, setZoom] = useState(1);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [defaultView, setDefaultView] = useState<{ zoom: number; position: { x: number; y: number } } | null>(null);
-
-  const didDragRef = useRef(false);
-  const dragThreshold = 5;
-
-  const [highlightedPixel, setHighlightedPixel] = useState<{ x: number; y: number } | null>(null);
-  const [selectedPixelDetails, setSelectedPixelDetails] = useState<SelectedPixelDetails | null>(null);
-  const [isFavorite, setIsFavorite] = useState(false);
-
-  const [pixelDescription, setPixelDescription] = useState<string | null>(null);
-  const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
-  const [showPixelModal, setShowPixelModal] = useState(false);
-  const [aiModalProgressValue, setAiModalProgressValue] = useState(0);
-  const [initialAiProgressTrigger, setInitialAiProgressTrigger] = useState(0);
-
+  // State management
+  const [pixels] = useState<Pixel[]>(() => generatePixelData());
+  const [viewport, setViewport] = useState<ViewportState>({ x: 0, y: 0, scale: 1, rotation: 0 });
+  const [tools, setTools] = useState<ToolState>({
+    mode: 'view',
+    brush: { size: 1, opacity: 1, pattern: 'solid' },
+    filter: {
+      rarity: [],
+      priceRange: [0, 2000],
+      owner: '',
+      region: '',
+      showOwned: true,
+      showAvailable: true
+    }
+  });
+  
+  const [selectedPixel, setSelectedPixel] = useState<Pixel | null>(null);
+  const [hoveredPixel, setHoveredPixel] = useState<Pixel | null>(null);
+  const [showPixelDialog, setShowPixelDialog] = useState(false);
+  const [showToolPanel, setShowToolPanel] = useState(false);
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [animationFrame, setAnimationFrame] = useState(0);
+  const [pulsePhase, setPulsePhase] = useState(0);
+  const [sparklePositions, setSparklePositions] = useState<Array<{x: number, y: number, intensity: number}>>([]);
+  
+  // Refs
   const containerRef = useRef<HTMLDivElement>(null);
-  const pixelCanvasRef = useRef<HTMLCanvasElement>(null);
-  const outlineCanvasRef = useRef<HTMLCanvasElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const animationRef = useRef<number>();
+  const lastTouchDistance = useRef<number>(0);
+  const isDragging = useRef(false);
+  const lastMousePos = useRef({ x: 0, y: 0 });
+  
   const { toast } = useToast();
 
-  const [mapData, setMapData] = useState<MapData | null>(null);
-  const [pixelBitmap, setPixelBitmap] = useState<Uint8Array | null>(null);
-  const [activePixelsInMap, setActivePixelsInMap] = useState(0);
-  const [isLoadingMap, setIsLoadingMap] = useState(true);
-  const [progressMessage, setProgressMessage] = useState("Aguardando cliente...");
-  
-  const [soldPixels, setSoldPixels] = useState<SoldPixel[]>([
-      { x: Math.floor(LOGICAL_GRID_COLS_CONFIG * 0.451), y: Math.floor(logicalGridRows * 0.302), color: 'hsl(var(--accent))', title: 'Pixel especial LIS', ownerId: 'user123' },
-      { x: Math.floor(LOGICAL_GRID_COLS_CONFIG * 0.503), y: Math.floor(logicalGridRows * 0.204), color: 'magenta', title: 'Pixel especial POR', ownerId: MOCK_CURRENT_USER_ID, pixelImageUrl: 'https://placehold.co/1x1.png' },
-      { x: Math.floor(LOGICAL_GRID_COLS_CONFIG * 0.555), y: Math.floor(logicalGridRows * 0.756), color: 'cyan', title: 'Pixel especial FAR', ownerId: 'user456' },
-  ]);
-
-  const [editMode, setEditMode] = useState(false);
-  const [editableColor, setEditableColor] = useState('#FFFFFF');
-  const [editableManualDescription, setEditableManualDescription] = useState('');
-  const [editablePixelImageFile, setEditablePixelImageFile] = useState<File | null>(null);
-  const [editablePixelImagePreview, setEditablePixelImagePreview] = useState<string | null>(null);
-  const [editableTitle, setEditableTitle] = useState('');
-  const [editableTags, setEditableTags] = useState('');
-  const [editableLinkUrl, setEditableLinkUrl] = useState('');
-  const [editableIsForSaleByOwner, setEditableIsForSaleByOwner] = useState(false);
-  const [editableSalePrice, setEditableSalePrice] = useState<number | string>('');
-
-  const autoResetTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const [unsoldColor, setUnsoldColor] = useState('');
-  const [strokeColor, setStrokeColor] = useState('');
-
-  const [loadedPixelImages, setLoadedPixelImages] = useState<Record<string, HTMLImageElement>>({});
-
-  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
-
-  const clearAutoResetTimeout = useCallback(() => {
-    if (autoResetTimeoutRef.current) {
-      clearTimeout(autoResetTimeoutRef.current);
-      autoResetTimeoutRef.current = null;
-    }
-  }, []);
-  
+  // Enhanced animation system
   useEffect(() => {
-    setIsClient(true);
-     if (typeof window !== 'undefined') {
-      const computedStyle = getComputedStyle(document.documentElement);
-      setUnsoldColor(computedStyle.getPropertyValue('--secondary').trim());
-      setStrokeColor(computedStyle.getPropertyValue('--muted-foreground').trim());
-    }
-  }, []);
-
-  const handleMapDataLoaded = useCallback((data: MapData) => {
-    setMapData(data);
-  }, []);
-
-  useEffect(() => {
-    if (!isClient || !mapData || !mapData.svgElement) return;
-  
-    setProgressMessage("A renderizar mapa melhorado...");
-    setIsLoadingMap(true);
-    
-    const { svgElement } = mapData;
-    
-    // Serialize the SVG to a string
-    const serializer = new XMLSerializer();
-    const svgString = serializer.serializeToString(svgElement);
-    
-    // Create a Blob and a URL
-    const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(svgBlob);
-    
-    const offscreenCanvas = document.createElement('canvas');
-    offscreenCanvas.width = canvasDrawWidth;
-    offscreenCanvas.height = canvasDrawHeight;
-    const ctx = offscreenCanvas.getContext('2d', { willReadFrequently: true });
-    if (!ctx) {
-        setIsLoadingMap(false);
-        URL.revokeObjectURL(url);
-        return;
-    }
-    
-    const img = new Image();
-    img.onload = () => {
-        // Draw the SVG image onto the canvas
-        ctx.drawImage(img, 0, 0, canvasDrawWidth, canvasDrawHeight);
-        URL.revokeObjectURL(url); // Clean up the blob URL
-
-        try {
-          const imageData = ctx.getImageData(0, 0, offscreenCanvas.width, offscreenCanvas.height);
-          const data = imageData.data;
-          const newBitmap = new Uint8Array(LOGICAL_GRID_COLS_CONFIG * logicalGridRows);
-          let activePixels = 0;
+    const animate = () => {
+      setAnimationFrame(prev => prev + 1);
+      setPulsePhase(prev => (prev + 0.05) % (Math.PI * 2));
       
-          for (let row = 0; row < logicalGridRows; row++) {
-            for (let col = 0; col < LOGICAL_GRID_COLS_CONFIG; col++) {
-              const canvasX = Math.floor((col + 0.5) * RENDERED_PIXEL_SIZE_CONFIG);
-              const canvasY = Math.floor((row + 0.5) * RENDERED_PIXEL_SIZE_CONFIG);
-              const index = (canvasY * offscreenCanvas.width + canvasX) * 4;
-              
-              if (data[index + 3] > 0) { // Check alpha channel
-                newBitmap[row * LOGICAL_GRID_COLS_CONFIG + col] = 1;
-                activePixels++;
-              }
-            }
+      // Update sparkle positions
+      if (Math.random() < 0.1) {
+        setSparklePositions(prev => [
+          ...prev.slice(-20),
+          {
+            x: Math.random() * GRID_SIZE,
+            y: Math.random() * GRID_SIZE,
+            intensity: Math.random()
           }
-          setPixelBitmap(newBitmap);
-          setActivePixelsInMap(activePixels);
-        } catch(e) {
-          console.error("Error generating pixel bitmap:", e);
-          toast({ title: "Erro na Grelha", description: "Não foi possível gerar a grelha interativa.", variant: "destructive" });
-        } finally {
-          setIsLoadingMap(false);
-          setProgressMessage("");
-        }
-    };
-    img.onerror = () => {
-        console.error("Failed to load SVG as image.");
-        toast({ title: "Erro no Mapa", description: "Não foi possível carregar o SVG melhorado.", variant: "destructive" });
-        setIsLoadingMap(false);
-        URL.revokeObjectURL(url);
-    };
-    img.src = url;
-  
-  }, [isClient, mapData, toast]);
-
-  useEffect(() => {
-      if (!pixelBitmap || !unsoldColor) return;
-      const canvas = pixelCanvasRef.current;
-      if (!canvas) return;
-
-      if (canvas.width !== canvasDrawWidth || canvas.height !== canvasDrawHeight) {
-          canvas.width = canvasDrawWidth;
-          canvas.height = canvasDrawHeight;
+        ]);
       }
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
       
-      ctx.imageSmoothingEnabled = false;
-      ctx.fillStyle = `hsl(${unsoldColor})`;
-
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      for (let row = 0; row < logicalGridRows; row++) {
-          for (let col = 0; col < LOGICAL_GRID_COLS_CONFIG; col++) {
-              if (pixelBitmap[row * LOGICAL_GRID_COLS_CONFIG + col] === 1) {
-                  ctx.fillRect(
-                      col * RENDERED_PIXEL_SIZE_CONFIG,
-                      row * RENDERED_PIXEL_SIZE_CONFIG,
-                      RENDERED_PIXEL_SIZE_CONFIG,
-                      RENDERED_PIXEL_SIZE_CONFIG
-                  );
-              }
-          }
-      }
-  }, [pixelBitmap, unsoldColor]);
-
-  useEffect(() => {
-    soldPixels.forEach(pixel => {
-        if (pixel.pixelImageUrl && !loadedPixelImages[pixel.pixelImageUrl]) {
-            const img = new window.Image();
-            img.src = pixel.pixelImageUrl;
-            img.onload = () => {
-                setLoadedPixelImages(prevImages => ({
-                    ...prevImages,
-                    [pixel.pixelImageUrl!]: img,
-                }));
-            };
-            img.onerror = () => {
-                console.error(`Failed to load pixel image: ${pixel.pixelImageUrl}`);
-            };
-        }
-    });
-  }, [soldPixels, loadedPixelImages]);
-
-  useEffect(() => { 
-    if (!soldPixels || !pixelCanvasRef.current) return;
-
-    const ctx = pixelCanvasRef.current.getContext('2d');
-    if (!ctx) return;
-
-    ctx.imageSmoothingEnabled = false;
-
-    soldPixels.forEach(pixel => {
-      const renderX = pixel.x * RENDERED_PIXEL_SIZE_CONFIG;
-      const renderY = pixel.y * RENDERED_PIXEL_SIZE_CONFIG;
-      
-      if (pixel.pixelImageUrl && loadedPixelImages[pixel.pixelImageUrl]) {
-          const img = loadedPixelImages[pixel.pixelImageUrl];
-          ctx.drawImage(img, renderX, renderY, RENDERED_PIXEL_SIZE_CONFIG, RENDERED_PIXEL_SIZE_CONFIG);
-      } else {
-          ctx.fillStyle = pixel.color;
-          ctx.fillRect(renderX, renderY, RENDERED_PIXEL_SIZE_CONFIG, RENDERED_PIXEL_SIZE_CONFIG);
-      }
-    });
-
-  }, [soldPixels, loadedPixelImages, pixelBitmap]);
-  
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const resizeObserver = new ResizeObserver(entries => {
-      for (let entry of entries) {
-        setContainerSize({
-          width: entry.contentRect.width,
-          height: entry.contentRect.height,
-        });
-      }
-    });
-
-    resizeObserver.observe(container);
-    return () => resizeObserver.disconnect();
-  }, []);
-
-  useEffect(() => {
-    const canvas = outlineCanvasRef.current;
-    if (canvas) {
-      canvas.width = containerSize.width;
-      canvas.height = containerSize.height;
-    }
-  }, [containerSize]);
-
-  useEffect(() => {
-    if (!mapData || !strokeColor || !outlineCanvasRef.current || containerSize.width === 0) return;
-    const canvas = outlineCanvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-  
-    const logicalToSvgScale = canvasDrawWidth / SVG_VIEWBOX_WIDTH;
-  
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+      animationRef.current = requestAnimationFrame(animate);
+    };
     
-    // Draw district outlines
-    ctx.save();
-    ctx.translate(position.x, position.y);
-    ctx.scale(zoom * logicalToSvgScale, zoom * logicalToSvgScale);
-    ctx.strokeStyle = `hsl(${strokeColor})`;
-    ctx.lineWidth = 0.5 / (zoom * logicalToSvgScale);
-    ctx.imageSmoothingEnabled = true;
-    ctx.lineJoin = 'round';
-    ctx.lineCap = 'round';
-  
-    mapData.pathStrings.forEach(pathString => {
-        try {
-            const path = new Path2D(pathString);
-            ctx.stroke(path);
-        } catch(e) {
-        }
-    });
-    ctx.restore();
-  
-    // Draw highlighted pixel border
-    ctx.save();
-    ctx.translate(position.x, position.y);
-    ctx.scale(zoom, zoom);
-    if (highlightedPixel) {
-        ctx.strokeStyle = 'hsl(var(--foreground))';
-        ctx.lineWidth = (0.5 / zoom) * RENDERED_PIXEL_SIZE_CONFIG;
-        ctx.strokeRect(
-            highlightedPixel.x * RENDERED_PIXEL_SIZE_CONFIG,
-            highlightedPixel.y * RENDERED_PIXEL_SIZE_CONFIG,
-            RENDERED_PIXEL_SIZE_CONFIG,
-            RENDERED_PIXEL_SIZE_CONFIG
-        );
-    }
-    ctx.restore();
-
-  }, [mapData, zoom, position, strokeColor, containerSize, highlightedPixel]);
-  
-
-  useEffect(() => { 
-    if (isClient && containerRef.current && mapData?.pathStrings && !defaultView && canvasDrawWidth > 0 && canvasDrawHeight > 0) {
-      const containerWidth = containerRef.current.offsetWidth;
-      const effectiveContainerHeight = window.innerHeight - HEADER_HEIGHT_PX - BOTTOM_NAV_HEIGHT_PX;
-      
-      if (containerWidth > 0 && effectiveContainerHeight > 0) {
-        const fitZoomX = containerWidth / canvasDrawWidth;
-        const fitZoomY = effectiveContainerHeight / canvasDrawHeight;
-        const zoomToFit = Math.min(fitZoomX, fitZoomY);
-        
-        const calculatedZoom = Math.max(MIN_ZOOM, zoomToFit * 0.95); 
-        const canvasContentWidth = canvasDrawWidth * calculatedZoom;
-        const canvasContentHeight = canvasDrawHeight * calculatedZoom;
-        
-        const calculatedPosition = {
-          x: (containerWidth - canvasContentWidth) / 2,
-          y: (effectiveContainerHeight - canvasContentHeight) / 2,
-        };
-        
-        setDefaultView({ zoom: calculatedZoom, position: calculatedPosition });
-        setZoom(calculatedZoom);
-        setPosition(calculatedPosition);
-      }
-    }
-  }, [isClient, mapData, defaultView, canvasDrawWidth, canvasDrawHeight]);
-
-
- const handleResetView = useCallback(() => {
-    clearAutoResetTimeout();
-    if (defaultView) {
-      setZoom(defaultView.zoom);
-      setPosition(defaultView.position);
-    } else if (isClient && containerRef.current && mapData?.pathStrings && canvasDrawWidth > 0 && canvasDrawHeight > 0) { 
-        const containerWidth = containerRef.current.offsetWidth;
-        const effectiveContainerHeight = window.innerHeight - HEADER_HEIGHT_PX - BOTTOM_NAV_HEIGHT_PX;
-        if (containerWidth > 0 && effectiveContainerHeight > 0) {
-            const fitZoomX = containerWidth / canvasDrawWidth;
-            const fitZoomY = effectiveContainerHeight / canvasDrawHeight;
-            const zoomToFit = Math.min(fitZoomX, fitZoomY);
-            const fallbackZoom = Math.max(MIN_ZOOM, zoomToFit * 0.95);
-
-            const canvasContentWidth = canvasDrawWidth * fallbackZoom;
-            const canvasContentHeight = canvasDrawHeight * fallbackZoom;
-            const fallbackPosition = {
-                x: (containerWidth - canvasContentWidth) / 2,
-                y: (effectiveContainerHeight - canvasContentHeight) / 2,
-            };
-            setZoom(fallbackZoom);
-            setPosition(fallbackPosition);
-            setDefaultView({ zoom: fallbackZoom, position: fallbackPosition }); 
-        }
-    }
-  }, [defaultView, mapData, clearAutoResetTimeout, canvasDrawWidth, canvasDrawHeight, isClient]); 
-
-
- useEffect(() => { 
-    let animationFrameId: number | undefined;
-    let timeoutId: NodeJS.Timeout | undefined;
-
-    if (isGeneratingDesc && showPixelModal && !editMode) {
-        setAiModalProgressValue(0);
-        let currentProgress = 0;
-        const animate = () => {
-            currentProgress += 2;
-            if (currentProgress <= 75) {
-                setAiModalProgressValue(currentProgress);
-                animationFrameId = requestAnimationFrame(animate);
-            } else if (currentProgress < 90) { 
-                setAiModalProgressValue(75 + Math.floor(Math.random() * 15));
-                animationFrameId = requestAnimationFrame(animate);
-            }
-        };
-        animationFrameId = requestAnimationFrame(animate);
-    } else {
-        if (!isGeneratingDesc && showPixelModal && !editMode) {
-             if (pixelDescription) { 
-                setAiModalProgressValue(100);
-                timeoutId = setTimeout(() => {
-                    setAiModalProgressValue(0); 
-                }, 1000);
-             }
-        } else if (!showPixelModal || editMode) {
-            setAiModalProgressValue(0); 
-        }
-    }
+    animationRef.current = requestAnimationFrame(animate);
     return () => {
-        if (animationFrameId) cancelAnimationFrame(animationFrameId);
-        if (timeoutId) clearTimeout(timeoutId);
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
     };
-  }, [isGeneratingDesc, showPixelModal, pixelDescription, initialAiProgressTrigger, editMode]);
+  }, []);
 
+  // Enhanced pixel filtering
+  const filteredPixels = useMemo(() => {
+    return pixels.filter(pixel => {
+      if (tools.filter.rarity.length > 0 && !tools.filter.rarity.includes(pixel.rarity)) return false;
+      if (pixel.price < tools.filter.priceRange[0] || pixel.price > tools.filter.priceRange[1]) return false;
+      if (tools.filter.owner && pixel.owner !== tools.filter.owner) return false;
+      if (tools.filter.region && pixel.region !== tools.filter.region) return false;
+      if (!tools.filter.showOwned && pixel.isOwned) return false;
+      if (!tools.filter.showAvailable && !pixel.isOwned) return false;
+      return true;
+    });
+  }, [pixels, tools.filter]);
 
-  const handleZoomIn = () => { clearAutoResetTimeout(); setZoom((prevZoom) => Math.min(prevZoom * 1.2, MAX_ZOOM)); };
-  const handleZoomOut = () => { clearAutoResetTimeout(); setZoom((prevZoom) => Math.max(prevZoom / 1.2, MIN_ZOOM)); };
-
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    clearAutoResetTimeout();
-    const targetElement = e.target as HTMLElement;
-     if (targetElement.closest('button, [data-dialog-content], [data-tooltip-content], [data-popover-content], label, a, [role="menuitem"], [role="tab"], input, textarea')) {
-        return;
-    }
-    setIsDragging(true);
-    setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
-    didDragRef.current = false;
-  };
-
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging || !containerRef.current) return;
-    const currentX = e.clientX - dragStart.x;
-    const currentY = e.clientY - dragStart.y;
-
-    if (!didDragRef.current) {
-        const dx = Math.abs(currentX - position.x);
-        const dy = Math.abs(currentY - position.y);
-        if (dx > dragThreshold || dy > dragThreshold) {
-            didDragRef.current = true;
-        }
-    }
-    setPosition({ x: currentX, y: currentY });
-  };
-  
-  const handleCanvasClick = (event: React.MouseEvent) => {
-    clearAutoResetTimeout();
-
-    if (isLoadingMap || !pixelBitmap || !containerRef.current) {
+  // Enhanced event handlers
+  const handlePixelClick = useCallback((pixel: Pixel) => {
+    setSelectedPixel(pixel);
+    
+    if (tools.mode === 'buy' && !pixel.isOwned) {
+      setShowPixelDialog(true);
       toast({
-        title: "Mapa a Carregar",
-        description: "A grelha interativa está a ser processada. Por favor, aguarde.",
-        variant: "default",
+        title: "Pixel Selecionado!",
+        description: `Pixel ${pixel.rarity} por ${pixel.price} créditos`,
       });
-      return;
+    } else if (tools.mode === 'inspect') {
+      setShowPixelDialog(true);
     }
-
-    const rect = containerRef.current.getBoundingClientRect();
-    const clickXInContainer = event.clientX - rect.left;
-    const clickYInContainer = event.clientY - rect.top;
-
-    const xOnContent = (clickXInContainer - position.x) / zoom;
-    const yOnContent = (clickYInContainer - position.y) / zoom;
-
-    const logicalCol = Math.floor(xOnContent / RENDERED_PIXEL_SIZE_CONFIG);
-    const logicalRow = Math.floor(yOnContent / RENDERED_PIXEL_SIZE_CONFIG);
-
-    if (logicalCol >= 0 && logicalCol < LOGICAL_GRID_COLS_CONFIG && logicalRow >= 0 && logicalRow < logicalGridRows) {
-      const bitmapIdx = logicalRow * LOGICAL_GRID_COLS_CONFIG + logicalCol;
-
-      if (pixelBitmap[bitmapIdx] === 1) {
-        setHighlightedPixel({ x: logicalCol, y: logicalRow });
-
-        const existingSoldPixel = soldPixels.find(p => p.x === logicalCol && p.y === logicalRow);
-        let mockDetails: SelectedPixelDetails;
-        const randomRarity = mockRarities[Math.floor(Math.random() * mockRarities.length)];
-        const randomLore = mockLoreSnippets[Math.floor(Math.random() * mockLoreSnippets.length)];
-        const approxGps = mapPixelToApproxGps(logicalCol, logicalRow, LOGICAL_GRID_COLS_CONFIG, logicalGridRows);
-
-        if (existingSoldPixel) {
-             mockDetails = {
-                x: logicalCol,
-                y: logicalRow,
-                owner: existingSoldPixel.ownerId || MOCK_CURRENT_USER_ID,
-                acquisitionDate: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 30).toLocaleDateString('pt-PT'),
-                lastModifiedDate: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 7).toLocaleDateString('pt-PT'),
-                color: existingSoldPixel.color,
-                history: [{ owner: existingSoldPixel.ownerId || MOCK_CURRENT_USER_ID, date: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 30).toLocaleDateString('pt-PT'), price: Math.floor(Math.random() * 40) + 5 }],
-                isOwnedByCurrentUser: (existingSoldPixel.ownerId || MOCK_CURRENT_USER_ID) === MOCK_CURRENT_USER_ID,
-                isForSaleBySystem: false,
-                manualDescription: 'Este é o meu pixel especial!',
-                pixelImageUrl: existingSoldPixel.pixelImageUrl,
-                dataAiHint: 'pixel image',
-                title: existingSoldPixel.title || `Pixel de ${existingSoldPixel.ownerId || MOCK_CURRENT_USER_ID}`,
-                tags: ['meu', 'favorito'],
-                linkUrl: Math.random() > 0.5 ? 'https://dourado.com' : undefined,
-                isForSaleByOwner: Math.random() > 0.5,
-                salePrice: Math.random() > 0.5 ? Math.floor(Math.random() * 100) + 20 : undefined,
-                isFavorited: Math.random() > 0.5,
-                rarity: randomRarity,
-                loreSnippet: randomLore,
-                gpsCoords: approxGps,
-            };
-        } else { 
-             mockDetails = {
-                x: logicalCol,
-                y: logicalRow,
-                owner: 'Disponível (Sistema)',
-                price: Math.floor(Math.random() * 50) + 10, 
-                color: `hsl(${unsoldColor})`,
-                isOwnedByCurrentUser: false,
-                isForSaleBySystem: true,
-                history: [],
-                isFavorited: Math.random() > 0.8,
-                rarity: randomRarity,
-                loreSnippet: randomLore,
-                gpsCoords: approxGps,
-            };
-        }
-
-        setSelectedPixelDetails(mockDetails);
-        setIsFavorite(mockDetails.isFavorited || false);
-        setEditableColor(mockDetails.color || '#FFFFFF');
-        setEditableManualDescription(mockDetails.manualDescription || '');
-        setEditablePixelImagePreview(mockDetails.pixelImageUrl || null);
-        setEditablePixelImageFile(null);
-        setEditableTitle(mockDetails.title || '');
-        setEditableTags(mockDetails.tags ? mockDetails.tags.join(', ') : '');
-        setEditableLinkUrl(mockDetails.linkUrl || '');
-        setEditableIsForSaleByOwner(mockDetails.isForSaleByOwner || false);
-        setEditableSalePrice(mockDetails.salePrice || '');
-
-        setShowPixelModal(true);
-        setPixelDescription(null);
-        setEditMode(false);
-        setInitialAiProgressTrigger(prev => prev + 1);
-      } else { 
-        setHighlightedPixel(null);
-        setSelectedPixelDetails(null);
-        toast({ title: "Fora da Área Interativa", description: `Clicou fora da área interativa de Portugal. Coords Lógicas: (${logicalCol}, ${logicalRow}).`, variant: "default" });
-      }
-    } else { 
-      setHighlightedPixel(null);
-      setSelectedPixelDetails(null);
-      toast({ title: "Fora dos Limites do Mapa", description: `Clicou fora dos limites do mapa. Coords Lógicas: (${logicalCol}, ${logicalRow}).`, variant: "default" });
-    }
-  };
-
-  const handleMouseUpOrLeave = (event: React.MouseEvent) => {
-    if (isDragging) {
-      if (!didDragRef.current) {
-        handleCanvasClick(event);
-      }
-      setIsDragging(false);
-    }
-  };
-
-  const handleGenerateDescription = useCallback(async () => {
-    if (!selectedPixelDetails) return;
-    setIsGeneratingDesc(true);
-    setPixelDescription(null);
-
-    try {
-        const input: GeneratePixelDescriptionInput = {
-            x: selectedPixelDetails.x,
-            y: selectedPixelDetails.y,
-            surroundingAreaImageDataUri: PLACEHOLDER_IMAGE_DATA_URI, 
-        };
-        const result = await generatePixelDescription(input);
-        setPixelDescription(result.description);
-        toast({ title: "Descrição Gerada", description: "A IA gerou uma descrição para o pixel." });
-    } catch (error) {
-        setPixelDescription("Falha ao gerar descrição.");
-        toast({ title: "Erro na IA", description: "Não foi possível gerar a descrição.", variant: "destructive" });
-    } finally {
-        setIsGeneratingDesc(false);
-    }
-  }, [selectedPixelDetails, toast]);
-
-  const handlePixelImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files[0]) {
-      const file = event.target.files[0];
-      setEditablePixelImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setEditablePixelImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleRemovePixelImage = () => {
-    setEditablePixelImageFile(null);
-    setEditablePixelImagePreview(null);
-    const fileInput = document.getElementById('pixelImageUpload') as HTMLInputElement;
-    if (fileInput) fileInput.value = '';
-  }
-
-  const handleSaveChanges = () => {
-    if (!selectedPixelDetails) return;
-
-    const updatedTags = editableTags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
-    const salePriceNum = parseFloat(String(editableSalePrice));
-
-    const updatedDetails: SelectedPixelDetails = {
-      ...selectedPixelDetails,
-      color: editableColor,
-      manualDescription: editableManualDescription,
-      pixelImageUrl: editablePixelImagePreview || undefined,
-      dataAiHint: editablePixelImagePreview ? 'pixel custom image' : undefined,
-      title: editableTitle,
-      tags: updatedTags,
-      linkUrl: editableLinkUrl,
-      isForSaleByOwner: editableIsForSaleByOwner,
-      salePrice: editableIsForSaleByOwner && !isNaN(salePriceNum) ? salePriceNum : undefined,
-      lastModifiedDate: new Date().toLocaleDateString('pt-PT'),
-    };
-    setSelectedPixelDetails(updatedDetails);
-
-    setSoldPixels(prevSold => prevSold.map(p =>
-      p.x === selectedPixelDetails.x && p.y === selectedPixelDetails.y
-        ? { ...p, color: editableColor, title: editableTitle, pixelImageUrl: editablePixelImagePreview || undefined }
-        : p
-    ));
-
-    toast({ title: "Alterações Guardadas", description: "As alterações ao seu pixel foram (simuladamente) guardadas." });
-    setEditMode(false);
-  };
-
-  const handleToggleFavorite = () => {
-    if (!selectedPixelDetails) return;
-    const newFavStatus = !isFavorite;
-    setIsFavorite(newFavStatus);
-    setSelectedPixelDetails(prev => prev ? ({ ...prev, isFavorited: newFavStatus }) : null);
-    toast({
-      title: newFavStatus ? "Adicionado aos Favoritos" : "Removido dos Favoritos",
-      description: `O pixel (${selectedPixelDetails.x}, ${selectedPixelDetails.y}) foi ${newFavStatus ? 'adicionado aos' : 'removido dos'} seus favoritos.`,
-    });
-  };
-
-  const handleReportPixel = () => {
-    if (!selectedPixelDetails) return;
-    toast({
-      title: "Pixel Reportado",
-      description: `O pixel (${selectedPixelDetails.x}, ${selectedPixelDetails.y}) foi reportado para revisão (simulado).`,
-      variant: "default",
-    });
-  };
-
-  const handleBuyPixelFromSystem = () => {
-    if (!selectedPixelDetails || !selectedPixelDetails.isForSaleBySystem || !selectedPixelDetails.price) return;
-
-    const newSoldPixel: SoldPixel = {
-      x: selectedPixelDetails.x,
-      y: selectedPixelDetails.y,
-      color: USER_BOUGHT_PIXEL_COLOR, 
-      ownerId: MOCK_CURRENT_USER_ID, 
-      title: `Meu Pixel (${selectedPixelDetails.x},${selectedPixelDetails.y})`
-    };
-    setSoldPixels(prev => [...prev, newSoldPixel]);
-
-    setSelectedPixelDetails(prev => ({
-        ...(prev as SelectedPixelDetails), 
-        owner: MOCK_CURRENT_USER_ID,
-        isOwnedByCurrentUser: true,
-        isForSaleBySystem: false, 
-        price: undefined, 
-        acquisitionDate: new Date().toLocaleDateString('pt-PT'),
-        lastModifiedDate: new Date().toLocaleDateString('pt-PT'),
-        color: newSoldPixel.color, 
-        history: [{ owner: MOCK_CURRENT_USER_ID, date: new Date().toLocaleDateString('pt-PT'), price: selectedPixelDetails.price }],
-        manualDescription: 'Acabei de adquirir este pixel!', 
-        title: newSoldPixel.title,
-        isForSaleByOwner: false, 
-        salePrice: undefined,
-    }));
-    toast({ title: "Pixel Comprado!", description: `Parabéns, o pixel (${selectedPixelDetails.x}, ${selectedPixelDetails.y}) é seu!`});
-    setShowPixelModal(false); 
-  };
-
-  const handleToggleForSaleByOwner = () => {
-    if (!selectedPixelDetails || !selectedPixelDetails.isOwnedByCurrentUser) return;
-
-    const currentlyForSale = selectedPixelDetails.isForSaleByOwner;
-    const newSaleStatus = !currentlyForSale;
-    const newSalePrice = newSaleStatus ? (selectedPixelDetails.salePrice || parseFloat(String(editableSalePrice)) || 50) : undefined;
-
-    const updatedDetails: SelectedPixelDetails = {
-        ...(selectedPixelDetails),
-        isForSaleByOwner: newSaleStatus,
-        salePrice: newSalePrice,
-        lastModifiedDate: new Date().toLocaleDateString('pt-PT'),
-    };
-    setSelectedPixelDetails(updatedDetails);
-
-    if (editMode) { 
-        setEditableIsForSaleByOwner(newSaleStatus);
-        setEditableSalePrice(newSalePrice || '');
-    }
-
-    toast({
-        title: newSaleStatus ? "Pixel Colocado à Venda" : "Pixel Retirado da Venda",
-        description: `O seu pixel (${selectedPixelDetails.x}, ${selectedPixelDetails.y}) foi ${newSaleStatus ? `colocado à venda por ${newSalePrice} créditos.` : 'retirado da venda.'}`,
-    });
-  };
-
-
-  const handleWheelZoom = useCallback((event: WheelEvent) => {
-    clearAutoResetTimeout();
-    if (!containerRef.current) return;
-    event.preventDefault();
-
-    const containerRect = containerRef.current.getBoundingClientRect();
-    const mouseXInContainer = event.clientX - containerRect.left;
-    const mouseYInContainer = event.clientY - containerRect.top;
-
-    let newZoom;
-    if (event.deltaY < 0) { 
-      newZoom = Math.min(zoom * ZOOM_SENSITIVITY_FACTOR, MAX_ZOOM);
-    } else { 
-      newZoom = Math.max(zoom / ZOOM_SENSITIVITY_FACTOR, MIN_ZOOM);
-    }
-
-    if (newZoom === zoom) return; 
-
-    const currentCanvasX = (mouseXInContainer - position.x) / zoom;
-    const currentCanvasY = (mouseYInContainer - position.y) / zoom;
-
-    const newPosX = mouseXInContainer - currentCanvasX * newZoom;
-    const newPosY = mouseYInContainer - currentCanvasY * newZoom;
-
-    setZoom(newZoom);
-    setPosition({ x: newPosX, y: newPosY });
-
-  }, [zoom, position, clearAutoResetTimeout]); 
-
-  useEffect(() => { 
-    const currentContainer = containerRef.current;
-    if (currentContainer) {
-      currentContainer.addEventListener('wheel', handleWheelZoom, { passive: false });
-      return () => {
-        currentContainer.removeEventListener('wheel', handleWheelZoom);
-      };
-    }
-  }, [handleWheelZoom]); 
-
-
- useEffect(() => { 
-    if (autoResetTimeoutRef.current) {
-      clearTimeout(autoResetTimeoutRef.current);
-    }
-    if (!defaultView || showPixelModal || isDragging) { 
-      return;
-    } 
-
-    const isDefaultZoom = Math.abs(zoom - defaultView.zoom) < 0.001;
-    const isDefaultPosition =
-      defaultView.position &&
-      Math.abs(position.x - defaultView.position.x) < 0.5 &&
-      Math.abs(position.y - defaultView.position.y) < 0.5;
-
-    if (!isDefaultZoom || !isDefaultPosition) {
-      autoResetTimeoutRef.current = setTimeout(() => {
-        handleResetView();
-      }, 15000); 
-    }
-
-    return () => {
-      if (autoResetTimeoutRef.current) {
-        clearTimeout(autoResetTimeoutRef.current);
-      }
-    };
-  }, [zoom, position, handleResetView, defaultView, showPixelModal, isDragging]);
-  
-  const showProgressIndicator = isLoadingMap || (progressMessage !== "");
-
-  const handleGoToMyLocation = () => {
-    if (!containerRef.current || !pixelBitmap) return;
-
-    // Simulate finding a location in Lisbon
-    const myLocationPixel = { x: 579, y: 1358 };
-
-    // Check if the pixel is valid and on the map
-    const bitmapIdx = myLocationPixel.y * LOGICAL_GRID_COLS_CONFIG + myLocationPixel.x;
-    if (pixelBitmap[bitmapIdx] !== 1) {
-        toast({ title: "Localização não encontrada", description: "Não foi possível encontrar um pixel ativo na sua localização simulada."});
-        return;
-    }
-
-    setHighlightedPixel(myLocationPixel);
-
-    const targetZoom = 15;
-    const containerWidth = containerRef.current.offsetWidth;
-    const effectiveContainerHeight = window.innerHeight - HEADER_HEIGHT_PX - BOTTOM_NAV_HEIGHT_PX;
-
-    const targetX = -myLocationPixel.x * RENDERED_PIXEL_SIZE_CONFIG * targetZoom + containerWidth / 2;
-    const targetY = -myLocationPixel.y * RENDERED_PIXEL_SIZE_CONFIG * targetZoom + effectiveContainerHeight / 2;
     
-    setPosition({ x: targetX, y: targetY });
-    setZoom(targetZoom);
-    toast({ title: "Localização Encontrada!", description: "Centrado no pixel mais próximo da sua localização." });
-  };
-  
-  const handleViewOnRealMap = () => {
-    if (selectedPixelDetails?.gpsCoords) {
-      const { lat, lon } = selectedPixelDetails.gpsCoords;
-      const url = `https://www.google.com/maps?q=${lat},${lon}&z=18&t=k`; // z=18 for high zoom, t=k for satellite
-      window.open(url, '_blank', 'noopener,noreferrer');
-    } else {
-      toast({ title: "Coordenadas não disponíveis", description: "Não foi possível determinar a localização GPS para este pixel." });
+    // Add click effect
+    const clickEffect = document.createElement('div');
+    clickEffect.className = 'absolute pointer-events-none animate-ping';
+    clickEffect.style.cssText = `
+      width: 20px;
+      height: 20px;
+      background: radial-gradient(circle, ${RARITY_CONFIG[pixel.rarity].color}, transparent);
+      border-radius: 50%;
+      left: ${pixel.x * PIXEL_SIZE * viewport.scale}px;
+      top: ${pixel.y * PIXEL_SIZE * viewport.scale}px;
+      z-index: 1000;
+    `;
+    
+    if (containerRef.current) {
+      containerRef.current.appendChild(clickEffect);
+      setTimeout(() => clickEffect.remove(), 1000);
     }
-  };
+  }, [tools.mode, viewport.scale, toast]);
+
+  const handlePixelHover = useCallback((pixel: Pixel | null) => {
+    setHoveredPixel(pixel);
+  }, []);
+
+  // Enhanced zoom controls
+  const handleZoom = useCallback((delta: number, centerX?: number, centerY?: number) => {
+    setViewport(prev => {
+      const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, prev.scale * (1 + delta)));
+      const scaleRatio = newScale / prev.scale;
+      
+      if (centerX !== undefined && centerY !== undefined) {
+        const newX = centerX - (centerX - prev.x) * scaleRatio;
+        const newY = centerY - (centerY - prev.y) * scaleRatio;
+        return { ...prev, scale: newScale, x: newX, y: newY };
+      }
+      
+      return { ...prev, scale: newScale };
+    });
+  }, []);
+
+  const handlePan = useCallback((deltaX: number, deltaY: number) => {
+    setViewport(prev => ({
+      ...prev,
+      x: prev.x + deltaX,
+      y: prev.y + deltaY
+    }));
+  }, []);
+
+  const resetView = useCallback(() => {
+    setViewport({ x: 0, y: 0, scale: 1, rotation: 0 });
+    toast({
+      title: "Vista Reiniciada",
+      description: "O mapa foi centrado e o zoom foi reiniciado",
+    });
+  }, [toast]);
+
+  // Enhanced mouse/touch handlers
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.button === 0) {
+      isDragging.current = true;
+      lastMousePos.current = { x: e.clientX, y: e.clientY };
+      e.preventDefault();
+    }
+  }, []);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (isDragging.current) {
+      const deltaX = e.clientX - lastMousePos.current.x;
+      const deltaY = e.clientY - lastMousePos.current.y;
+      handlePan(deltaX, deltaY);
+      lastMousePos.current = { x: e.clientX, y: e.clientY };
+    }
+  }, [handlePan]);
+
+  const handleMouseUp = useCallback(() => {
+    isDragging.current = false;
+  }, []);
+
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    const delta = -e.deltaY * 0.001;
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (rect) {
+      const centerX = e.clientX - rect.left;
+      const centerY = e.clientY - rect.top;
+      handleZoom(delta, centerX, centerY);
+    }
+  }, [handleZoom]);
+
+  // Enhanced touch handlers
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const distance = Math.sqrt(
+        Math.pow(touch2.clientX - touch1.clientX, 2) + 
+        Math.pow(touch2.clientY - touch1.clientY, 2)
+      );
+      lastTouchDistance.current = distance;
+    } else if (e.touches.length === 1) {
+      const touch = e.touches[0];
+      lastMousePos.current = { x: touch.clientX, y: touch.clientY };
+      isDragging.current = true;
+    }
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    e.preventDefault();
+    
+    if (e.touches.length === 2) {
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const distance = Math.sqrt(
+        Math.pow(touch2.clientX - touch1.clientX, 2) + 
+        Math.pow(touch2.clientY - touch1.clientY, 2)
+      );
+      
+      if (lastTouchDistance.current > 0) {
+        const delta = (distance - lastTouchDistance.current) * 0.01;
+        const centerX = (touch1.clientX + touch2.clientX) / 2;
+        const centerY = (touch1.clientY + touch2.clientY) / 2;
+        const rect = containerRef.current?.getBoundingClientRect();
+        if (rect) {
+          handleZoom(delta, centerX - rect.left, centerY - rect.top);
+        }
+      }
+      
+      lastTouchDistance.current = distance;
+    } else if (e.touches.length === 1 && isDragging.current) {
+      const touch = e.touches[0];
+      const deltaX = touch.clientX - lastMousePos.current.x;
+      const deltaY = touch.clientY - lastMousePos.current.y;
+      handlePan(deltaX, deltaY);
+      lastMousePos.current = { x: touch.clientX, y: touch.clientY };
+    }
+  }, [handleZoom, handlePan]);
+
+  const handleTouchEnd = useCallback(() => {
+    isDragging.current = false;
+    lastTouchDistance.current = 0;
+  }, []);
+
+  // Enhanced pixel purchase
+  const handlePurchasePixel = useCallback(async () => {
+    if (!selectedPixel) return;
+    
+    setIsLoading(true);
+    
+    // Simulate purchase process
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    toast({
+      title: "🎉 Pixel Adquirido!",
+      description: `Parabéns! Agora possui o pixel ${selectedPixel.rarity} por ${selectedPixel.price} créditos!`,
+    });
+    
+    setIsLoading(false);
+    setShowPixelDialog(false);
+    setSelectedPixel(null);
+  }, [selectedPixel, toast]);
+
+  // Enhanced pixel rendering with effects
+  const renderPixel = useCallback((pixel: Pixel) => {
+    const config = RARITY_CONFIG[pixel.rarity];
+    const x = pixel.x * PIXEL_SIZE;
+    const y = pixel.y * PIXEL_SIZE;
+    
+    // Calculate dynamic effects
+    const pulseIntensity = pixel.specialEffects?.includes('pulse') ? 
+      0.3 + 0.2 * Math.sin(pulsePhase + pixel.x * 0.1 + pixel.y * 0.1) : 0;
+    
+    const sparkleEffect = pixel.specialEffects?.includes('sparkle') && 
+      sparklePositions.some(sp => Math.abs(sp.x - pixel.x) < 2 && Math.abs(sp.y - pixel.y) < 2);
+    
+    const isHighlighted = hoveredPixel?.id === pixel.id || selectedPixel?.id === pixel.id;
+    
+    return (
+      <g key={pixel.id}>
+        {/* Glow effect */}
+        {(pulseIntensity > 0 || isHighlighted) && (
+          <rect
+            x={x - 1}
+            y={y - 1}
+            width={PIXEL_SIZE + 2}
+            height={PIXEL_SIZE + 2}
+            fill={config.glow}
+            opacity={pulseIntensity + (isHighlighted ? 0.5 : 0)}
+            rx={1}
+          />
+        )}
+        
+        {/* Main pixel */}
+        <rect
+          x={x}
+          y={y}
+          width={PIXEL_SIZE}
+          height={PIXEL_SIZE}
+          fill={pixel.isOwned ? pixel.color : config.color}
+          stroke={isHighlighted ? '#fbbf24' : 'transparent'}
+          strokeWidth={isHighlighted ? 1 : 0}
+          opacity={pixel.isOwned ? 0.8 : 1}
+          rx={0.5}
+          className={cn(
+            "transition-all duration-200 cursor-pointer",
+            tools.mode === 'buy' && !pixel.isOwned && "hover:brightness-125",
+            pixel.isHot && "animate-pulse",
+            pixel.isTrending && "animate-bounce"
+          )}
+          onClick={() => handlePixelClick(pixel)}
+          onMouseEnter={() => handlePixelHover(pixel)}
+          onMouseLeave={() => handlePixelHover(null)}
+        />
+        
+        {/* Special indicators */}
+        {pixel.isNew && (
+          <circle
+            cx={x + PIXEL_SIZE - 2}
+            cy={y + 2}
+            r={1.5}
+            fill="#10b981"
+            className="animate-ping"
+          />
+        )}
+        
+        {pixel.isHot && (
+          <circle
+            cx={x + 2}
+            cy={y + 2}
+            r={1}
+            fill="#ef4444"
+            className="animate-pulse"
+          />
+        )}
+        
+        {sparkleEffect && (
+          <circle
+            cx={x + PIXEL_SIZE/2}
+            cy={y + PIXEL_SIZE/2}
+            r={2}
+            fill="#fbbf24"
+            opacity={0.8}
+            className="animate-ping"
+          />
+        )}
+        
+        {/* Rarity indicator */}
+        {pixel.rarity !== 'common' && (
+          <rect
+            x={x}
+            y={y}
+            width={2}
+            height={2}
+            fill={config.color}
+            opacity={0.9}
+          />
+        )}
+      </g>
+    );
+  }, [hoveredPixel, selectedPixel, pulsePhase, sparklePositions, tools.mode, handlePixelClick, handlePixelHover]);
+
+  // Statistics calculations
+  const stats = useMemo(() => {
+    const total = pixels.length;
+    const owned = pixels.filter(p => p.isOwned).length;
+    const available = total - owned;
+    const totalValue = pixels.reduce((sum, p) => sum + p.price, 0);
+    const avgPrice = totalValue / total;
+    
+    const rarityStats = Object.keys(RARITY_CONFIG).reduce((acc, rarity) => {
+      acc[rarity] = pixels.filter(p => p.rarity === rarity).length;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    return {
+      total,
+      owned,
+      available,
+      totalValue,
+      avgPrice,
+      rarityStats,
+      ownershipPercentage: (owned / total) * 100
+    };
+  }, [pixels]);
 
   return (
-    <div className="flex flex-col h-full w-full overflow-hidden relative animate-fade-in">
-      <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 bg-card/80 backdrop-blur-sm p-2 rounded-lg shadow-lg pointer-events-auto animate-slide-in-up animation-delay-200">
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button pointerEvents="auto" variant="outline" size="icon" onClick={handleZoomIn} aria-label="Zoom In">
-                <ZoomIn className="h-5 w-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent><p>Aumentar Zoom</p></TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button pointerEvents="auto" variant="outline" size="icon" onClick={handleZoomOut} aria-label="Zoom Out">
-                <ZoomOut className="h-5 w-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent><p>Diminuir Zoom</p></TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button pointerEvents="auto" variant="outline" size="icon" onClick={handleResetView} aria-label="Reset View">
-                <Expand className="h-5 w-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent><p>Resetar Vista</p></TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-        <div className="mt-2 p-2 bg-background/50 rounded-md text-xs font-code">
-          <p>Zoom: {zoom.toFixed(2)}x</p>
-          <p>X: {Math.round(position.x)}, Y: {Math.round(position.y)}</p>
-          {highlightedPixel && <p>Pixel: ({highlightedPixel.x}, {highlightedPixel.y})</p>}
-          <p>Píxeis no Mapa: {activePixelsInMap > 0 ? activePixelsInMap.toLocaleString('pt-PT') : '...'}</p>
-        </div>
+    <div className="relative w-full h-full bg-gradient-to-br from-background via-background/95 to-primary/5 overflow-hidden">
+      {/* Enhanced Background Effects */}
+      <div className="absolute inset-0 opacity-20">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(212,167,87,0.1),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_48%,rgba(212,167,87,0.05)_49%,rgba(212,167,87,0.05)_51%,transparent_52%)] bg-[length:20px_20px]" />
       </div>
       
-      {showProgressIndicator && (
-          <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-20 bg-card/80 backdrop-blur-sm p-3 rounded-lg shadow-lg text-center pointer-events-none">
-            <div className="flex items-center justify-center">
-                <Sparkles className="h-5 w-5 text-primary animate-pulse mr-2" />
-                <p className="text-sm font-headline text-foreground">{progressMessage}</p>
+      {/* Floating Particles */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {Array.from({ length: 20 }).map((_, i) => (
+          <div
+            key={i}
+            className="absolute w-1 h-1 bg-primary/30 rounded-full animate-pulse"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 3}s`,
+              animationDuration: `${2 + Math.random() * 2}s`
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Enhanced Header */}
+      <div className="absolute top-0 left-0 right-0 z-20 bg-gradient-to-b from-background/95 via-background/90 to-transparent backdrop-blur-sm border-b border-primary/20">
+        <div className="flex items-center justify-between p-4">
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <div className="relative">
+                <Grid3X3 className="h-6 w-6 text-primary animate-pulse" />
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-accent rounded-full animate-ping" />
+              </div>
+              <div>
+                <h1 className="text-lg font-headline font-bold text-primary">Pixel Universe</h1>
+                <p className="text-xs text-muted-foreground">Mapa Interativo de Portugal</p>
+              </div>
             </div>
           </div>
-        )}
-      
-      <Dialog open={showPixelModal} onOpenChange={(isOpen) => {
-          setShowPixelModal(isOpen);
-          if (!isOpen) {
-              setSelectedPixelDetails(null);
-              setHighlightedPixel(null);
-              setPixelDescription(null);
-              setIsGeneratingDesc(false);
-              setAiModalProgressValue(0);
-              setEditMode(false);
-          } else {
-            clearAutoResetTimeout(); 
-          }
-      }}>
-        <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-sm text-card-foreground border-primary/30 shadow-xl" data-dialog-content pointerEvents="auto">
-          {!editMode && selectedPixelDetails && (
-            <>
-              <DialogHeader className={cn(`dialog-header-gold-accent rounded-t-lg`, selectedPixelDetails?.rarity === 'Lendário' ? 'legendary-glow-strong' : selectedPixelDetails?.rarity === 'Épico' ? 'epic-shadow' : '')}>
-                <div className="flex items-start justify-between">
-                    <div>
-                        <DialogTitle className="font-headline flex items-center text-xl text-shadow-gold-sm">
-                            Pixel ({selectedPixelDetails.x}, {selectedPixelDetails.y})
-                        </DialogTitle>
-                        {selectedPixelDetails.title && <CardDescription className="text-base text-primary/90 -mt-1 text-shadow-gold-xs">&quot;{selectedPixelDetails.title}&quot;</CardDescription>}
-                    </div>
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" onClick={handleToggleFavorite} className="text-muted-foreground hover:text-destructive-foreground h-8 w-8">
-                                    <Heart className={`h-5 w-5 transition-all duration-200 ${isFavorite ? 'fill-red-500 text-red-500 animate-scale-in' : 'hover:text-red-400'}`} />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent><p>{isFavorite ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos'}</p></TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
+          
+          <div className="flex items-center space-x-2">
+            <Badge variant="outline" className="bg-primary/10 border-primary/30 text-primary">
+              <Activity className="h-3 w-3 mr-1" />
+              {stats.available.toLocaleString()} disponíveis
+            </Badge>
+            <Badge variant="outline" className="bg-accent/10 border-accent/30 text-accent">
+              <TrendingUp className="h-3 w-3 mr-1" />
+              {stats.ownershipPercentage.toFixed(1)}% vendidos
+            </Badge>
+          </div>
+        </div>
+      </div>
+
+      {/* Enhanced Tool Panel */}
+      <div className="absolute top-20 left-4 z-20">
+        <Card className="bg-card/95 backdrop-blur-sm border-primary/20 shadow-xl">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-headline flex items-center">
+              <Wand2 className="h-4 w-4 mr-2 text-primary" />
+              Ferramentas
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { mode: 'view', icon: Eye, label: 'Ver', color: 'text-blue-400' },
+                { mode: 'buy', icon: ShoppingCart, label: 'Comprar', color: 'text-green-400' },
+                { mode: 'paint', icon: Paintbrush, label: 'Pintar', color: 'text-purple-400' },
+                { mode: 'inspect', icon: Search, label: 'Inspecionar', color: 'text-orange-400' }
+              ].map(({ mode, icon: Icon, label, color }) => (
+                <TooltipProvider key={mode}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant={tools.mode === mode ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setTools(prev => ({ ...prev, mode: mode as any }))}
+                        className={cn(
+                          "h-8 transition-all duration-200",
+                          tools.mode === mode && "shadow-lg scale-105"
+                        )}
+                      >
+                        <Icon className={cn("h-3 w-3", tools.mode === mode ? 'text-primary-foreground' : color)} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{label}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ))}
+            </div>
+            
+            <Separator className="bg-primary/20" />
+            
+            <div className="space-y-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFilterPanel(!showFilterPanel)}
+                className="w-full justify-start"
+              >
+                <Filter className="h-3 w-3 mr-2" />
+                Filtros
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={resetView}
+                className="w-full justify-start"
+              >
+                <RotateCcw className="h-3 w-3 mr-2" />
+                Reiniciar Vista
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Enhanced Zoom Controls */}
+      <div className="absolute top-20 right-4 z-20">
+        <Card className="bg-card/95 backdrop-blur-sm border-primary/20 shadow-xl">
+          <CardContent className="p-3 space-y-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleZoom(0.2)}
+              className="w-full"
+            >
+              <ZoomIn className="h-3 w-3 mr-2" />
+              Zoom +
+            </Button>
+            
+            <div className="text-center">
+              <Badge variant="secondary" className="text-xs">
+                {Math.round(viewport.scale * 100)}%
+              </Badge>
+            </div>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleZoom(-0.2)}
+              className="w-full"
+            >
+              <ZoomOut className="h-3 w-3 mr-2" />
+              Zoom -
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Enhanced Stats Panel */}
+      <div className="absolute bottom-4 left-4 z-20">
+        <Card className="bg-card/95 backdrop-blur-sm border-primary/20 shadow-xl">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-headline flex items-center">
+              <Target className="h-4 w-4 mr-2 text-primary" />
+              Estatísticas Live
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="text-center">
+                <div className="text-lg font-bold text-primary">{stats.total.toLocaleString()}</div>
+                <div className="text-muted-foreground">Total Pixels</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-bold text-green-400">{stats.available.toLocaleString()}</div>
+                <div className="text-muted-foreground">Disponíveis</div>
+              </div>
+            </div>
+            
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs">
+                <span>Vendidos</span>
+                <span className="text-primary">{stats.ownershipPercentage.toFixed(1)}%</span>
+              </div>
+              <Progress value={stats.ownershipPercentage} className="h-2" />
+            </div>
+            
+            <div className="space-y-1">
+              {Object.entries(stats.rarityStats).map(([rarity, count]) => (
+                <div key={rarity} className="flex justify-between text-xs">
+                  <span className="capitalize flex items-center">
+                    <div 
+                      className="w-2 h-2 rounded-full mr-2" 
+                      style={{ backgroundColor: RARITY_CONFIG[rarity as keyof typeof RARITY_CONFIG].color }}
+                    />
+                    {rarity}
+                  </span>
+                  <span>{count}</span>
                 </div>
-                <DialogDescriptionElement className="pt-1 text-muted-foreground">
-                  Informações detalhadas e ações disponíveis para este pixel.
-                </DialogDescriptionElement>
-              </DialogHeader>
-              <ScrollArea className="max-h-[calc(100vh-280px)] pr-4 -mr-2">
-              <div className="space-y-3 py-2 px-1">
-                <Card className="card-inset-shadow animate-fade-in animation-delay-100">
-                  <CardHeader className="card-header-accent pb-2 pt-3 px-4">
-                      <CardTitleElement className="text-md font-headline flex items-center text-primary">
-                          <Info className="h-4 w-4 mr-2" /> Informações do Pixel
-                      </CardTitleElement>
-                  </CardHeader>
-                  <CardContent className="text-sm space-y-1.5 px-4 pb-3">
-                    <div className="flex justify-between"><span>Proprietário:</span> <Badge variant={selectedPixelDetails.owner === 'Disponível (Sistema)' ? "secondary" : "outline"} className="font-code">{selectedPixelDetails.owner}</Badge></div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
-                    {selectedPixelDetails.isForSaleBySystem && selectedPixelDetails.price && (
-                      <div className="flex justify-between items-center"><span>Preço (Sistema):</span> <span className="font-code flex items-center">{selectedPixelDetails.price} Créditos <DollarSign className="inline h-3.5 w-3.5 ml-1 text-primary" /></span></div>
-                    )}
-                     {selectedPixelDetails.isOwnedByCurrentUser && selectedPixelDetails.isForSaleByOwner && selectedPixelDetails.salePrice && (
-                      <div className="flex justify-between items-center"><span>À Venda por:</span> <Badge variant="destructive" className="font-code">{selectedPixelDetails.salePrice} Créditos</Badge></div>
-                    )}
-
-                    {selectedPixelDetails.acquisitionDate && <div className="flex justify-between"><span>Adquirido em:</span> <span className="font-code">{selectedPixelDetails.acquisitionDate}</span></div>}
-                    {selectedPixelDetails.lastModifiedDate && <div className="flex justify-between"><span>Modificado em:</span> <span className="font-code">{selectedPixelDetails.lastModifiedDate}</span></div>}
-                    <div className="flex justify-between items-center">
-                      <span>Cor Atual:</span>
-                      <div className="flex items-center">
-                        <div style={{ backgroundColor: selectedPixelDetails.color }} className="w-4 h-4 rounded-sm mr-1.5 border border-border"></div>
-                        <span className="font-code">{selectedPixelDetails.color}</span>
-                      </div>
-                    </div>
-                    {selectedPixelDetails.gpsCoords && (
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center">
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                    <span className="font-code flex items-center cursor-help">
-                                        GPS (Aprox.): {selectedPixelDetails.gpsCoords.lat.toFixed(4)}, {selectedPixelDetails.gpsCoords.lon.toFixed(4)}
-                                    </span>
-                                    </TooltipTrigger>
-                                    <TooltipContent align="start"><p>Coordenadas GPS aproximadas. Não para navegação precisa.</p></TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        </div>
-                        <Button variant="outline" size="sm" className="h-7 text-xs ml-2" onClick={handleViewOnRealMap}>
-                            <MapIcon className="h-3 w-3 mr-1.5" /> Ver no Mapa
-                        </Button>
-                      </div>
-                    )}
-                    {selectedPixelDetails.manualDescription && (
-                       <div className="pt-1">
-                          <span className="font-semibold">Descrição:</span>
-                          <p className="text-xs text-muted-foreground italic">&quot;{selectedPixelDetails.manualDescription}&quot;</p>
-                       </div>
-                    )}
-                    {selectedPixelDetails.tags && selectedPixelDetails.tags.length > 0 && (
-                        <div className="pt-1">
-                            <span className="font-semibold">Tags:</span>
-                            <div className="flex flex-wrap gap-1 mt-1">
-                                {selectedPixelDetails.tags.map(tag => <Badge key={tag} variant="secondary" className="text-xs font-code">{tag}</Badge>)}
-                            </div>
-                        </div>
-                    )}
-                    {selectedPixelDetails.linkUrl && (
-                        <div className="pt-1">
-                            <span className="font-semibold">Link:</span>
-                            <a href={selectedPixelDetails.linkUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline ml-1 flex items-center font-code">
-                                {selectedPixelDetails.linkUrl.length > 30 ? `${selectedPixelDetails.linkUrl.substring(0,30)}...` : selectedPixelDetails.linkUrl}
-                                <LinkIconLucide className="h-3 w-3 ml-1" />
-                            </a>
-                        </div>
-                    )}
-                    {selectedPixelDetails.pixelImageUrl && (
-                      <div className="pt-1">
-                        <span className="font-semibold">Imagem do Pixel:</span>
-                        <div className="mt-1 relative w-24 h-24 rounded border border-border overflow-hidden shadow-sm animate-scale-in">
-                          <NextImage src={selectedPixelDetails.pixelImageUrl} alt="Imagem do Pixel" layout="fill" objectFit="cover" data-ai-hint={selectedPixelDetails.dataAiHint || 'pixel image'}/>
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {selectedPixelDetails.rarity && (
-                  <Card className="card-inset-shadow animate-fade-in animation-delay-200">
-                    <CardHeader className="card-header-accent pb-2 pt-3 px-4">
-                        <CardTitleElement className="text-md font-headline flex items-center text-primary">
-                            <Gem className="h-4 w-4 mr-2" /> Raridade e História
-                        </CardTitleElement>
-                    </CardHeader>
-                    <CardContent className="px-4 pb-3 space-y-1.5">
-                       <div className="flex justify-between items-center text-sm">
-                          <span>Raridade:</span>
-                           <Badge
-                              variant={
-                                  selectedPixelDetails.rarity === 'Lendário' ? "destructive" : 
-                                  selectedPixelDetails.rarity === 'Épico' ? "default" :    
-                                  selectedPixelDetails.rarity === 'Raro' ? "secondary" :
-                                  "outline" 
-                              }
-                              className={`font-code text-xs ${selectedPixelDetails.rarity === 'Marco Histórico' ? 'border-amber-500 text-amber-500' : ''}`}
-                            >
-                            {selectedPixelDetails.rarity}
-                          </Badge>
-                       </div>
-                       {selectedPixelDetails.loreSnippet && (
-                         <div className="pt-1">
-                            <span className="font-semibold text-sm">Fragmento de História (IA):</span>
-                            <p className="text-xs text-muted-foreground italic">&quot;{selectedPixelDetails.loreSnippet}&quot;</p>
-                         </div>
-                       )}
-                    </CardContent>
-                  </Card>
+      {/* Enhanced Pixel Info Panel */}
+      {hoveredPixel && (
+        <div className="absolute bottom-4 right-4 z-20 pointer-events-none">
+          <Card className="bg-card/95 backdrop-blur-sm border-primary/20 shadow-xl animate-in slide-in-from-bottom-2">
+            <CardContent className="p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <Badge 
+                  variant="outline" 
+                  className={cn(
+                    "text-xs",
+                    hoveredPixel.rarity === 'legendary' && "border-amber-400 text-amber-400",
+                    hoveredPixel.rarity === 'epic' && "border-purple-400 text-purple-400",
+                    hoveredPixel.rarity === 'rare' && "border-blue-400 text-blue-400"
+                  )}
+                >
+                  {hoveredPixel.rarity.toUpperCase()}
+                </Badge>
+                <div className="flex items-center space-x-1">
+                  {hoveredPixel.isHot && <Flame className="h-3 w-3 text-red-400" />}
+                  {hoveredPixel.isTrending && <TrendingUp className="h-3 w-3 text-green-400" />}
+                  {hoveredPixel.isNew && <Sparkles className="h-3 w-3 text-blue-400" />}
+                </div>
+              </div>
+              
+              <div className="text-xs space-y-1">
+                <div className="flex justify-between">
+                  <span>Posição:</span>
+                  <span className="font-code">({hoveredPixel.x}, {hoveredPixel.y})</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Preço:</span>
+                  <span className="font-bold text-primary">{hoveredPixel.price} créditos</span>
+                </div>
+                {hoveredPixel.owner && (
+                  <div className="flex justify-between">
+                    <span>Proprietário:</span>
+                    <span className="text-accent">{hoveredPixel.owner}</span>
+                  </div>
                 )}
-
-
-                {(!pixelDescription && !isGeneratingDesc && (aiModalProgressValue === 0 || aiModalProgressValue === 100) && showPixelModal) && (
-                  <Card className="card-inset-shadow animate-fade-in animation-delay-300">
-                    <CardHeader className="card-header-accent pb-2 pt-3 px-4">
-                        <CardTitleElement className="text-md font-headline flex items-center text-primary">
-                            <Sparkles className="h-4 w-4 mr-2" /> Descrição por IA
-                        </CardTitleElement>
-                    </CardHeader>
-                    <CardContent className="px-4 pb-3">
-                        <Button variant="outline" size="sm" onClick={handleGenerateDescription} disabled={!selectedPixelDetails} className="w-full mt-1 button-gold-glow">
-                            <Sparkles className="mr-1.5 h-3.5 w-3.5"/>
-                            Gerar Descrição Detalhada com IA
-                        </Button>
-                    </CardContent>
-                  </Card>
-                )}
-                {(isGeneratingDesc || pixelDescription || (aiModalProgressValue > 0 && aiModalProgressValue < 100 && !pixelDescription && showPixelModal)) && (
-                  <Card className="card-inset-shadow animate-fade-in animation-delay-300">
-                    <CardHeader className="card-header-accent pb-2 pt-3 px-4">
-                      <CardTitleElement className="text-md font-headline flex items-center text-primary">
-                          <Sparkles className="h-4 w-4 mr-2" /> Descrição por IA
-                      </CardTitleElement>
-                    </CardHeader>
-                    <CardContent className="px-4 pb-3">
-                      {(isGeneratingDesc || (aiModalProgressValue > 0 && aiModalProgressValue < 100 && !pixelDescription && showPixelModal)) && (
-                        <div className="flex flex-col items-center justify-center my-2">
-                          <Sparkles className="h-6 w-6 text-primary animate-pulse mb-1" />
-                          <p className="text-xs font-headline">A IA está a gerar a descrição...</p>
-                          <Progress value={aiModalProgressValue} className="w-full mt-1 h-1.5" />
-                        </div>
-                      )}
-                      {pixelDescription && (aiModalProgressValue === 0 || aiModalProgressValue === 100) && showPixelModal && (
-                        <p className="text-xs text-foreground italic">&quot;{pixelDescription}&quot;</p>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
-
-                {selectedPixelDetails.history && selectedPixelDetails.history.length > 0 && (
-                  <Card className="card-inset-shadow animate-fade-in animation-delay-400">
-                    <CardHeader className="card-header-accent pb-2 pt-3 px-4">
-                      <CardTitleElement className="text-md font-headline flex items-center text-primary">
-                          <HistoryIcon className="h-4 w-4 mr-2" /> Histórico de Proprietários
-                      </CardTitleElement>
-                    </CardHeader>
-                    <CardContent className="px-4 pb-3">
-                      <ScrollArea className="h-20">
-                        <ul className="text-xs space-y-1 font-code">
-                          {selectedPixelDetails.history.map((entry, index) => (
-                            <li key={index} className="flex justify-between">
-                              <span>{entry.owner} ({entry.date})</span>
-                              <span>{entry.price ? `${entry.price}c` : ''}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </ScrollArea>
-                    </CardContent>
-                  </Card>
+                <div className="flex justify-between">
+                  <span>Região:</span>
+                  <span>{hoveredPixel.region}</span>
+                </div>
+                {hoveredPixel.coordinates && (
+                  <div className="flex justify-between">
+                    <span>GPS:</span>
+                    <span className="font-code text-xs">
+                      {hoveredPixel.coordinates.lat.toFixed(4)}, {hoveredPixel.coordinates.lon.toFixed(4)}
+                    </span>
+                  </div>
                 )}
               </div>
-              </ScrollArea>
-              <DialogFooter className="gap-2 sm:gap-1.5 flex-wrap justify-center pt-3 sm:justify-between dialog-footer-gold-accent rounded-b-lg">
-                 <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" onClick={handleReportPixel} className="text-muted-foreground hover:text-destructive h-8 w-8">
-                                <Flag className="h-4 w-4" />
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top"><p>Reportar Pixel</p></TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
-                <div className="flex gap-2 sm:gap-1.5 flex-wrap justify-center sm:justify-end">
-                    {selectedPixelDetails.isForSaleBySystem && !selectedPixelDetails.isOwnedByCurrentUser && selectedPixelDetails.price && (
-                      <Button size="sm" onClick={handleBuyPixelFromSystem} className="button-gradient-orange button-3d-effect">
-                        <ShoppingCart className="mr-1.5 h-3.5 w-3.5" /> Comprar ({selectedPixelDetails.price} Créditos)
-                      </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Enhanced Main Canvas */}
+      <div
+        ref={containerRef}
+        className="absolute inset-0 cursor-move overflow-hidden"
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        onWheel={handleWheel}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        <svg
+          ref={svgRef}
+          width="100%"
+          height="100%"
+          viewBox={`${-viewport.x} ${-viewport.y} ${window.innerWidth / viewport.scale} ${window.innerHeight / viewport.scale}`}
+          className="w-full h-full"
+          style={{
+            transform: `rotate(${viewport.rotation}deg)`,
+            filter: 'drop-shadow(0 0 10px rgba(212, 167, 87, 0.1))'
+          }}
+        >
+          {/* Enhanced Background Grid */}
+          <defs>
+            <pattern id="grid" width={PIXEL_SIZE * 10} height={PIXEL_SIZE * 10} patternUnits="userSpaceOnUse">
+              <path
+                d={`M ${PIXEL_SIZE * 10} 0 L 0 0 0 ${PIXEL_SIZE * 10}`}
+                fill="none"
+                stroke="rgba(212, 167, 87, 0.1)"
+                strokeWidth="0.5"
+              />
+            </pattern>
+            
+            <pattern id="finegrid" width={PIXEL_SIZE} height={PIXEL_SIZE} patternUnits="userSpaceOnUse">
+              <path
+                d={`M ${PIXEL_SIZE} 0 L 0 0 0 ${PIXEL_SIZE}`}
+                fill="none"
+                stroke="rgba(212, 167, 87, 0.05)"
+                strokeWidth="0.25"
+              />
+            </pattern>
+            
+            {/* Glow filters */}
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+              <feMerge> 
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+          </defs>
+          
+          {/* Grid backgrounds */}
+          <rect width="100%" height="100%" fill="url(#grid)" opacity={viewport.scale > 0.5 ? 1 : 0} />
+          <rect width="100%" height="100%" fill="url(#finegrid)" opacity={viewport.scale > 2 ? 1 : 0} />
+          
+          {/* Portugal Map Outline */}
+          <g transform={`scale(${PIXEL_SIZE}) translate(0, 0)`}>
+            <PortugalMapSvg 
+              className="fill-primary/10 stroke-primary/30" 
+              strokeWidth={0.5 / viewport.scale}
+            />
+          </g>
+          
+          {/* Enhanced Pixels */}
+          <g>
+            {filteredPixels.map(renderPixel)}
+          </g>
+          
+          {/* Sparkle effects */}
+          {sparklePositions.map((sparkle, i) => (
+            <circle
+              key={i}
+              cx={sparkle.x * PIXEL_SIZE}
+              cy={sparkle.y * PIXEL_SIZE}
+              r={2 * sparkle.intensity}
+              fill="#fbbf24"
+              opacity={sparkle.intensity * 0.8}
+              className="animate-ping"
+            />
+          ))}
+        </svg>
+      </div>
+
+      {/* Enhanced Pixel Details Dialog */}
+      <Dialog open={showPixelDialog} onOpenChange={setShowPixelDialog}>
+        <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-sm border-primary/20">
+          <DialogHeader className="dialog-header-gold-accent">
+            <DialogTitle className="flex items-center text-primary">
+              <Gem className="h-5 w-5 mr-2" />
+              Detalhes do Pixel
+            </DialogTitle>
+            <DialogDescription>
+              {selectedPixel && `Pixel ${selectedPixel.rarity} na posição (${selectedPixel.x}, ${selectedPixel.y})`}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedPixel && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Raridade</Label>
+                  <Badge 
+                    variant="outline"
+                    className={cn(
+                      selectedPixel.rarity === 'legendary' && "border-amber-400 text-amber-400",
+                      selectedPixel.rarity === 'epic' && "border-purple-400 text-purple-400",
+                      selectedPixel.rarity === 'rare' && "border-blue-400 text-blue-400"
                     )}
-                    {selectedPixelDetails.isOwnedByCurrentUser && (
-                      <>
-                        {selectedPixelDetails.isForSaleByOwner ? (
-                          <Button size="sm" variant="outline" onClick={handleToggleForSaleByOwner} className="border-red-500 text-red-500 hover:bg-red-500/10 hover:text-red-500 button-3d-effect-outline">
-                             <BadgePercent className="mr-1.5 h-3.5 w-3.5" /> Retirar da Venda
-                          </Button>
-                        ) : (
-                          <Button size="sm" variant="outline" onClick={handleToggleForSaleByOwner} className="border-green-500 text-green-500 hover:bg-green-500/10 hover:text-green-500 button-3d-effect-outline">
-                             <BadgePercent className="mr-1.5 h-3.5 w-3.5" /> Colocar à Venda
-                          </Button>
-                        )}
-                        <Button size="sm" onClick={() => setEditMode(true)} className="button-gradient-gold button-3d-effect">
-                            <Edit3 className="mr-1.5 h-3.5 w-3.5" /> Editar Pixel
-                        </Button>
-                      </>
-                    )}
-                    {!selectedPixelDetails.isForSaleBySystem && !selectedPixelDetails.isOwnedByCurrentUser && (
-                        <Button variant="secondary" size="sm" disabled className="button-3d-effect">Fazer Oferta</Button>
-                    )}
+                  >
+                    {selectedPixel.rarity.toUpperCase()}
+                  </Badge>
                 </div>
-              </DialogFooter>
-            </>
-          )}
-          {editMode && selectedPixelDetails && (
-            <>
-              <DialogHeader className="dialog-header-gold-accent rounded-t-lg">
-                <DialogTitle className="font-headline flex items-center text-xl text-shadow-gold-sm">
-                    <Edit3 className="h-5 w-5 mr-2 text-accent" /> Editando Pixel ({selectedPixelDetails.x}, {selectedPixelDetails.y})
-                </DialogTitle>
-                <DialogDescriptionElement className="text-muted-foreground">
-                  Modifique as propriedades do seu pixel.
-                </DialogDescriptionElement>
-              </DialogHeader>
-              <ScrollArea className="max-h-[calc(100vh-280px)] pr-4 -mr-2">
-                <div className="space-y-4 py-2 px-1">
-
-                  <Card className="card-inset-shadow">
-                    <CardHeader className="card-header-accent pb-2 pt-3 px-4">
-                      <CardTitleElement className="text-md font-headline flex items-center text-primary">
-                        <PaletteIconLucide className="h-4 w-4 mr-2" /> Aparência
-                      </CardTitleElement>
-                    </CardHeader>
-                    <CardContent className="px-4 pb-3 space-y-3">
-                        <div>
-                            <Label htmlFor="pixelColorEdit" className="text-xs text-muted-foreground">Cor</Label>
-                            <div className="flex items-center gap-2 mt-1">
-                            <Input
-                                id="pixelColorEdit"
-                                type="color"
-                                value={editableColor}
-                                onChange={(e) => setEditableColor(e.target.value)}
-                                className="w-12 h-10 p-1 input-shadow"
-                            />
-                            <Input
-                                type="text"
-                                placeholder="#RRGGBB"
-                                value={editableColor}
-                                onChange={(e) => setEditableColor(e.target.value)}
-                                className="font-code flex-1 h-10 text-sm input-shadow"
-                                aria-label="Código Hex da Cor"
-                            />
-                            </div>
-                        </div>
-                        <div>
-                            <Label htmlFor="pixelTitleEdit" className="text-xs text-muted-foreground">Título do Pixel</Label>
-                            <Input
-                                id="pixelTitleEdit"
-                                type="text"
-                                placeholder="Ex: Meu Pôr do Sol Pixelizado"
-                                value={editableTitle}
-                                onChange={(e) => setEditableTitle(e.target.value)}
-                                className="mt-1 h-10 text-sm input-shadow"
-                            />
-                        </div>
-                         <div>
-                            <Label htmlFor="pixelDescEdit" className="text-xs text-muted-foreground">Descrição Manual</Label>
-                            <Textarea
-                                id="pixelDescEdit"
-                                placeholder="Descreva o seu pixel..."
-                                value={editableManualDescription}
-                                onChange={(e) => setEditableManualDescription(e.target.value)}
-                                rows={3}
-                                className="mt-1 text-sm input-shadow"
-                            />
-                        </div>
-                         <div>
-                            <Label htmlFor="pixelImageUpload" className="text-xs text-muted-foreground">Imagem do Pixel (Upload)</Label>
-                            <div className="flex items-center gap-2 mt-1">
-                                <Input
-                                    id="pixelImageUpload"
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handlePixelImageUpload}
-                                    className="text-xs flex-1 file:text-primary file:font-semibold file:mr-2 file:px-2 file:py-1 file:rounded-sm file:border-0 file:bg-primary/10 hover:file:bg-primary/20"
-                                />
-                                {editablePixelImagePreview && (
-                                    <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8 text-destructive"
-                                            onClick={handleRemovePixelImage}
-                                        >
-                                            <XCircle className="h-4 w-4" />
-                                        </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent><p>Remover Imagem</p></TooltipContent>
-                                    </Tooltip>
-                                    </TooltipProvider>
-                                )}
-                            </div>
-                            {editablePixelImagePreview && (
-                                <div className="mt-2 relative w-24 h-24 rounded border border-border overflow-hidden group shadow-sm animate-scale-in">
-                                <NextImage src={editablePixelImagePreview} alt="Pré-visualização da Imagem" layout="fill" objectFit="cover" data-ai-hint="pixel image preview"/>
-                                </div>
-                            )}
-                            <p className="text-xs text-muted-foreground mt-1">Envie uma imagem para associar a este pixel.</p>
-                        </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="card-inset-shadow">
-                     <CardHeader className="card-header-accent pb-2 pt-3 px-4">
-                        <CardTitleElement className="text-md font-headline flex items-center text-primary">
-                           <PaintBucket className="h-4 w-4 mr-2" /> Desenhar Imagem <Badge variant="outline" className="ml-2 text-xs">Experimental</Badge>
-                        </CardTitleElement>
-                     </CardHeader>
-                     <CardContent className="px-4 pb-3 space-y-2">
-                        <div className="w-full h-32 bg-muted/30 border border-dashed border-border rounded-md flex items-center justify-center">
-                           <p className="text-xs text-muted-foreground">Área de desenho (em breve)</p>
-                        </div>
-                        <div className="flex items-center justify-center gap-2">
-                           <TooltipProvider>
-                              <Tooltip>
-                                 <TooltipTrigger asChild><Button variant="outline" size="icon" disabled className="h-8 w-8"><Pencil className="h-4 w-4"/></Button></TooltipTrigger>
-                                 <TooltipContent><p>Lápis (Em breve)</p></TooltipContent>
-                              </Tooltip>
-                              <Tooltip>
-                                 <TooltipTrigger asChild><Button variant="outline" size="icon" disabled className="h-8 w-8"><Eraser className="h-4 w-4"/></Button></TooltipTrigger>
-                                 <TooltipContent><p>Borracha (Em breve)</p></TooltipContent>
-                              </Tooltip>
-                              <Tooltip>
-                                 <TooltipTrigger asChild><Button variant="outline" size="icon" disabled className="h-8 w-8"><PaintBucket className="h-4 w-4"/></Button></TooltipTrigger>
-                                 <TooltipContent><p>Preencher (Em breve)</p></TooltipContent>
-                              </Tooltip>
-                               <Tooltip>
-                                 <TooltipTrigger asChild><Button variant="outline" size="icon" disabled className="h-8 w-8"><Trash2 className="h-4 w-4"/></Button></TooltipTrigger>
-                                 <TooltipContent><p>Limpar (Em breve)</p></TooltipContent>
-                              </Tooltip>
-                           </TooltipProvider>
-                        </div>
-                     </CardContent>
-                  </Card>
-
-                  <Card className="card-inset-shadow">
-                    <CardHeader className="card-header-accent pb-2 pt-3 px-4">
-                      <CardTitleElement className="text-md font-headline flex items-center text-primary">
-                        <TagsIcon className="h-4 w-4 mr-2" /> Detalhes Adicionais & Venda
-                      </CardTitleElement>
-                    </CardHeader>
-                    <CardContent className="px-4 pb-3 space-y-3">
-                        <div>
-                            <Label htmlFor="pixelTagsEdit" className="text-xs text-muted-foreground">Tags</Label>
-                            <Input
-                                id="pixelTagsEdit"
-                                type="text"
-                                placeholder="Ex: paisagem, lisboa, arte"
-                                value={editableTags}
-                                onChange={(e) => setEditableTags(e.target.value)}
-                                className="mt-1 h-10 text-sm input-shadow"
-                            />
-                            <p className="text-xs text-muted-foreground mt-1">Separadas por vírgula.</p>
-                        </div>
-                        <div>
-                            <Label htmlFor="pixelLinkEdit" className="text-xs text-muted-foreground">Link Associado</Label>
-                            <Input
-                                id="pixelLinkEdit"
-                                type="url"
-                                placeholder="https://exemplo.com"
-                                value={editableLinkUrl}
-                                onChange={(e) => setEditableLinkUrl(e.target.value)}
-                                className="mt-1 h-10 text-sm input-shadow"
-                            />
-                        </div>
-                        <Separator className="bg-border/50"/>
-                        <div className="flex items-center space-x-2 pt-1">
-                            <Switch
-                            id="for-sale-switch"
-                            checked={editableIsForSaleByOwner}
-                            onCheckedChange={setEditableIsForSaleByOwner}
-                            className="data-[state=checked]:bg-accent data-[state=unchecked]:bg-muted"
-                            />
-                            <Label htmlFor="for-sale-switch" className="text-sm cursor-pointer">Colocar pixel à venda</Label>
-                        </div>
-                        {editableIsForSaleByOwner && (
-                            <div>
-                            <Label htmlFor="sale-price" className="text-xs text-muted-foreground">Preço de Venda (Créditos)</Label>
-                            <Input
-                                id="sale-price"
-                                type="number"
-                                placeholder="Ex: 100"
-                                value={editableSalePrice}
-                                onChange={(e) => setEditableSalePrice(e.target.value)}
-                                className="mt-1 h-10 text-sm input-shadow"
-                                min="0"
-                            />
-                            </div>
-                        )}
-                    </CardContent>
-                  </Card>
-
+                
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Preço</Label>
+                  <div className="flex items-center">
+                    <Coins className="h-4 w-4 mr-1 text-primary" />
+                    <span className="font-bold text-primary">{selectedPixel.price}</span>
+                  </div>
                 </div>
-              </ScrollArea>
-              <DialogFooter className="gap-2 pt-3 dialog-footer-gold-accent rounded-b-lg">
-                 <Button variant="outline" onClick={() => setEditMode(false)} className="button-3d-effect-outline">Cancelar</Button>
-                 <Button onClick={handleSaveChanges} className="button-gradient-green button-3d-effect">
-                    <Save className="mr-1.5 h-3.5 w-3.5" /> Guardar Alterações
-                  </Button>
-              </DialogFooter>
-            </>
+              </div>
+              
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Localização</Label>
+                <div className="text-sm">
+                  <div>Região: {selectedPixel.region}</div>
+                  <div className="font-code">Coordenadas: ({selectedPixel.x}, {selectedPixel.y})</div>
+                  {selectedPixel.coordinates && (
+                    <div className="font-code text-xs text-muted-foreground">
+                      GPS: {selectedPixel.coordinates.lat.toFixed(4)}, {selectedPixel.coordinates.lon.toFixed(4)}
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {selectedPixel.description && (
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Descrição</Label>
+                  <p className="text-sm">{selectedPixel.description}</p>
+                </div>
+              )}
+              
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div>
+                  <div className="text-lg font-bold">{selectedPixel.views}</div>
+                  <div className="text-xs text-muted-foreground">Visualizações</div>
+                </div>
+                <div>
+                  <div className="text-lg font-bold text-red-400">{selectedPixel.likes}</div>
+                  <div className="text-xs text-muted-foreground">Gostos</div>
+                </div>
+                <div>
+                  <div className="text-lg font-bold text-green-400">
+                    {Math.floor((Date.now() - selectedPixel.lastModified.getTime()) / (1000 * 60 * 60 * 24))}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Dias</div>
+                </div>
+              </div>
+              
+              {selectedPixel.specialEffects && selectedPixel.specialEffects.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Efeitos Especiais</Label>
+                  <div className="flex flex-wrap gap-1">
+                    {selectedPixel.specialEffects.map(effect => (
+                      <Badge key={effect} variant="secondary" className="text-xs">
+                        {effect}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           )}
+          
+          <DialogFooter className="dialog-footer-gold-accent">
+            {selectedPixel && !selectedPixel.isOwned && tools.mode === 'buy' && (
+              <Button
+                onClick={handlePurchasePixel}
+                disabled={isLoading}
+                className="w-full button-gradient-gold button-3d-effect"
+              >
+                {isLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                    Processando...
+                  </>
+                ) : (
+                  <>
+                    <ShoppingCart className="h-4 w-4 mr-2" />
+                    Comprar por {selectedPixel.price} créditos
+                  </>
+                )}
+              </Button>
+            )}
+            
+            {selectedPixel?.isOwned && (
+              <div className="w-full text-center">
+                <Badge variant="secondary" className="bg-green-500/20 text-green-400 border-green-500/30">
+                  <Crown className="h-3 w-3 mr-1" />
+                  Propriedade de {selectedPixel.owner}
+                </Badge>
+              </div>
+            )}
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <div className="flex-grow w-full h-full p-4 md:p-8 flex items-center justify-center">
-        <div
-            ref={containerRef}
-            className="w-full h-full cursor-grab active:cursor-grabbing overflow-hidden relative rounded-xl"
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUpOrLeave}
-            onMouseLeave={handleMouseUpOrLeave}
-        >
-            <div
-            style={{
-                transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`,
-                transition: isDragging ? 'none' : 'transform 0.05s ease-out',
-                width: `${canvasDrawWidth}px`,
-                height: `${canvasDrawHeight}px`,
-                transformOrigin: 'top left',
-                position: 'relative', 
-            }}
-            >
-            <canvas
-                ref={pixelCanvasRef}
-                className="absolute top-0 left-0 w-full h-full z-10" 
-                style={{ imageRendering: 'pixelated' }} 
-            />
-            {(!mapData && isClient) && <PortugalMapSvg onMapDataLoaded={handleMapDataLoaded} className="invisible absolute" />}
-            </div>
-            <canvas
-                ref={outlineCanvasRef}
-                className="absolute top-0 left-0 w-full h-full z-20 pointer-events-none"
-                style={{ imageRendering: 'auto' }}
-            />
+      {/* Loading Overlay */}
+      {isLoading && (
+        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <Card className="bg-card/95 backdrop-blur-sm border-primary/20 shadow-xl">
+            <CardContent className="p-6 text-center space-y-4">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto" />
+              <div>
+                <h3 className="font-headline text-lg text-primary">Processando Compra</h3>
+                <p className="text-sm text-muted-foreground">Aguarde enquanto processamos a sua transação...</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </div>
-
-
-      <div className="absolute bottom-6 right-6 z-20 animate-scale-in animation-delay-500" pointerEvents="auto">
-        <Dialog>
-          <DialogTrigger asChild>
-             <Button pointerEvents="auto" size="icon" className="rounded-full w-14 h-14 shadow-lg button-gradient-gold button-3d-effect hover:button-gold-glow active:scale-95">
-                <Star className="h-7 w-7" />
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-sm border-primary/30 shadow-xl" data-dialog-content pointerEvents="auto">
-            <DialogHeader className="dialog-header-gold-accent rounded-t-lg">
-              <DialogTitle className="font-headline text-shadow-gold-sm">Ações Rápidas do Universo</DialogTitle>
-              <DialogDescriptionElement className="text-muted-foreground">
-                Explore, filtre e interaja com o mapa de pixels.
-              </DialogDescriptionElement>
-            </DialogHeader>
-            <div className="grid gap-3 py-4">
-              <Button pointerEvents="auto" variant="outline" className="button-3d-effect-outline"><Search className="mr-2 h-4 w-4" />Explorar Pixel por Coordenadas</Button>
-              <Button pointerEvents="auto" variant="outline" className="button-3d-effect-outline"><PaletteIconLucide className="mr-2 h-4 w-4" />Filtros de Visualização</Button>
-              <Button pointerEvents="auto" variant="outline" className="button-3d-effect-outline"><Sparkles className="mr-2 h-4 w-4" />Ver Eventos Atuais</Button>
-               <Button pointerEvents="auto" variant="outline" onClick={handleGoToMyLocation} className="button-3d-effect-outline"><MapPinIconLucide className="mr-2 h-4 w-4" />Ir para Minha Localização</Button>
-            </div>
-            <DialogFooter className="dialog-footer-gold-accent rounded-b-lg">
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+      )}
     </div>
   );
 }
