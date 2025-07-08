@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Award, CreditCard, Sparkles, Gift } from "lucide-react"; 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { cn } from "@/lib/utils";
 
 export default function UserProfileHeader() {
   const user = {

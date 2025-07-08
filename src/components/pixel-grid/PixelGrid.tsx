@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import { ZoomIn, ZoomOut, RotateCcw, MapPin, Palette, ShoppingCart, Eye, Sparkles, Target, Coins, Gift, Info, Wand2, MousePointer2, Crosshair, Move, Search, Filter, Zap, Star, Crown, Gem, Heart, TrendingUp, Activity, Layers, Grid3X3, Maximize2, Minimize2, RotateCw, Paintbrush, Pipette, Save, Share2, Download, Upload, Timer, Flame, CloudLightning as Lightning, Rocket, Diamond, Trophy } from 'lucide-react';
-import { PortugalMapSvg } from './PortugalMapSvg';
+import PortugalMapSvg from './PortugalMapSvg';
 import { mapPixelToApproxGps } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -151,8 +151,9 @@ const generatePixelData = (): Pixel[] => {
 };
 
 export default function PixelGrid() {
-  // State management
-  const [pixels] = useState<Pixel[]>(() => generatePixelData());
+  const [pixels, setPixels] = useState<Pixel[]>([]);
+  const [mapTexture, setMapTexture] = useState<CanvasPattern | null>(null);
+  const [isMapReady, setIsMapReady] = useState(false);
   const [viewport, setViewport] = useState<ViewportState>({ x: 0, y: 0, scale: 1, rotation: 0 });
   const [tools, setTools] = useState<ToolState>({
     mode: 'view',
@@ -177,9 +178,8 @@ export default function PixelGrid() {
   const [pulsePhase, setPulsePhase] = useState(0);
   const [sparklePositions, setSparklePositions] = useState<Array<{x: number, y: number, intensity: number}>>([]);
   
-  // Refs
   const containerRef = useRef<HTMLDivElement>(null);
-  const svgRef = useRef<SVGSVGElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>();
   const lastTouchDistance = useRef<number>(0);
   const isDragging = useRef(false);
@@ -187,13 +187,36 @@ export default function PixelGrid() {
   
   const { toast } = useToast();
 
-  // Enhanced animation system
+  const handleImageReady = useCallback((dataUrl: string) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const img = new Image();
+    img.onload = () => {
+      const pattern = ctx.createPattern(img, 'repeat');
+      if (pattern) {
+        setMapTexture(pattern);
+        setIsMapReady(true);
+      }
+      URL.revokeObjectURL(dataUrl); // Clean up
+    };
+    img.onerror = () => {
+        console.error("Failed to load map image for texture.");
+    }
+    img.src = dataUrl;
+  }, []);
+
+  useEffect(() => {
+    setPixels(generatePixelData());
+  }, []);
+
   useEffect(() => {
     const animate = () => {
       setAnimationFrame(prev => prev + 1);
       setPulsePhase(prev => (prev + 0.05) % (Math.PI * 2));
       
-      // Update sparkle positions
       if (Math.random() < 0.1) {
         setSparklePositions(prev => [
           ...prev.slice(-20),
@@ -216,7 +239,6 @@ export default function PixelGrid() {
     };
   }, []);
 
-  // Enhanced pixel filtering
   const filteredPixels = useMemo(() => {
     return pixels.filter(pixel => {
       if (tools.filter.rarity.length > 0 && !tools.filter.rarity.includes(pixel.rarity)) return false;
@@ -229,7 +251,47 @@ export default function PixelGrid() {
     });
   }, [pixels, tools.filter]);
 
-  // Enhanced event handlers
+    const drawGrid = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !mapTexture) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    const { width, height } = canvas.getBoundingClientRect();
+    canvas.width = width;
+    canvas.height = height;
+
+    ctx.save();
+    ctx.clearRect(0, 0, width, height);
+
+    ctx.translate(viewport.x, viewport.y);
+    ctx.scale(viewport.scale, viewport.scale);
+
+    // Draw map background using the texture
+    ctx.fillStyle = mapTexture;
+    ctx.fillRect(0, 0, GRID_SIZE * PIXEL_SIZE, GRID_SIZE * PIXEL_SIZE);
+
+    // Draw owned pixels over the map
+    pixels.forEach(pixel => {
+      if (pixel.isOwned) {
+        ctx.fillStyle = pixel.color;
+        ctx.globalAlpha = 0.8;
+        ctx.fillRect(pixel.x * PIXEL_SIZE, pixel.y * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
+        ctx.globalAlpha = 1.0;
+      }
+    });
+
+    ctx.restore();
+  }, [viewport, pixels, mapTexture]);
+
+  useEffect(() => {
+    if (isMapReady) {
+      drawGrid();
+    }
+  }, [drawGrid, isMapReady, viewport]);
+
+
   const handlePixelClick = useCallback((pixel: Pixel) => {
     setSelectedPixel(pixel);
     
@@ -243,7 +305,6 @@ export default function PixelGrid() {
       setShowPixelDialog(true);
     }
     
-    // Add click effect
     const clickEffect = document.createElement('div');
     clickEffect.className = 'absolute pointer-events-none animate-ping';
     clickEffect.style.cssText = `
@@ -251,8 +312,9 @@ export default function PixelGrid() {
       height: 20px;
       background: radial-gradient(circle, ${RARITY_CONFIG[pixel.rarity].color}, transparent);
       border-radius: 50%;
-      left: ${pixel.x * PIXEL_SIZE * viewport.scale}px;
-      top: ${pixel.y * PIXEL_SIZE * viewport.scale}px;
+      left: ${pixel.x * PIXEL_SIZE * viewport.scale + viewport.x}px;
+      top: ${pixel.y * PIXEL_SIZE * viewport.scale + viewport.y}px;
+      transform: translate(-50%, -50%);
       z-index: 1000;
     `;
     
@@ -260,25 +322,27 @@ export default function PixelGrid() {
       containerRef.current.appendChild(clickEffect);
       setTimeout(() => clickEffect.remove(), 1000);
     }
-  }, [tools.mode, viewport.scale, toast]);
+  }, [tools.mode, viewport.scale, viewport.x, viewport.y, toast]);
 
   const handlePixelHover = useCallback((pixel: Pixel | null) => {
     setHoveredPixel(pixel);
   }, []);
 
-  // Enhanced zoom controls
   const handleZoom = useCallback((delta: number, centerX?: number, centerY?: number) => {
     setViewport(prev => {
       const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, prev.scale * (1 + delta)));
       const scaleRatio = newScale / prev.scale;
       
-      if (centerX !== undefined && centerY !== undefined) {
-        const newX = centerX - (centerX - prev.x) * scaleRatio;
-        const newY = centerY - (centerY - prev.y) * scaleRatio;
-        return { ...prev, scale: newScale, x: newX, y: newY };
-      }
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (!rect) return prev;
+
+      const clientX = centerX ?? rect.width / 2;
+      const clientY = centerY ?? rect.height / 2;
+
+      const newX = clientX - (clientX - prev.x) * scaleRatio;
+      const newY = clientY - (clientY - prev.y) * scaleRatio;
       
-      return { ...prev, scale: newScale };
+      return { ...prev, scale: newScale, x: newX, y: newY };
     });
   }, []);
 
@@ -298,7 +362,6 @@ export default function PixelGrid() {
     });
   }, [toast]);
 
-  // Enhanced mouse/touch handlers
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button === 0) {
       isDragging.current = true;
@@ -313,8 +376,23 @@ export default function PixelGrid() {
       const deltaY = e.clientY - lastMousePos.current.y;
       handlePan(deltaX, deltaY);
       lastMousePos.current = { x: e.clientX, y: e.clientY };
+    } else {
+        const rect = canvasRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        const x = (e.clientX - rect.left - viewport.x) / viewport.scale;
+        const y = (e.clientY - rect.top - viewport.y) / viewport.scale;
+
+        const pixelX = Math.floor(x / PIXEL_SIZE);
+        const pixelY = Math.floor(y / PIXEL_SIZE);
+
+        if (pixelX >= 0 && pixelX < GRID_SIZE && pixelY >= 0 && pixelY < GRID_SIZE) {
+            const pixel = pixels.find(p => p.x === pixelX && p.y === pixelY);
+            handlePixelHover(pixel || null);
+        } else {
+            handlePixelHover(null);
+        }
     }
-  }, [handlePan]);
+  }, [handlePan, viewport, pixels, handlePixelHover]);
 
   const handleMouseUp = useCallback(() => {
     isDragging.current = false;
@@ -331,9 +409,9 @@ export default function PixelGrid() {
     }
   }, [handleZoom]);
 
-  // Enhanced touch handlers
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (e.touches.length === 2) {
+      isDragging.current = false;
       const touch1 = e.touches[0];
       const touch2 = e.touches[1];
       const distance = Math.sqrt(
@@ -352,6 +430,7 @@ export default function PixelGrid() {
     e.preventDefault();
     
     if (e.touches.length === 2) {
+      isDragging.current = false;
       const touch1 = e.touches[0];
       const touch2 = e.touches[1];
       const distance = Math.sqrt(
@@ -378,19 +457,22 @@ export default function PixelGrid() {
       lastMousePos.current = { x: touch.clientX, y: touch.clientY };
     }
   }, [handleZoom, handlePan]);
-
-  const handleTouchEnd = useCallback(() => {
-    isDragging.current = false;
-    lastTouchDistance.current = 0;
+  
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length < 2) {
+      isDragging.current = false;
+    }
+    if (e.touches.length < 2) {
+      lastTouchDistance.current = 0;
+    }
   }, []);
 
-  // Enhanced pixel purchase
+
   const handlePurchasePixel = useCallback(async () => {
     if (!selectedPixel) return;
     
     setIsLoading(true);
     
-    // Simulate purchase process
     await new Promise(resolve => setTimeout(resolve, 1500));
     
     toast({
@@ -398,112 +480,17 @@ export default function PixelGrid() {
       description: `Parabéns! Agora possui o pixel ${selectedPixel.rarity} por ${selectedPixel.price} créditos!`,
     });
     
+    // This is where you would update the pixel state, for example:
+    // setPixels(prev => prev.map(p => p.id === selectedPixel.id ? {...p, isOwned: true, owner: 'CurrentUser'} : p));
+
     setIsLoading(false);
     setShowPixelDialog(false);
     setSelectedPixel(null);
   }, [selectedPixel, toast]);
+  
 
-  // Enhanced pixel rendering with effects
-  const renderPixel = useCallback((pixel: Pixel) => {
-    const config = RARITY_CONFIG[pixel.rarity];
-    const x = pixel.x * PIXEL_SIZE;
-    const y = pixel.y * PIXEL_SIZE;
-    
-    // Calculate dynamic effects
-    const pulseIntensity = pixel.specialEffects?.includes('pulse') ? 
-      0.3 + 0.2 * Math.sin(pulsePhase + pixel.x * 0.1 + pixel.y * 0.1) : 0;
-    
-    const sparkleEffect = pixel.specialEffects?.includes('sparkle') && 
-      sparklePositions.some(sp => Math.abs(sp.x - pixel.x) < 2 && Math.abs(sp.y - pixel.y) < 2);
-    
-    const isHighlighted = hoveredPixel?.id === pixel.id || selectedPixel?.id === pixel.id;
-    
-    return (
-      <g key={pixel.id}>
-        {/* Glow effect */}
-        {(pulseIntensity > 0 || isHighlighted) && (
-          <rect
-            x={x - 1}
-            y={y - 1}
-            width={PIXEL_SIZE + 2}
-            height={PIXEL_SIZE + 2}
-            fill={config.glow}
-            opacity={pulseIntensity + (isHighlighted ? 0.5 : 0)}
-            rx={1}
-          />
-        )}
-        
-        {/* Main pixel */}
-        <rect
-          x={x}
-          y={y}
-          width={PIXEL_SIZE}
-          height={PIXEL_SIZE}
-          fill={pixel.isOwned ? pixel.color : config.color}
-          stroke={isHighlighted ? '#fbbf24' : 'transparent'}
-          strokeWidth={isHighlighted ? 1 : 0}
-          opacity={pixel.isOwned ? 0.8 : 1}
-          rx={0.5}
-          className={cn(
-            "transition-all duration-200 cursor-pointer",
-            tools.mode === 'buy' && !pixel.isOwned && "hover:brightness-125",
-            pixel.isHot && "animate-pulse",
-            pixel.isTrending && "animate-bounce"
-          )}
-          onClick={() => handlePixelClick(pixel)}
-          onMouseEnter={() => handlePixelHover(pixel)}
-          onMouseLeave={() => handlePixelHover(null)}
-        />
-        
-        {/* Special indicators */}
-        {pixel.isNew && (
-          <circle
-            cx={x + PIXEL_SIZE - 2}
-            cy={y + 2}
-            r={1.5}
-            fill="#10b981"
-            className="animate-ping"
-          />
-        )}
-        
-        {pixel.isHot && (
-          <circle
-            cx={x + 2}
-            cy={y + 2}
-            r={1}
-            fill="#ef4444"
-            className="animate-pulse"
-          />
-        )}
-        
-        {sparkleEffect && (
-          <circle
-            cx={x + PIXEL_SIZE/2}
-            cy={y + PIXEL_SIZE/2}
-            r={2}
-            fill="#fbbf24"
-            opacity={0.8}
-            className="animate-ping"
-          />
-        )}
-        
-        {/* Rarity indicator */}
-        {pixel.rarity !== 'common' && (
-          <rect
-            x={x}
-            y={y}
-            width={2}
-            height={2}
-            fill={config.color}
-            opacity={0.9}
-          />
-        )}
-      </g>
-    );
-  }, [hoveredPixel, selectedPixel, pulsePhase, sparklePositions, tools.mode, handlePixelClick, handlePixelHover]);
-
-  // Statistics calculations
   const stats = useMemo(() => {
+    if (pixels.length === 0) return { total: 0, owned: 0, available: 0, totalValue: 0, avgPrice: 0, rarityStats: {}, ownershipPercentage: 0 };
     const total = pixels.length;
     const owned = pixels.filter(p => p.isOwned).length;
     const available = total - owned;
@@ -528,12 +515,8 @@ export default function PixelGrid() {
 
   return (
     <div className="relative w-full h-full bg-gradient-to-br from-background via-background/95 to-primary/5 overflow-hidden">
-      {/* Enhanced Background Effects */}
-      <div className="absolute inset-0 opacity-20">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(212,167,87,0.1),transparent_50%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_48%,rgba(212,167,87,0.05)_49%,rgba(212,167,87,0.05)_51%,transparent_52%)] bg-[length:20px_20px]" />
-      </div>
-      
+      <PortugalMapSvg onImageReady={handleImageReady} />
+
       {/* Floating Particles */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {Array.from({ length: 20 }).map((_, i) => (
@@ -550,7 +533,6 @@ export default function PixelGrid() {
         ))}
       </div>
 
-      {/* Enhanced Header */}
       <div className="absolute top-0 left-0 right-0 z-20 bg-gradient-to-b from-background/95 via-background/90 to-transparent backdrop-blur-sm border-b border-primary/20">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center space-x-4">
@@ -579,7 +561,6 @@ export default function PixelGrid() {
         </div>
       </div>
 
-      {/* Enhanced Tool Panel */}
       <div className="absolute top-20 left-4 z-20">
         <Card className="bg-card/95 backdrop-blur-sm border-primary/20 shadow-xl">
           <CardHeader className="pb-2">
@@ -646,7 +627,6 @@ export default function PixelGrid() {
         </Card>
       </div>
 
-      {/* Enhanced Zoom Controls */}
       <div className="absolute top-20 right-4 z-20">
         <Card className="bg-card/95 backdrop-blur-sm border-primary/20 shadow-xl">
           <CardContent className="p-3 space-y-2">
@@ -679,7 +659,6 @@ export default function PixelGrid() {
         </Card>
       </div>
 
-      {/* Enhanced Stats Panel */}
       <div className="absolute bottom-4 left-4 z-20">
         <Card className="bg-card/95 backdrop-blur-sm border-primary/20 shadow-xl">
           <CardHeader className="pb-2">
@@ -726,7 +705,6 @@ export default function PixelGrid() {
         </Card>
       </div>
 
-      {/* Enhanced Pixel Info Panel */}
       {hoveredPixel && (
         <div className="absolute bottom-4 right-4 z-20 pointer-events-none">
           <Card className="bg-card/95 backdrop-blur-sm border-primary/20 shadow-xl animate-in slide-in-from-bottom-2">
@@ -770,11 +748,8 @@ export default function PixelGrid() {
                   <span>{hoveredPixel.region}</span>
                 </div>
                 {hoveredPixel.coordinates && (
-                  <div className="flex justify-between">
-                    <span>GPS:</span>
-                    <span className="font-code text-xs">
-                      {hoveredPixel.coordinates.lat.toFixed(4)}, {hoveredPixel.coordinates.lon.toFixed(4)}
-                    </span>
+                  <div className="font-code text-xs text-muted-foreground">
+                    GPS: {hoveredPixel.coordinates.lat.toFixed(4)}, {hoveredPixel.coordinates.lon.toFixed(4)}
                   </div>
                 )}
               </div>
@@ -783,10 +758,9 @@ export default function PixelGrid() {
         </div>
       )}
 
-      {/* Enhanced Main Canvas */}
       <div
         ref={containerRef}
-        className="absolute inset-0 cursor-move overflow-hidden"
+        className="absolute inset-0 cursor-move overflow-hidden map-glow"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -796,80 +770,12 @@ export default function PixelGrid() {
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        <svg
-          ref={svgRef}
-          width="100%"
-          height="100%"
-          viewBox={`${-viewport.x} ${-viewport.y} ${window.innerWidth / viewport.scale} ${window.innerHeight / viewport.scale}`}
+        <canvas
+          ref={canvasRef}
           className="w-full h-full"
-          style={{
-            transform: `rotate(${viewport.rotation}deg)`,
-            filter: 'drop-shadow(0 0 10px rgba(212, 167, 87, 0.1))'
-          }}
-        >
-          {/* Enhanced Background Grid */}
-          <defs>
-            <pattern id="grid" width={PIXEL_SIZE * 10} height={PIXEL_SIZE * 10} patternUnits="userSpaceOnUse">
-              <path
-                d={`M ${PIXEL_SIZE * 10} 0 L 0 0 0 ${PIXEL_SIZE * 10}`}
-                fill="none"
-                stroke="rgba(212, 167, 87, 0.1)"
-                strokeWidth="0.5"
-              />
-            </pattern>
-            
-            <pattern id="finegrid" width={PIXEL_SIZE} height={PIXEL_SIZE} patternUnits="userSpaceOnUse">
-              <path
-                d={`M ${PIXEL_SIZE} 0 L 0 0 0 ${PIXEL_SIZE}`}
-                fill="none"
-                stroke="rgba(212, 167, 87, 0.05)"
-                strokeWidth="0.25"
-              />
-            </pattern>
-            
-            {/* Glow filters */}
-            <filter id="glow">
-              <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-              <feMerge> 
-                <feMergeNode in="coloredBlur"/>
-                <feMergeNode in="SourceGraphic"/>
-              </feMerge>
-            </filter>
-          </defs>
-          
-          {/* Grid backgrounds */}
-          <rect width="100%" height="100%" fill="url(#grid)" opacity={viewport.scale > 0.5 ? 1 : 0} />
-          <rect width="100%" height="100%" fill="url(#finegrid)" opacity={viewport.scale > 2 ? 1 : 0} />
-          
-          {/* Portugal Map Outline */}
-          <g transform={`scale(${PIXEL_SIZE}) translate(0, 0)`}>
-            <PortugalMapSvg 
-              className="fill-primary/10 stroke-primary/30" 
-              strokeWidth={0.5 / viewport.scale}
-            />
-          </g>
-          
-          {/* Enhanced Pixels */}
-          <g>
-            {filteredPixels.map(renderPixel)}
-          </g>
-          
-          {/* Sparkle effects */}
-          {sparklePositions.map((sparkle, i) => (
-            <circle
-              key={i}
-              cx={sparkle.x * PIXEL_SIZE}
-              cy={sparkle.y * PIXEL_SIZE}
-              r={2 * sparkle.intensity}
-              fill="#fbbf24"
-              opacity={sparkle.intensity * 0.8}
-              className="animate-ping"
-            />
-          ))}
-        </svg>
+        />
       </div>
 
-      {/* Enhanced Pixel Details Dialog */}
       <Dialog open={showPixelDialog} onOpenChange={setShowPixelDialog}>
         <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-sm border-primary/20">
           <DialogHeader className="dialog-header-gold-accent">

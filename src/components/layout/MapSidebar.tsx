@@ -23,6 +23,7 @@ import {
   Package,
   PackageOpen,
   Users2,
+  Grid3X3,
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';

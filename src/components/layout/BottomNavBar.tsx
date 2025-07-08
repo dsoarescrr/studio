@@ -1,10 +1,10 @@
-
 'use client';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, User, Trophy, BarChartHorizontalBig, Users } from 'lucide-react'; // Changed BarChart3 to BarChartHorizontalBig
 import { cn } from '@/lib/utils';
+import React, { useState, useEffect } from 'react';
 
 const navLinks = [
   { href: "/", label: "Universo", icon: Home },
@@ -63,7 +63,7 @@ export default function BottomNavBar() {
         </div>
         
         <div className="container mx-auto flex h-full items-center justify-around max-w-screen-md px-2">
-          {navLinks.map((link) => {
+          {navLinks.map((link, index) => {
             const isActive = pathname === link.href;
             return (
               <Link

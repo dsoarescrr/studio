@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -9,9 +8,10 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { ArrowUpRight, Award, Camera, CreditCard, Gem, MapPin, Settings, User as UserIcon, Edit3, Gift, Coins, Globe, Link as LinkIcon, Twitter, Instagram, Github, BookImage, FolderPlus, Trophy } from "lucide-react";
 import Image from "next/image";
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { achievementsData, type Achievement } from '@/data/achievements-data'; 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'; 
+import { cn } from "@/lib/utils";
 
 export default function MemberPage() {
   const user = {
@@ -109,19 +109,7 @@ export default function MemberPage() {
                 <Button variant="outline" size="icon" className="absolute -bottom-2 -right-2 h-9 w-9 rounded-full border-2 border-card bg-muted hover:bg-accent shadow-md button-hover-lift">
                   <Camera className="h-4 w-4 text-foreground" />
                 </Button>
-              </div>
-                  <AvatarImage src={user.avatarUrl} alt={user.name} data-ai-hint={user.dataAiHint} />
-                  <AvatarFallback className="font-headline text-3xl">{user.name.substring(0, 1)}{user.username.substring(1,2).toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <Badge variant="default" className="absolute -top-1 -left-2 text-xs px-1.5 py-0.5 bg-primary text-primary-foreground border-2 border-card shadow-md">
-                  {user.rank === 1 && <Award className="h-3 w-3 mr-1" />}
-                  {user.rank > 1 && <Gem className="h-3 w-3 mr-1" />}
-                  {user.rank > 0 ? `Top ${user.rank}` : `Nível ${user.level}`}
-                </Badge>
-                 <Button variant="outline" size="icon" className="absolute -bottom-2 -right-2 h-9 w-9 rounded-full border-2 border-card bg-muted hover:bg-accent shadow-md">
-                  <Camera className="h-4 w-4 text-foreground" />
-                </Button>
-              </div>
+            </div>
 
               <div className="mt-4">
                 <h1 className="text-3xl font-headline font-bold text-foreground flex items-center justify-center flex-wrap animate-fade-in animation-delay-200">
@@ -287,4 +275,3 @@ export default function MemberPage() {
     </div>
   );
 }
-
