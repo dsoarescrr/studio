@@ -699,7 +699,7 @@ export default function PixelPurchaseModal({
                 </span>
                 <span className="flex items-center gap-2">
                   <MessageSquare className="h-5 w-5" />
-                  {pixelData.comments.length} comentários
+                  {pixelData.comments?.length || 0} comentários
                 </span>
                 {pixelData.isProtected && (
                   <Badge variant="secondary" className="text-sm">
@@ -1605,7 +1605,7 @@ export default function PixelPurchaseModal({
 
                         {/* Comments List */}
                         <div className="space-y-4">
-                          {pixelData.comments.map((comment) => (
+                          {(pixelData.comments || []).map((comment) => (
                             <Card key={comment.id} className="p-4">
                               <div className="flex items-start gap-3">
                                 <Avatar className="h-10 w-10">
@@ -1636,7 +1636,7 @@ export default function PixelPurchaseModal({
                           ))}
                         </div>
 
-                        {pixelData.comments.length === 0 && (
+                        {(!pixelData.comments || pixelData.comments.length === 0) && (
                           <div className="text-center py-8 text-muted-foreground">
                             <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
                             <div>Ainda não há comentários</div>
