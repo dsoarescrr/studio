@@ -139,7 +139,7 @@ interface PixelData {
   x: number;
   y: number;
   color: string;
-  owner?: PixelOwner;
+  owner?: PixelOwner | string;
   price: number;
   lastSold?: Date;
   views: number;
@@ -388,7 +388,7 @@ const rarityConfig = {
 export default function PixelPurchaseModal({
   isOpen,
   onClose,
-  pixelData,
+  pixelData: rawPixelData,
   userCredits,
   userSpecialCredits,
   onPurchase
@@ -437,6 +437,32 @@ export default function PixelPurchaseModal({
   const [animationSpeed, setAnimationSpeed] = useState([1]);
   const [animationFrames, setAnimationFrames] = useState<ImageData[]>([]);
   const [currentFrame, setCurrentFrame] = useState(0);
+
+  // Normalize pixelData to handle malformed owner prop
+  const pixelData = React.useMemo(() => {
+    if (!rawPixelData) {
+      return null;
+    }
+    if (rawPixelData.owner && typeof rawPixelData.owner === 'string') {
+      const ownerName = rawPixelData.owner;
+      const newOwner: PixelOwner = {
+        id: `owner_${ownerName}`,
+        name: ownerName,
+        username: `@${ownerName}`,
+        avatarUrl: 'https://placehold.co/64x64.png',
+        level: 1,
+        joinDate: new Date(),
+        totalPixels: 1,
+        reputation: 0,
+        isVerified: false,
+        lastSeen: new Date(),
+        bio: 'A user of Pixel Universe.'
+      };
+      return { ...rawPixelData, owner: newOwner } as PixelData;
+    }
+    return rawPixelData as PixelData;
+  }, [rawPixelData]);
+
 
   // Effects
   useEffect(() => {
@@ -665,6 +691,8 @@ export default function PixelPurchaseModal({
   const formatDateTime = (date: Date | undefined | null) => date ? date.toLocaleString('pt-PT') : 'N/A';
 
   if (!pixelData) return null;
+
+  const owner = pixelData.owner as PixelOwner | undefined;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -1121,7 +1149,7 @@ export default function PixelPurchaseModal({
                   </TabsContent>
 
                   <TabsContent value="owner" className="mt-0 space-y-6">
-                    {pixelData.owner ? (
+                    {owner ? (
                       <Card>
                         <CardHeader>
                           <CardTitle className="flex items-center gap-2">
@@ -1132,39 +1160,39 @@ export default function PixelPurchaseModal({
                         <CardContent className="space-y-6">
                           <div className="flex items-start gap-4">
                             <Avatar className="h-16 w-16 border-2 border-primary">
-                              <AvatarImage src={pixelData.owner.avatarUrl} alt={pixelData.owner.name} />
-                              <AvatarFallback>{pixelData.owner.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                              <AvatarImage src={owner.avatarUrl} alt={owner.name} />
+                              <AvatarFallback>{owner.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                             </Avatar>
                             <div className="flex-1 space-y-2">
                               <div className="flex items-center gap-2">
-                                <h3 className="text-xl font-semibold">{pixelData.owner.name}</h3>
-                                {pixelData.owner.isVerified && (
+                                <h3 className="text-xl font-semibold">{owner.name}</h3>
+                                {owner.isVerified && (
                                   <Badge variant="default" className="text-xs">
                                     <CheckCircle className="h-3 w-3 mr-1" />
                                     Verificado
                                   </Badge>
                                 )}
                               </div>
-                              <p className="text-sm text-muted-foreground">{pixelData.owner.username}</p>
-                              <p className="text-sm">{pixelData.owner.bio}</p>
+                              <p className="text-sm text-muted-foreground">{owner.username}</p>
+                              <p className="text-sm">{owner.bio}</p>
                             </div>
                           </div>
 
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                             <Card className="p-3 text-center">
-                              <div className="text-2xl font-bold text-primary">{pixelData.owner.level}</div>
+                              <div className="text-2xl font-bold text-primary">{owner.level}</div>
                               <div className="text-xs text-muted-foreground">Nível</div>
                             </Card>
                             <Card className="p-3 text-center">
-                              <div className="text-2xl font-bold text-primary">{pixelData.owner.totalPixels}</div>
+                              <div className="text-2xl font-bold text-primary">{owner.totalPixels}</div>
                               <div className="text-xs text-muted-foreground">Pixels</div>
                             </Card>
                             <Card className="p-3 text-center">
-                              <div className="text-2xl font-bold text-primary">{pixelData.owner.reputation}</div>
+                              <div className="text-2xl font-bold text-primary">{owner.reputation}</div>
                               <div className="text-xs text-muted-foreground">Reputação</div>
                             </Card>
                             <Card className="p-3 text-center">
-                              <div className="text-2xl font-bold text-primary">{Math.floor((Date.now() - pixelData.owner.joinDate.getTime()) / (1000 * 60 * 60 * 24))}</div>
+                              <div className="text-2xl font-bold text-primary">{Math.floor((Date.now() - owner.joinDate.getTime()) / (1000 * 60 * 60 * 24))}</div>
                               <div className="text-xs text-muted-foreground">Dias ativo</div>
                             </Card>
                           </div>
@@ -1172,11 +1200,11 @@ export default function PixelPurchaseModal({
                           <div className="space-y-2">
                             <div className="flex justify-between text-sm">
                               <span>Membro desde:</span>
-                              <span>{formatDate(pixelData.owner.joinDate)}</span>
+                              <span>{formatDate(owner.joinDate)}</span>
                             </div>
                             <div className="flex justify-between text-sm">
                               <span>Última atividade:</span>
-                              <span>{formatDateTime(pixelData.owner.lastSeen)}</span>
+                              <span>{formatDateTime(owner.lastSeen)}</span>
                             </div>
                           </div>
 
