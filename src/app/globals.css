@@ -122,6 +122,61 @@
   html, body {
     @apply h-full;
   }
+
+  /* Mobile-specific optimizations */
+  @media (max-width: 640px) {
+    .container {
+      @apply px-3;
+    }
+    
+    /* Ensure touch targets are at least 44px */
+    button, a, [role="button"] {
+      min-height: 44px;
+      min-width: 44px;
+    }
+    
+    /* Optimize text sizes for mobile */
+    .text-xs { font-size: 0.75rem; }
+    .text-sm { font-size: 0.875rem; }
+    .text-base { font-size: 1rem; }
+    
+    /* Improve spacing for mobile */
+    .space-y-1 > * + * { margin-top: 0.25rem; }
+    .space-y-2 > * + * { margin-top: 0.5rem; }
+    .space-y-3 > * + * { margin-top: 0.75rem; }
+    .space-y-4 > * + * { margin-top: 1rem; }
+    
+    /* Mobile-friendly card padding */
+    .card-mobile {
+      @apply p-3 rounded-lg;
+    }
+  }
+
+  /* Tablet optimizations */
+  @media (min-width: 641px) and (max-width: 1024px) {
+    .container {
+      @apply px-4;
+    }
+  }
+
+  /* Safe area handling for devices with notches */
+  @supports (padding: max(0px)) {
+    .safe-top {
+      padding-top: max(env(safe-area-inset-top), 1rem);
+    }
+    
+    .safe-bottom {
+      padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+    }
+    
+    .safe-left {
+      padding-left: max(env(safe-area-inset-left), 1rem);
+    }
+    
+    .safe-right {
+      padding-right: max(env(safe-area-inset-right), 1rem);
+    }
+  }
 }
 
 @layer utilities {

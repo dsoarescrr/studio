@@ -2,29 +2,51 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, User, Trophy, BarChartHorizontalBig, Users } from 'lucide-react'; // Changed BarChart3 to BarChartHorizontalBig
+import { Home, User, Trophy, BarChartHorizontalBig, Users, Plus, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import React, { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 const navLinks = [
-  { href: "/", label: "Universo", icon: Home },
-  { href: "/member", label: "Perfil", icon: User },
-  { href: "/achievements", label: "Conquistas", icon: Trophy },
-  { href: "/ranking", label: "Estatísticas", icon: BarChartHorizontalBig }, // Changed label and icon
-  { href: "/community", label: "Comunidade", icon: Users },
+  { href: "/", label: "Universo", icon: Home, color: "text-blue-500" },
+  { href: "/achievements", label: "Conquistas", icon: Trophy, color: "text-yellow-500" },
+  { href: "/ranking", label: "Ranking", icon: BarChartHorizontalBig, color: "text-green-500" },
+  { href: "/community", label: "Comunidade", icon: Users, color: "text-purple-500" },
+  { href: "/member", label: "Perfil", icon: User, color: "text-pink-500" },
 ];
 
-// Define CSS variable for height, to be used in layout for padding
-const BOTTOM_NAV_HEIGHT = '64px'; // Adjust as needed
+// Enhanced height for better touch targets on mobile
+const BOTTOM_NAV_HEIGHT = '72px';
 
 export default function BottomNavBar() {
   const pathname = usePathname();
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isVisible, setIsVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
 
   useEffect(() => {
     const currentIndex = navLinks.findIndex(link => link.href === pathname);
     setActiveIndex(currentIndex >= 0 ? currentIndex : 0);
   }, [pathname]);
+
+  // Auto-hide on scroll (optional)
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      
+      if (currentScrollY > lastScrollY && currentScrollY > 100) {
+        setIsVisible(false);
+      } else {
+        setIsVisible(true);
+      }
+      
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [lastScrollY]);
 
   return (
     <>
@@ -33,13 +55,20 @@ export default function BottomNavBar() {
           --bottom-nav-height: ${BOTTOM_NAV_HEIGHT};
         }
       `}</style>
+      
       <nav
-        className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-sm border-t border-border/60 shadow-t-lg animate-slide-in-up"
+        className={cn(
+          "fixed bottom-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out",
+          isVisible ? "translate-y-0" : "translate-y-full"
+        )}
         style={{ height: BOTTOM_NAV_HEIGHT }}
       >
-        {/* Animated background indicator */}
+        {/* Enhanced background with blur and gradient */}
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/95 to-background/90 backdrop-blur-xl border-t border-border/60 shadow-2xl" />
+        
+        {/* Animated top border */}
         <div 
-          className="absolute top-0 h-1 bg-gradient-to-r from-primary via-accent to-primary transition-all duration-500 ease-out"
+          className="absolute top-0 h-1 bg-gradient-to-r from-primary via-accent to-primary transition-all duration-500 ease-out shadow-lg"
           style={{
             left: `${(activeIndex / navLinks.length) * 100}%`,
             width: `${100 / navLinks.length}%`
@@ -48,21 +77,21 @@ export default function BottomNavBar() {
         
         {/* Floating particles effect */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {Array.from({ length: 5 }).map((_, i) => (
+          {Array.from({ length: 8 }).map((_, i) => (
             <div
               key={i}
-              className="absolute w-1 h-1 bg-primary/30 rounded-full animate-float"
+              className="absolute w-1 h-1 bg-primary/20 rounded-full animate-float"
               style={{
-                left: `${20 + i * 15}%`,
-                top: '20%',
-                animationDelay: `${i * 0.5}s`,
-                animationDuration: `${2 + i * 0.3}s`
+                left: `${15 + i * 12}%`,
+                top: '25%',
+                animationDelay: `${i * 0.3}s`,
+                animationDuration: `${2 + i * 0.2}s`
               }}
             />
           ))}
         </div>
         
-        <div className="container mx-auto flex h-full items-center justify-around max-w-screen-md px-2">
+        <div className="container relative mx-auto flex h-full items-center justify-around max-w-screen-md px-2">
           {navLinks.map((link, index) => {
             const isActive = pathname === link.href;
             return (
@@ -70,51 +99,81 @@ export default function BottomNavBar() {
                 key={link.label}
                 href={link.href}
                 className={cn(
-                  "flex flex-col items-center justify-center text-xs font-medium p-2 rounded-md w-1/5 transition-all duration-300 relative group",
+                  "flex flex-col items-center justify-center text-xs font-medium rounded-xl w-1/5 h-14 transition-all duration-300 relative group overflow-hidden",
+                  "hover:bg-muted/50 active:scale-95",
                   isActive 
-                    ? "text-primary transform scale-110" 
+                    ? "text-primary transform scale-110 bg-primary/10" 
                     : "text-muted-foreground hover:text-foreground hover:scale-105"
                 )}
                 onClick={() => setActiveIndex(index)}
               >
-                {/* Icon with enhanced effects */}
-                <div className="relative">
-                  <link.icon className={cn(
-                    "h-5 w-5 mb-0.5 transition-all duration-300",
+                {/* Background glow for active item */}
+                {isActive && (
+                  <div className="absolute inset-0 bg-gradient-to-t from-primary/20 via-primary/10 to-transparent rounded-xl animate-pulse" />
+                )}
+                
+                {/* Icon container with enhanced effects */}
+                <div className="relative mb-1">
+                  <div className={cn(
+                    "p-2 rounded-xl transition-all duration-300 relative z-10",
                     isActive 
-                      ? "text-primary animate-glow" 
-                      : "text-muted-foreground group-hover:text-foreground"
-                  )} />
+                      ? "bg-primary/20 shadow-lg" 
+                      : "group-hover:bg-muted/30"
+                  )}>
+                    <link.icon className={cn(
+                      "h-5 w-5 transition-all duration-300",
+                      isActive 
+                        ? `${link.color} animate-glow drop-shadow-lg` 
+                        : "text-muted-foreground group-hover:text-foreground"
+                    )} />
+                  </div>
                   
-                  {/* Active indicator */}
+                  {/* Active indicator dot */}
                   {isActive && (
-                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-accent rounded-full animate-ping" />
+                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-accent rounded-full animate-ping" />
                   )}
                   
                   {/* Hover glow effect */}
                   <div className={cn(
-                    "absolute inset-0 rounded-full transition-opacity duration-300",
+                    "absolute inset-0 rounded-xl transition-opacity duration-300 -z-10",
                     isActive 
-                      ? "bg-primary/20 opacity-100" 
-                      : "bg-primary/10 opacity-0 group-hover:opacity-100"
-                  )} style={{ transform: 'scale(1.5)' }} />
+                      ? "bg-primary/30 opacity-100 animate-pulse" 
+                      : "bg-primary/20 opacity-0 group-hover:opacity-100"
+                  )} style={{ transform: 'scale(1.2)' }} />
                 </div>
                 
-                {/* Label with gradient effect */}
+                {/* Label with enhanced styling */}
                 <span className={cn(
-                  "transition-all duration-300 font-code",
-                  isActive && "text-gradient-gold font-bold"
+                  "transition-all duration-300 font-code text-xs leading-tight text-center px-1",
+                  isActive && "text-gradient-gold font-bold drop-shadow-sm"
                 )}>
                   {link.label}
                 </span>
                 
-                {/* Ripple effect on click */}
-                <div className="absolute inset-0 rounded-md overflow-hidden">
-                  <div className="absolute inset-0 bg-primary/20 transform scale-0 group-active:scale-100 transition-transform duration-200 rounded-md" />
+                {/* Ripple effect on touch */}
+                <div className="absolute inset-0 rounded-xl overflow-hidden">
+                  <div className="absolute inset-0 bg-primary/30 transform scale-0 group-active:scale-100 transition-transform duration-200 rounded-xl" />
                 </div>
+
+                {/* Notification badges for specific pages */}
+                {link.href === '/achievements' && (
+                  <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 text-xs bg-red-500 hover:bg-red-500 flex items-center justify-center animate-bounce">
+                    2
+                  </Badge>
+                )}
               </Link>
             );
           })}
+        </div>
+
+        {/* Quick Action Button (Floating) */}
+        <div className="absolute -top-6 left-1/2 transform -translate-x-1/2">
+          <Button
+            size="icon"
+            className="h-12 w-12 rounded-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 shadow-2xl border-4 border-background transition-all duration-300 hover:scale-110 active:scale-95"
+          >
+            <Plus className="h-6 w-6 text-primary-foreground" />
+          </Button>
         </div>
       </nav>
     </>
