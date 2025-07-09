@@ -688,7 +688,10 @@ export default function PixelPurchaseModal({
   };
 
   const formatPrice = (price: number) => price.toLocaleString('pt-PT');
-  const formatDate = (date: Date | undefined | null) => date ? date.toLocaleDateString('pt-PT') : 'N/A';
+  const formatDate = (date: Date | undefined | null) => {
+    if (!date || !(date instanceof Date)) return 'Data inválida';
+    return date.toLocaleDateString('pt-PT');
+  };
   const formatDateTime = (date: Date | undefined | null) => date ? date.toLocaleString('pt-PT') : 'N/A';
 
   if (!pixelData) return null;
@@ -1712,7 +1715,7 @@ export default function PixelPurchaseModal({
                               <span>{pixel.views} views</span>
                               <span>{pixel.likes} likes</span>
                             </div>
-                            {pixel.tags && pixel.tags.length > 0 && (
+                            {pixel.tags.length > 0 && (
                               <div className="flex flex-wrap gap-1">
                                 {pixel.tags.map(tag => (
                                   <Badge key={tag} variant="outline" className="text-xs">
