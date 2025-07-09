@@ -85,6 +85,7 @@ import {
   Triangle,
   Type,
   Pipette,
+  Minus,
   Maximize2,
   Minimize2,
   Copy,
