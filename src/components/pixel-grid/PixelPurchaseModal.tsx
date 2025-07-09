@@ -449,11 +449,11 @@ export default function PixelPurchaseModal({
       const rarityMultiplier = rarityConfig[pixelData.rarity].multiplier;
       const viewsMultiplier = Math.min(pixelData.views / 1000, 2);
       const likesMultiplier = Math.min(pixelData.likes / 100, 1.5);
-      const ownershipMultiplier = pixelData.metadata.uniqueOwners > 5 ? 1.2 : 1;
-      const landmarkMultiplier = pixelData.metadata.isLandmark ? 1.5 : 1;
+      const ownershipMultiplier = (pixelData.metadata?.uniqueOwners || 0) > 5 ? 1.2 : 1;
+      const landmarkMultiplier = pixelData.metadata?.isLandmark ? 1.5 : 1;
       
       setEstimatedValue(Math.round(baseValue * rarityMultiplier * (1 + viewsMultiplier + likesMultiplier) * ownershipMultiplier * landmarkMultiplier));
-      setDemandLevel(Math.min((pixelData.views + pixelData.likes * 10 + pixelData.metadata.totalEdits * 5) / 200, 100));
+      setDemandLevel(Math.min((pixelData.views + pixelData.likes * 10 + (pixelData.metadata?.totalEdits || 0) * 5) / 200, 100));
       
       // Initialize canvas
       initializeCanvas();
@@ -677,7 +677,7 @@ export default function PixelPurchaseModal({
                 <Badge className={cn("text-sm", rarityConfig[pixelData.rarity].color, rarityConfig[pixelData.rarity].bg)}>
                   {rarityConfig[pixelData.rarity].label}
                 </Badge>
-                {pixelData.metadata.isLandmark && (
+                {pixelData.metadata?.isLandmark && (
                   <Badge variant="secondary" className="text-sm">
                     <Crown className="h-4 w-4 mr-1" />
                     Marco
@@ -875,9 +875,9 @@ export default function PixelPurchaseModal({
                               <div className="space-y-1 text-xs">
                                 <p>Criado: {formatDateTime(pixelData.createdAt)}</p>
                                 <p>Última modificação: {formatDateTime(pixelData.lastModified)}</p>
-                                <p>Total de edições: {pixelData.metadata.totalEdits}</p>
-                                <p>Proprietários únicos: {pixelData.metadata.uniqueOwners}</p>
-                                <p>Tempo médio de posse: {pixelData.metadata.averageHoldTime} dias</p>
+                                <p>Total de edições: {pixelData.metadata?.totalEdits || 0}</p>
+                                <p>Proprietários únicos: {pixelData.metadata?.uniqueOwners || 0}</p>
+                                <p>Tempo médio de posse: {pixelData.metadata?.averageHoldTime || 0} dias</p>
                               </div>
                             </Card>
 
@@ -1395,7 +1395,7 @@ export default function PixelPurchaseModal({
                             <div className="space-y-2">
                               <Label>Preço Pico</Label>
                               <div className="text-3xl font-bold text-accent">
-                                {formatPrice(pixelData.metadata.peakPrice)} Kz
+                                {formatPrice(pixelData.metadata?.peakPrice || 0)} Kz
                               </div>
                               <div className="text-sm text-muted-foreground">
                                 Máximo histórico
@@ -1418,11 +1418,11 @@ export default function PixelPurchaseModal({
                             <div className="text-xs text-muted-foreground">Transações</div>
                           </div>
                           <div className="text-center">
-                            <div className="text-2xl font-bold">{pixelData.metadata.totalEdits}</div>
+                            <div className="text-2xl font-bold">{pixelData.metadata?.totalEdits || 0}</div>
                             <div className="text-xs text-muted-foreground">Edições</div>
                           </div>
                           <div className="text-center">
-                            <div className="text-2xl font-bold">{pixelData.metadata.uniqueOwners}</div>
+                            <div className="text-2xl font-bold">{pixelData.metadata?.uniqueOwners || 0}</div>
                             <div className="text-xs text-muted-foreground">Proprietários</div>
                           </div>
                         </div>
@@ -1498,6 +1498,11 @@ export default function PixelPurchaseModal({
                             </TooltipProvider>
                           ))}
                         </div>
+                        {pixelData.metadata?.culturalSignificance && (
+                          <div className="text-xs text-muted-foreground italic">
+                            {pixelData.metadata.culturalSignificance}
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   </TabsContent>
