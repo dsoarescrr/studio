@@ -660,7 +660,10 @@ export default function PixelPurchaseModal({
   };
 
   const formatPrice = (price: number) => price.toLocaleString('pt-PT');
-  const formatDate = (date: Date | undefined | null) => date ? date.toLocaleDateString('pt-PT') : 'N/A';
+  const formatDate = (date: Date | undefined | null) => {
+    if (!date || !(date instanceof Date)) return 'Data inválida';
+    return date.toLocaleDateString('pt-PT');
+  };
   const formatDateTime = (date: Date | undefined | null) => date ? date.toLocaleString('pt-PT') : 'N/A';
 
   if (!pixelData) return null;
@@ -1414,11 +1417,11 @@ export default function PixelPurchaseModal({
                             <div className="text-xs text-muted-foreground">Visualizações</div>
                           </div>
                           <div className="text-center">
-                            <div className="text-2xl font-bold">{pixelData.likes}</div>
+                            <div className="text-2xl font-bold">{pixelData.likes || 0}</div>
                             <div className="text-xs text-muted-foreground">Gostos</div>
                           </div>
                           <div className="text-center">
-                            <div className="text-2xl font-bold">{pixelData.history.length}</div>
+                            <div className="text-2xl font-bold">{pixelData.history?.length || 0}</div>
                             <div className="text-xs text-muted-foreground">Transações</div>
                           </div>
                           <div className="text-center">
@@ -1520,7 +1523,7 @@ export default function PixelPurchaseModal({
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
-                        {pixelData.history.length > 0 ? (
+                        {pixelData.history && pixelData.history.length > 0 ? (
                           <div className="space-y-4">
                             {pixelData.history.map((transaction) => (
                               <Card key={transaction.id} className="p-4">
@@ -1681,8 +1684,8 @@ export default function PixelPurchaseModal({
                                   <div className="font-bold text-primary">{formatPrice(pixel.price)} Kz</div>
                                 </div>
                                 <div className="flex justify-between text-xs text-muted-foreground">
-                                  <span>{pixel.views} views</span>
-                                  <span>{pixel.likes} likes</span>
+                                  <span>{pixel.views || 0} views</span>
+                                  <span>{pixel.likes || 0} likes</span>
                                 </div>
                                 {pixel.tags.length > 0 && (
                                   <div className="flex flex-wrap gap-1">
