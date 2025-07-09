@@ -862,11 +862,15 @@ export default function PixelPurchaseModal({
                             <div className="grid grid-cols-2 gap-4">
                               <Card className="p-3">
                                 <h4 className="text-sm font-semibold mb-2">Coordenadas GPS</h4>
-                                <p className="text-xs font-mono">{pixelData.coordinates.gps.lat.toFixed(6)}, {pixelData.coordinates.gps.lng.toFixed(6)}</p>
+                                <p className="text-xs font-mono">
+                                  {pixelData.coordinates?.gps?.lat?.toFixed(6) || 'N/A'}, {pixelData.coordinates?.gps?.lng?.toFixed(6) || 'N/A'}
+                                </p>
                               </Card>
                               <Card className="p-3">
                                 <h4 className="text-sm font-semibold mb-2">Coordenadas Grid</h4>
-                                <p className="text-xs font-mono">({pixelData.coordinates.grid.row}, {pixelData.coordinates.grid.col})</p>
+                                <p className="text-xs font-mono">
+                                  ({pixelData.coordinates?.grid?.row || 'N/A'}, {pixelData.coordinates?.grid?.col || 'N/A'})
+                                </p>
                               </Card>
                             </div>
                             
