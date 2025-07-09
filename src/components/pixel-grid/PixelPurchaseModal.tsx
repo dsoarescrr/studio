@@ -7,14 +7,14 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
+  DialogDescription as DialogDescriptionComponent,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -685,7 +685,7 @@ export default function PixelPurchaseModal({
                   </Badge>
                 )}
               </DialogTitle>
-              <DialogDescription className="flex items-center gap-6 text-base">
+              <DialogDescriptionComponent className="flex items-center gap-6 text-base">
                 <span className="flex items-center gap-2">
                   <Globe className="h-5 w-5" />
                   {pixelData.region}
@@ -708,7 +708,7 @@ export default function PixelPurchaseModal({
                     Protegido
                   </Badge>
                 )}
-              </DialogDescription>
+              </DialogDescriptionComponent>
             </div>
             <div className="text-right">
               <div className="text-4xl font-bold text-primary">{formatPrice(finalCost)} Kz</div>
@@ -1685,7 +1685,7 @@ export default function PixelPurchaseModal({
                                   <span>{pixel.views} views</span>
                                   <span>{pixel.likes} likes</span>
                                 </div>
-                                {pixel.tags.length > 0 && (
+                                {pixel.tags && pixel.tags.length > 0 && (
                                   <div className="flex flex-wrap gap-1">
                                     {pixel.tags.map(tag => (
                                       <Badge key={tag} variant="outline" className="text-xs">
