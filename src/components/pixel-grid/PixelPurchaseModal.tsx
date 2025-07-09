@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -885,7 +886,7 @@ export default function PixelPurchaseModal({
                               </div>
                             </Card>
 
-                            {pixelData.tags.length > 0 && (
+                            {pixelData.tags && pixelData.tags.length > 0 && (
                               <div className="space-y-2">
                                 <Label className="text-sm">Tags</Label>
                                 <div className="flex flex-wrap gap-1">
