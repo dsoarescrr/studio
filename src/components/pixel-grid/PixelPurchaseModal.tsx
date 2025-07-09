@@ -86,6 +86,7 @@ import {
   Triangle,
   Type,
   Pipette,
+  Plus,
   Minus,
   Maximize2,
   Minimize2,
