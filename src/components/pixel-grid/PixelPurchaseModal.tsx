@@ -660,8 +660,8 @@ export default function PixelPurchaseModal({
   };
 
   const formatPrice = (price: number) => price.toLocaleString('pt-PT');
-  const formatDate = (date: Date) => date.toLocaleDateString('pt-PT');
-  const formatDateTime = (date: Date) => date.toLocaleString('pt-PT');
+  const formatDate = (date: Date | undefined | null) => date ? date.toLocaleDateString('pt-PT') : 'N/A';
+  const formatDateTime = (date: Date | undefined | null) => date ? date.toLocaleString('pt-PT') : 'N/A';
 
   if (!pixelData) return null;
 
