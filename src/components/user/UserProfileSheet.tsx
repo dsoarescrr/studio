@@ -9,7 +9,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-  SheetDescription, // Added for potential use
+  SheetDescription,
 } from "@/components/ui/sheet";
 import { UserProfileDisplay, type UserProfileData } from './UserProfileDisplay';
 import type { Achievement } from '@/data/achievements-data'; // Corrected import
@@ -26,6 +26,12 @@ export function UserProfileSheet({ children, userData, achievementsData }: UserP
     <Sheet>
       <SheetTrigger asChild>{children}</SheetTrigger>
       <SheetContent className="w-full max-w-md p-0 sm:max-w-md" side="right">
+        <SheetHeader className="sr-only">
+          <SheetTitle>Perfil de {userData.name}</SheetTitle>
+          <SheetDescription>
+            Visualização detalhada do perfil do utilizador {userData.name}.
+          </SheetDescription>
+        </SheetHeader>
         <ScrollArea className="h-full">
           {/* Passing achievementsData to UserProfileDisplay, though it's globally imported there */}
           <UserProfileDisplay userData={userData} />
