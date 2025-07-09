@@ -1162,7 +1162,7 @@ export default function PixelPurchaseModal({
                           <div className="flex items-start gap-4">
                             <Avatar className="h-16 w-16 border-2 border-primary">
                               <AvatarImage src={owner.avatarUrl} alt={owner.name} />
-                              <AvatarFallback>{owner.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                              <AvatarFallback>{owner.name?.substring(0, 2).toUpperCase()}</AvatarFallback>
                             </Avatar>
                             <div className="flex-1 space-y-2">
                               <div className="flex items-center gap-2">
@@ -1470,13 +1470,13 @@ export default function PixelPurchaseModal({
                             <div className="grid grid-cols-3 gap-2 max-w-48 mx-auto">
                               {[
                                 { pos: 'nw', pixel: null },
-                                { pos: 'n', pixel: pixelData.neighbors.north },
+                                { pos: 'n', pixel: pixelData.neighbors?.north },
                                 { pos: 'ne', pixel: null },
-                                { pos: 'w', pixel: pixelData.neighbors.west },
+                                { pos: 'w', pixel: pixelData.neighbors?.west },
                                 { pos: 'center', pixel: pixelData },
-                                { pos: 'e', pixel: pixelData.neighbors.east },
+                                { pos: 'e', pixel: pixelData.neighbors?.east },
                                 { pos: 'sw', pixel: null },
-                                { pos: 's', pixel: pixelData.neighbors.south },
+                                { pos: 's', pixel: pixelData.neighbors?.south },
                                 { pos: 'se', pixel: null }
                               ].map(({ pos, pixel }) => (
                                 <div
