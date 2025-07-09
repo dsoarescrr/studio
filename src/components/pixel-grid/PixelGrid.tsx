@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import PixelPurchaseModal from './PixelPurchaseModal';
 import {
   ZoomIn, ZoomOut, Expand, Search, Sparkles, Info, User, CalendarDays,
   History as HistoryIcon, DollarSign, ShoppingCart, Edit3, Palette as PaletteIconLucide, FileText, Upload, Save,
@@ -122,6 +123,9 @@ export default function PixelGrid() {
   const [showPixelModal, setShowPixelModal] = useState(false);
   const [aiModalProgressValue, setAiModalProgressValue] = useState(0);
   const [initialAiProgressTrigger, setInitialAiProgressTrigger] = useState(0);
+
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [purchasePixelData, setPurchasePixelData] = useState<any>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const pixelCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -551,6 +555,22 @@ export default function PixelGrid() {
         const randomLore = mockLoreSnippets[Math.floor(Math.random() * mockLoreSnippets.length)];
         const approxGps = mapPixelToApproxGps(logicalCol, logicalRow, LOGICAL_GRID_COLS_CONFIG, logicalGridRows);
 
+        // Create mock pixel data for purchase modal
+        const pixelData = {
+          x: logicalCol,
+          y: logicalRow,
+          color: `#${Math.floor(Math.random()*16777215).toString(16)}`,
+          owner: Math.random() > 0.7 ? 'PixelMaster123' : undefined,
+          price: Math.floor(Math.random() * 500) + 50,
+          lastSold: Math.random() > 0.5 ? new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000) : undefined,
+          views: Math.floor(Math.random() * 1000) + 100,
+          likes: Math.floor(Math.random() * 100) + 10,
+          rarity: ['common', 'uncommon', 'rare', 'epic', 'legendary'][Math.floor(Math.random() * 5)] as any,
+          region: 'Lisboa',
+          isProtected: Math.random() > 0.8,
+          history: []
+        };
+
         if (existingSoldPixel) {
              mockDetails = {
                 x: logicalCol,
@@ -604,6 +624,8 @@ export default function PixelGrid() {
         setEditableIsForSaleByOwner(mockDetails.isForSaleByOwner || false);
         setEditableSalePrice(mockDetails.salePrice || '');
 
+        setPurchasePixelData(pixelData);
+        setShowPurchaseModal(true);
         setShowPixelModal(true);
         setPixelDescription(null);
         setEditMode(false);
@@ -627,6 +649,14 @@ export default function PixelGrid() {
       }
       setIsDragging(false);
     }
+  };
+
+  const handlePurchase = async (pixelData: any, paymentMethod: string, customizations: any) => {
+    // Simulate purchase process
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Mock success/failure
+    return Math.random() > 0.1; // 90% success rate
   };
 
   const handleGenerateDescription = useCallback(async () => {
@@ -931,6 +961,15 @@ export default function PixelGrid() {
           </div>
         )}
       
+      <PixelPurchaseModal
+        isOpen={showPurchaseModal}
+        onClose={() => setShowPurchaseModal(false)}
+        pixelData={purchasePixelData}
+        userCredits={12500}
+        userSpecialCredits={120}
+        onPurchase={handlePurchase}
+      />
+
       <Dialog open={showPixelModal} onOpenChange={(isOpen) => {
           setShowPixelModal(isOpen);
           if (!isOpen) {
