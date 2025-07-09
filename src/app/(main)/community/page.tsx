@@ -19,7 +19,7 @@ import {
   TrendingUp, Heart, Bookmark, Eye, Star, Flame, Crown, Gem, CheckCircle2,
   Image as ImageIcon, Video, Music, FileText, Link as LinkIcon, Plus, Settings,
   Bell, Globe, Lock, Users2, Zap, Activity, Calendar, Clock, Target, Gift,
-  PieChart, BarChart3, LineChart, Sparkles, Trophy, Medal, Coins, Download
+  PieChart, BarChart3, LineChart, Sparkles, Trophy, Medal, Coins, Download, Shield, ExternalLink
 } from "lucide-react";
 import { cn } from '@/lib/utils';
 import { UserProfileSheet } from '@/components/user/UserProfileSheet';

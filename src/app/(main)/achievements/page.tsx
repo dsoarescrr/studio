@@ -14,7 +14,7 @@ import {
   CheckCheck, ShieldCheck, Share2, Trophy, Search, Filter, SortAsc, Star, 
   Flame, Target, Crown, Sparkles, TrendingUp, Calendar, Clock, Gift, Zap,
   BarChart3, PieChart, LineChart, Medal, Gem, Heart, ThumbsUp, MessageSquare,
-  BookImage, Palette, MapPin, Globe, Rocket, Settings, Bell, Download
+  BookImage, Palette, MapPin, Globe, Rocket, Settings, Bell, Download, Coins
 } from "lucide-react";
 import { achievementsData, type Achievement, type AchievementCategory, type AchievementRarity } from '@/data/achievements-data';
 import { useToast } from '@/hooks/use-toast';
