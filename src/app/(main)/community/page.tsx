@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -12,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Progress } from '@/components/ui/progress';
 import { 
   MessageSquare, Users, CalendarCheck, Award, ThumbsUp, MessageCircle, Edit2, Send, 
   Share2, UserCircle, Hash, Smile, Flag, MapPin as MapPinIcon, MessageSquareText, 
