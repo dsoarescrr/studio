@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -246,7 +247,7 @@ export default function MemberPage() {
           <div className="sticky top-16 z-30 bg-background/80 backdrop-blur-sm py-2 -mx-4 px-4">
             <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 h-auto p-1 bg-card/50 backdrop-blur-sm">
               <TabsTrigger value="overview" className="font-headline text-xs sm:text-sm py-2">
-                <User className="h-4 w-4 mr-1 sm:mr-2" />
+                <UserIcon className="h-4 w-4 mr-1 sm:mr-2" />
                 <span className="hidden sm:inline">Visão Geral</span>
                 <span className="sm:hidden">Geral</span>
               </TabsTrigger>
