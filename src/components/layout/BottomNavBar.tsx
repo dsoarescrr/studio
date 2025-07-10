@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, ShoppingCart, Users as UsersIcon, Plus, Zap, Coins, Palette, Bell, Search as SearchIcon, Users2, BarChart3 as AnalyticsIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import NotificationCenter from '@/components/layout/NotificationCenter';
@@ -39,13 +39,15 @@ const BOTTOM_NAV_HEIGHT = '80px';
 
 export default function BottomNavBar() {
   const pathname = usePathname();
-  const { notifications, credits, specialCredits } = useUserStore();
+  const { notifications, credits, specialCredits, addCredits } = useUserStore();
   const [activeIndex, setActiveIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   const [selectedPixelForPurchase, setSelectedPixelForPurchase] = useState<any>(null);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [scaleX, setScaleX] = useState(0.8);
+  const [playHoverSound, setPlayHoverSound] = useState(false);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const currentIndex = navLinks.findIndex(link => link.href === pathname);
@@ -89,8 +91,20 @@ export default function BottomNavBar() {
     return Math.random() > 0.1;
   };
 
+  const handleNavHover = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    
+    hoverTimeoutRef.current = setTimeout(() => {
+      setPlayHoverSound(true);
+      setTimeout(() => setPlayHoverSound(false), 100);
+    }, 50);
+  };
+
   return (
     <>
+      <SoundEffect src={SOUND_EFFECTS.HOVER} play={playHoverSound} onEnd={() => setPlayHoverSound(false)} volume={0.2} rate={1.5} />
       <style jsx global>{`
         :root {
           --bottom-nav-height: ${BOTTOM_NAV_HEIGHT};
@@ -144,13 +158,20 @@ export default function BottomNavBar() {
                 key={link.label}
                 href={link.href}
                 className={cn(
-                  "flex flex-col items-center justify-center text-xs font-medium rounded-2xl w-1/5 h-16 transition-all duration-500 relative group overflow-hidden",
+                  "flex flex-col items-center justify-center text-xs font-medium rounded-2xl w-1/5 h-16 transition-all duration-300 relative group overflow-hidden",
                   "hover:bg-primary/10 active:scale-95 transform-gpu",
                   isActive 
                     ? "text-primary scale-110 bg-primary/15 shadow-lg shadow-primary/20" 
                     : "text-muted-foreground hover:text-foreground hover:scale-105"
                 )}
-                onClick={() => setActiveIndex(index)}
+                onClick={() => {
+                  setActiveIndex(index);
+                  // Small reward for navigation
+                  if (Math.random() > 0.9) {
+                    addCredits(1);
+                  }
+                }}
+                onMouseEnter={handleNavHover}
               >
                 {/* Active Background */}
                 {isActive && (
@@ -165,9 +186,9 @@ export default function BottomNavBar() {
                 <div className="relative mb-1 z-10">
                   <div className={cn(
                     "p-2.5 rounded-2xl transition-all duration-500 relative overflow-hidden",
-                    isActive 
-                      ? "bg-primary/20 shadow-lg shadow-primary/30 ring-1 ring-primary/30" 
-                      : "group-hover:bg-muted/40 group-hover:scale-110"
+                    isActive
+                      ? "bg-primary/20 shadow-lg shadow-primary/30 ring-1 ring-primary/30"
+                      : "group-hover:bg-muted/40 group-hover:scale-110 hover:rotate-3"
                   )}>
                     <link.icon className={cn(
                       "h-6 w-6 transition-all duration-500 transform-gpu",
@@ -200,7 +221,7 @@ export default function BottomNavBar() {
                 {/* Label with Enhanced Typography */}
                 <span className={cn(
                   "transition-all duration-500 font-medium text-xs leading-tight text-center px-1 z-10",
-                  isActive && "text-gradient-gold font-bold drop-shadow-sm scale-105"
+                  isActive && "text-gradient-gold font-bold drop-shadow-sm scale-105 animate-pulse"
                 )}>
                   {link.label}
                 </span>
@@ -208,7 +229,9 @@ export default function BottomNavBar() {
                 {/* Notification Badge */}
                 {link.badge && (
                   <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 flex items-center justify-center animate-bounce shadow-lg">
-                    {link.href === "/member" ? notifications : link.badge}
+                    <span className="animate-pulse">
+                      {link.href === "/member" ? notifications : link.badge}
+                    </span>
                   </Badge>
                 )}
 
@@ -226,17 +249,18 @@ export default function BottomNavBar() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
-                size="icon"
-                className="h-16 w-16 rounded-full bg-gradient-to-r from-primary via-accent to-primary hover:from-primary/90 hover:via-accent/90 hover:to-primary/90 shadow-2xl shadow-primary/40 border-4 border-background transition-all duration-500 hover:scale-110 active:scale-95 relative overflow-hidden group"
+                size="icon" 
+                className="h-16 w-16 rounded-full bg-gradient-to-r from-primary via-accent to-primary hover:from-primary/90 hover:via-accent/90 hover:to-primary/90 shadow-2xl shadow-primary/40 border-4 border-background transition-all duration-300 hover:scale-110 active:scale-95 relative overflow-hidden group"
+                onMouseEnter={handleNavHover}
               >
                 {/* Rotating Background */}
                 <div className="absolute inset-0 bg-gradient-to-r from-primary via-accent to-primary animate-spin rounded-full opacity-20" 
                      style={{ animationDuration: '8s' }} />
                 
                 {/* Pulse Effect */}
-                <div className="absolute inset-0 bg-gradient-to-r from-primary/50 to-accent/50 rounded-full animate-ping opacity-30" />
+                <div className="absolute inset-0 bg-gradient-to-r from-primary/50 to-accent/50 rounded-full animate-ping opacity-30" style={{ animationDuration: '3s' }} />
                 
-                <Plus className="h-8 w-8 text-primary-foreground relative z-10 transition-transform duration-300 group-hover:rotate-180" />
+                <Plus className="h-8 w-8 text-primary-foreground relative z-10 transition-transform duration-300 group-hover:rotate-180 group-hover:scale-125" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="center" side="top" className="w-64 mb-4 bg-background/95 backdrop-blur-xl border border-primary/20 shadow-2xl">

@@ -1,4 +1,3 @@
-
 // src/components/pixel-grid/PixelGrid.tsx
 'use client';
 
@@ -109,7 +108,7 @@ const mockLoreSnippets: string[] = [
 export default function PixelGrid() {
   const [isClient, setIsClient] = useState(false);
   const { addCredits, addXp, addPixel } = useUserStore();
-  const { soldPixels: storeSoldPixels, addSoldPixel, updatePixelColor } = usePixelStore();
+  const { soldPixels: storeSoldPixels, addSoldPixel, updatePixelColor, loadSoldPixels } = usePixelStore();
   const [zoom, setZoom] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -154,7 +153,7 @@ export default function PixelGrid() {
   const [showAchievement, setShowAchievement] = useState(false);
   const [currentAchievement, setCurrentAchievement] = useState({
     id: 'pixel_explorer',
-    name: 'Explorador de Píxeis',
+    name: 'Explorador de Pixels',
     description: 'Você explorou o mapa e descobriu um pixel especial!',
     rarity: 'uncommon' as const,
     xpReward: 50,
@@ -175,10 +174,15 @@ export default function PixelGrid() {
   
   useEffect(() => {
     setIsClient(true);
-     if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined') {
       const computedStyle = getComputedStyle(document.documentElement);
       setUnsoldColor(computedStyle.getPropertyValue('--secondary').trim());
       setStrokeColor(computedStyle.getPropertyValue('--muted-foreground').trim());
+    }
+    
+    // Load sold pixels from store
+    if (storeSoldPixels && storeSoldPixels.length > 0) {
+      setSoldPixels(storeSoldPixels);
     }
   }, []);
 
@@ -189,7 +193,7 @@ export default function PixelGrid() {
   useEffect(() => {
     if (!isClient || !mapData || !mapData.svgElement) return;
   
-    setProgressMessage("A renderizar mapa melhorado...");
+    setProgressMessage("A renderizar mapa de Portugal...");
     setIsLoadingMap(true);
     
     const { svgElement } = mapData;
@@ -523,7 +527,7 @@ export default function PixelGrid() {
         if (Math.random() < 0.1 && !existingSoldPixel) {
           setCurrentAchievement({
             id: 'pixel_explorer',
-            name: 'Explorador de Píxeis',
+            name: 'Explorador de Pixels',
             description: 'Você explorou o mapa e descobriu um pixel especial!',
             rarity: 'uncommon' as const,
             xpReward: 50,
@@ -732,6 +736,7 @@ export default function PixelGrid() {
         title: customizations.title || `Meu Pixel (${pixelData.x},${pixelData.y})`
       };
       setSoldPixels(prev => [...prev, newSoldPixel]);
+      addSoldPixel(newSoldPixel);
       
       const updatedDetails: SelectedPixelDetails = {
           ...pixelData, 
@@ -770,7 +775,7 @@ export default function PixelGrid() {
       <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 bg-card/80 backdrop-blur-sm p-2 rounded-lg shadow-lg pointer-events-auto animate-slide-in-up animation-delay-200">
         <TooltipProvider>
           <Tooltip>
-            <TooltipTrigger asChild>
+            <TooltipTrigger asChild pointerEvents="auto">
               <Button pointerEvents="auto" variant="outline" size="icon" onClick={handleZoomIn} aria-label="Zoom In">
                 <ZoomIn className="h-5 w-5" />
               </Button>
@@ -798,19 +803,19 @@ export default function PixelGrid() {
           <p>Zoom: {zoom.toFixed(2)}x</p>
           <p>X: {Math.round(position.x)}, Y: {Math.round(position.y)}</p>
           {highlightedPixel && (
-            <p className="text-primary font-semibold">
+            <p className="text-primary font-semibold animate-pulse">
               Pixel: ({highlightedPixel.x}, {highlightedPixel.y})
             </p>
           )}
-          <p>Píxeis no Mapa: {activePixelsInMap > 0 ? activePixelsInMap.toLocaleString('pt-PT') : '...'}</p>
+          <p>Pixels no Mapa: {activePixelsInMap > 0 ? activePixelsInMap.toLocaleString('pt-PT') : '...'}</p>
         </div>
       </div>
       
       {showProgressIndicator && (
           <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-20 bg-card/80 backdrop-blur-sm p-3 rounded-lg shadow-lg text-center pointer-events-none">
             <div className="flex items-center justify-center">
-                <Sparkles className="h-5 w-5 text-primary animate-pulse mr-2" />
-                <p className="text-sm font-headline text-foreground">{progressMessage}</p>
+                <Sparkles className="h-5 w-5 text-primary animate-pulse mr-3" />
+                <p className="text-sm font-headline text-foreground animate-pulse">{progressMessage}</p>
             </div>
           </div>
         )}
@@ -862,8 +867,8 @@ export default function PixelGrid() {
       <div className="absolute bottom-6 right-6 z-20 animate-scale-in animation-delay-500" pointerEvents="auto">
         <Dialog>
           <DialogTrigger asChild>
-             <Button pointerEvents="auto" size="icon" className="rounded-full w-14 h-14 shadow-lg button-gradient-gold button-3d-effect hover:button-gold-glow active:scale-95">
-                <Star className="h-7 w-7 animate-pulse" />
+             <Button pointerEvents="auto" size="icon" className="rounded-full w-14 h-14 shadow-lg button-gradient-gold button-3d-effect hover:button-gold-glow active:scale-95 animate-float">
+                <Star className="h-7 w-7 animate-pulse text-white" />
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-sm border-primary/30 shadow-xl" data-dialog-content pointerEvents="auto">
@@ -879,7 +884,7 @@ export default function PixelGrid() {
               <Button 
                 pointerEvents="auto" 
                 variant="outline" 
-                className="button-3d-effect-outline"
+                className="button-3d-effect-outline hover:bg-primary/10"
                 onClick={() => {
                   setPlayClickSound(true);
                   setCurrentAchievement({
@@ -896,15 +901,23 @@ export default function PixelGrid() {
                   addXp(100);
                 }}
               >
-                <Sparkles className="mr-2 h-4 w-4" />Ver Eventos Atuais
+                <Sparkles className="mr-2 h-4 w-4 text-primary" />Ver Eventos Atuais
               </Button>
               <Button 
                 pointerEvents="auto" 
                 variant="outline" 
                 onClick={handleGoToMyLocation} 
-                className="button-3d-effect-outline"
+                className="button-3d-effect-outline hover:bg-primary/10"
               >
-                <MapPinIconLucide className="mr-2 h-4 w-4" />Ir para Minha Localização
+                <MapPinIconLucide className="mr-2 h-4 w-4 text-primary" />Ir para Minha Localização
+              </Button>
+              <Button 
+                pointerEvents="auto" 
+                variant="outline" 
+                className="button-3d-effect-outline hover:bg-primary/10"
+                onClick={handleViewOnRealMap}
+              >
+                <MapIcon className="mr-2 h-4 w-4 text-primary" />Ver no Google Maps
               </Button>
             </div>
             <DialogFooter className="dialog-footer-gold-accent rounded-b-lg">

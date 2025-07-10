@@ -9,6 +9,7 @@ interface SoundEffectProps {
   volume?: number;
   loop?: boolean;
   onEnd?: () => void;
+  rate?: number;
 }
 
 export function SoundEffect({ 
@@ -16,7 +17,8 @@ export function SoundEffect({
   play, 
   volume = 0.5, 
   loop = false, 
-  onEnd 
+  onEnd,
+  rate = 1.0
 }: SoundEffectProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { soundEffects } = useSettingsStore();
@@ -26,6 +28,11 @@ export function SoundEffect({
       audioRef.current = new Audio(src);
       audioRef.current.volume = volume;
       audioRef.current.loop = loop;
+      
+      // Set playback rate if supported
+      if ('playbackRate' in audioRef.current) {
+        audioRef.current.playbackRate = rate;
+      }
       
       if (onEnd) {
         audioRef.current.addEventListener('ended', onEnd);
@@ -49,11 +56,18 @@ export function SoundEffect({
     
     if (play && soundEffects) {
       audioRef.current.currentTime = 0;
-      audioRef.current.play().catch(err => console.error('Error playing sound:', err));
+      const playPromise = audioRef.current.play();
+      
+      // Handle play promise to avoid uncaught promise errors
+      if (playPromise !== undefined) {
+        playPromise.catch(err => {
+          console.error('Error playing sound:', err);
+        });
+      }
     } else {
       audioRef.current.pause();
     }
-  }, [play, soundEffects]);
+  }, [play, soundEffects, rate]);
 
   return null;
 }
@@ -66,4 +80,5 @@ export const SOUND_EFFECTS = {
   CLICK: '/sounds/click.mp3',
   ERROR: '/sounds/error.mp3',
   SUCCESS: '/sounds/success.mp3',
+  HOVER: '/sounds/click.mp3', // Reusing click sound for hover
 };

@@ -10,14 +10,18 @@ interface ConfettiProps {
   onComplete?: () => void;
   colors?: string[];
   particleCount?: number;
+  recycle?: boolean;
+  gravity?: number;
 }
 
 export function Confetti({
   active,
   duration = 3000,
   onComplete,
-  colors = ['#D4A757', '#7DF9FF', '#FF6B6B', '#4CAF50', '#9C27B0'],
-  particleCount = 200,
+  colors = ['#D4A757', '#7DF9FF', '#FF6B6B', '#4CAF50', '#9C27B0', '#FFD700', '#FF1493'],
+  particleCount = 250,
+  recycle = false,
+  gravity = 0.1
 }: ConfettiProps) {
   const [isActive, setIsActive] = useState(false);
   const { width, height } = useWindowSize();
@@ -45,12 +49,18 @@ export function Confetti({
     <ReactConfetti
       width={width}
       height={height}
-      recycle={duration === 0}
+      recycle={recycle || duration === 0}
       numberOfPieces={particleCount}
       colors={colors}
-      gravity={0.1}
+      gravity={gravity}
       tweenDuration={duration}
-      className="fixed inset-0 z-[100] pointer-events-none"
+      className="fixed inset-0 z-[100] pointer-events-none will-change-transform"
+      confettiSource={{
+        x: width / 2,
+        y: height / 3,
+        w: 0,
+        h: 0
+      }}
     />
   );
 }

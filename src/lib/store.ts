@@ -84,6 +84,14 @@ interface PixelState {
   }>;
   addSoldPixel: (pixel: { x: number; y: number; color: string; ownerId?: string; title?: string; pixelImageUrl?: string }) => void;
   updatePixelColor: (x: number, y: number, color: string) => void;
+  loadSoldPixels: () => Array<{
+    x: number;
+    y: number;
+    color: string;
+    ownerId?: string;
+    title?: string;
+    pixelImageUrl?: string;
+  }>;
 }
 
 export const usePixelStore = create<PixelState>()(
@@ -104,6 +112,9 @@ export const usePixelStore = create<PixelState>()(
             : pixel
         )
       })),
+      loadSoldPixels: () => {
+        return get().soldPixels;
+      },
     }),
     {
       name: 'pixel-universe-pixel-storage',
@@ -113,11 +124,13 @@ export const usePixelStore = create<PixelState>()(
 
 interface SettingsState {
   theme: 'dark' | 'light' | 'system';
+  language: 'pt-PT' | 'en-US' | 'es-ES';
   animations: boolean;
   notifications: boolean;
   soundEffects: boolean;
   highQualityRendering: boolean;
   setTheme: (theme: 'dark' | 'light' | 'system') => void;
+  setLanguage: (language: 'pt-PT' | 'en-US' | 'es-ES') => void;
   toggleAnimations: () => void;
   toggleNotifications: () => void;
   toggleSoundEffects: () => void;
@@ -128,11 +141,13 @@ export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
       theme: 'dark',
+      language: 'pt-PT',
       animations: true,
       notifications: true,
       soundEffects: true,
       highQualityRendering: true,
       setTheme: (theme) => set({ theme }),
+      setLanguage: (language) => set({ language }),
       toggleAnimations: () => set((state) => ({ animations: !state.animations })),
       toggleNotifications: () => set((state) => ({ notifications: !state.notifications })),
       toggleSoundEffects: () => set((state) => ({ soundEffects: !state.soundEffects })),

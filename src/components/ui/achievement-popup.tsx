@@ -26,10 +26,10 @@ interface AchievementPopupProps {
 
 const rarityColors = {
   common: 'bg-gray-500/20 text-gray-400 border-gray-400/50',
-  uncommon: 'bg-green-500/20 text-green-400 border-green-400/50',
-  rare: 'bg-blue-500/20 text-blue-400 border-blue-400/50',
-  epic: 'bg-purple-500/20 text-purple-400 border-purple-400/50',
-  legendary: 'bg-amber-500/20 text-amber-400 border-amber-400/50',
+  uncommon: 'bg-green-500/30 text-green-400 border-green-400/60',
+  rare: 'bg-blue-500/30 text-blue-400 border-blue-400/60',
+  epic: 'bg-purple-500/30 text-purple-400 border-purple-400/60',
+  legendary: 'bg-amber-500/30 text-amber-400 border-amber-400/60',
 };
 
 export function AchievementPopup({ show, achievement, onClose }: AchievementPopupProps) {
@@ -67,6 +67,7 @@ export function AchievementPopup({ show, achievement, onClose }: AchievementPopu
         active={showConfetti} 
         duration={3000} 
         onComplete={() => setShowConfetti(false)}
+        particleCount={300}
       />
       
       <AnimatePresence>
@@ -75,11 +76,11 @@ export function AchievementPopup({ show, achievement, onClose }: AchievementPopu
             initial={{ opacity: 0, y: -50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -50 }}
-            transition={{ duration: 0.5 }}
+            transition={{ duration: 0.5, type: "spring", stiffness: 100 }}
             className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md px-4"
           >
             <Card className={cn(
-              "border-2 shadow-2xl overflow-hidden",
+              "border-2 shadow-2xl overflow-hidden animate-float",
               achievement.rarity === 'legendary' && "legendary-glow-strong",
               achievement.rarity === 'epic' && "epic-shadow"
             )}>
@@ -94,7 +95,7 @@ export function AchievementPopup({ show, achievement, onClose }: AchievementPopu
                          style={{ backgroundSize: '200% 100%' }} />
                   )}
                   
-                  <Button 
+                  <Button
                     variant="ghost" 
                     size="icon" 
                     className="absolute right-2 top-2 h-6 w-6 text-foreground/70 hover:text-foreground"
@@ -105,12 +106,14 @@ export function AchievementPopup({ show, achievement, onClose }: AchievementPopu
                   
                   <div className="flex flex-col items-center relative z-10">
                     <div className="mb-2">
-                      {achievement.icon || <Trophy className="h-12 w-12" />}
+                      <div className="p-3 rounded-full bg-background/20 animate-pulse">
+                        {achievement.icon || <Trophy className="h-12 w-12" />}
+                      </div>
                     </div>
                     
                     <div className="space-y-1">
-                      <h3 className="text-xl font-bold">Conquista Desbloqueada!</h3>
-                      <p className="text-lg font-semibold">{achievement.name}</p>
+                      <h3 className="text-xl font-bold animated-gradient-text">Conquista Desbloqueada!</h3>
+                      <p className="text-lg font-semibold text-glow">{achievement.name}</p>
                       <p className="text-sm">{achievement.description}</p>
                     </div>
                     
@@ -125,8 +128,9 @@ export function AchievementPopup({ show, achievement, onClose }: AchievementPopu
                           key={i} 
                           className={cn(
                             "h-5 w-5 mx-0.5",
+                            "transition-all duration-300",
                             i < ['common', 'uncommon', 'rare', 'epic', 'legendary'].indexOf(achievement.rarity) + 1
-                              ? "text-yellow-400 fill-current" 
+                              ? "text-yellow-400 fill-current animate-pulse" 
                               : "text-gray-400"
                           )} 
                         />
