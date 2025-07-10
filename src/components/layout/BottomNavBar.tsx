@@ -12,7 +12,8 @@ import NotificationCenter from '@/components/layout/NotificationCenter';
 import { useUserStore } from '@/lib/store';
 import SearchSystem from '@/components/layout/SearchSystem';
 import PixelPurchaseModal from '@/components/pixel-grid/PixelPurchaseModal';
-import { useMediaQuery } from '@/hooks/use-media-query';
+import { useMediaQuery } from '@/hooks/use-media-query'; 
+import { motion } from 'framer-motion';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,7 +39,7 @@ const navLinks = [
   { href: "/ranking", label: "Ranking", icon: AnalyticsIcon, color: "text-amber-500", badge: 2, description: "Classificações" },
 ];
 
-const BOTTOM_NAV_HEIGHT = '70px';
+const BOTTOM_NAV_HEIGHT = '80px';
 
 export default function BottomNavBar() {
   const pathname = usePathname();
@@ -49,6 +50,7 @@ export default function BottomNavBar() {
   const [selectedPixelForPurchase, setSelectedPixelForPurchase] = useState<any>(null);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [scaleX, setScaleX] = useState(0.8);
+  const [pulseIndex, setPulseIndex] = useState<number | null>(null);
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [playHoverSound, setPlayHoverSound] = useState(false);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -60,12 +62,22 @@ export default function BottomNavBar() {
 
   useEffect(() => {
     let animationFrameId: number;
-    const animate = () => { 
+    const animate = () => {
       setScaleX(0.8 + Math.sin(Date.now() / 1000) * 0.1);
       animationFrameId = requestAnimationFrame(animate);
     };
     animate();
     return () => cancelAnimationFrame(animationFrameId);
+  }, []);
+
+  // Pulse animation for nav items
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const randomIndex = Math.floor(Math.random() * navLinks.length);
+      setPulseIndex(randomIndex);
+      setTimeout(() => setPulseIndex(null), 2000);
+    }, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -127,7 +139,7 @@ export default function BottomNavBar() {
         <div className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/90 to-background/80 backdrop-blur-2xl" />
         <div className="absolute inset-0 border-t border-primary/20 shadow-2xl shadow-primary/10" />
 
-        {/* Animated Indicator */}
+        {/* Enhanced Animated Indicator */}
         <div 
           className="absolute top-0 h-1 bg-gradient-to-r from-primary via-accent to-primary transition-all duration-700 ease-out shadow-lg shadow-primary/50"
           style={{
@@ -137,7 +149,7 @@ export default function BottomNavBar() {
           }}
         />
 
-        {/* Floating Particles */}
+        {/* Enhanced Floating Particles */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           {Array.from({ length: 12 }).map((_, i) => (
             <div
@@ -156,7 +168,7 @@ export default function BottomNavBar() {
 
         <div className="container relative mx-auto flex h-full items-center justify-around max-w-screen-lg px-2">
           {navLinks.map((link, index) => {
-            const isActive = pathname === link.href;
+            const isActive = pathname === link.href || pulseIndex === index;
             return (
               <Link 
                 key={link.label}
@@ -164,7 +176,7 @@ export default function BottomNavBar() {
                 className={cn(
                   "flex flex-col items-center justify-center text-xs font-medium rounded-2xl w-1/5 h-16 transition-all duration-300 relative group overflow-hidden",
                   "hover:bg-primary/10 active:scale-95 transform-gpu",
-                  isActive 
+                  isActive
                     ? "text-primary scale-110 bg-primary/15 shadow-lg shadow-primary/20" 
                     : "text-muted-foreground hover:text-foreground hover:scale-105"
                 )}
@@ -180,7 +192,7 @@ export default function BottomNavBar() {
                 {/* Active Background */}
                 {isActive && (
                   <>
-                    <div className="absolute inset-0 bg-gradient-to-t from-primary/25 via-primary/15 to-transparent rounded-2xl animate-pulse" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-primary/25 via-primary/15 to-transparent rounded-2xl animate-pulse" style={{ animationDuration: '3s' }} />
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/10 to-transparent rounded-2xl animate-shimmer" 
                          style={{ backgroundSize: '200% 100%' }} />
                   </>
@@ -188,7 +200,7 @@ export default function BottomNavBar() {
                 
                 {/* Icon Container */}
                 <div className="relative mb-1 z-10">
-                  <div className={cn( 
+                  <motion.div whileHover={{ scale: 1.1, rotate: 5 }} className={cn( 
                     "p-2.5 rounded-2xl transition-all duration-500 relative overflow-hidden",
                     isActive
                       ? "bg-primary/20 shadow-lg shadow-primary/30 ring-1 ring-primary/30"
@@ -205,7 +217,7 @@ export default function BottomNavBar() {
                     {isActive && (
                       <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-primary/20 to-accent/20 blur-sm animate-pulse" />
                     )} 
-                  </div>
+                  </motion.div>
                   
                   {/* Pulse Ring for Active */}
                   {isActive && (
@@ -223,7 +235,7 @@ export default function BottomNavBar() {
                 </div>
                 
                 {/* Label with Enhanced Typography */}
-                <span className={cn( 
+                <motion.span animate={isActive ? { y: [0, -2, 0] } : {}} transition={{ duration: 2, repeat: Infinity, repeatType: "reverse" }} className={cn( 
                   "transition-all duration-500 font-medium text-xs leading-tight text-center px-1 z-10",
                   isActive && "text-gradient-gold font-bold drop-shadow-sm scale-105 animate-pulse"
                 )}>
@@ -232,11 +244,13 @@ export default function BottomNavBar() {
                 
                 {/* Notification Badge */}
                 {link.badge && ( 
-                  <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 flex items-center justify-center animate-bounce shadow-lg">
+                  <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 500, damping: 15 }}>
+                    <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 flex items-center justify-center animate-bounce shadow-lg">
                     <span className="animate-pulse">
                       {link.href === "/member" ? notifications : link.badge}
                     </span>
-                  </Badge>
+                    </Badge>
+                  </motion.div>
                 )}
 
                 {/* Interaction Ripple */}
@@ -249,7 +263,7 @@ export default function BottomNavBar() {
         </div>
 
         {/* Enhanced Floating Action Button */}
-        <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 z-10">
+        <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: -8, opacity: 1 }} transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.3 }} className="absolute -top-8 left-1/2 transform -translate-x-1/2 z-10">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -258,10 +272,10 @@ export default function BottomNavBar() {
                 onMouseEnter={handleNavHover}
               >
                 {/* Rotating Background */}
-                <div className="absolute inset-0 bg-gradient-to-r from-primary via-accent to-primary animate-spin rounded-full opacity-20" 
+                <div className="absolute inset-0 bg-gradient-to-r from-primary via-accent to-primary animate-spin rounded-full opacity-30" 
                      style={{ animationDuration: '10s' }} />
                 
-                {/* Pulse Effect */}
+                {/* Enhanced Pulse Effect */}
                 <div className="absolute inset-0 bg-gradient-to-r from-primary/50 to-accent/50 rounded-full animate-ping opacity-30" style={{ animationDuration: '3s' }} />
                 
                 <Plus className="h-8 w-8 text-primary-foreground relative z-10 transition-transform duration-300 group-hover:rotate-180 group-hover:scale-125" />
@@ -269,7 +283,7 @@ export default function BottomNavBar() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="center" side="top" className="w-64 mb-4 bg-background/95 backdrop-blur-xl border border-primary/20 shadow-2xl rounded-xl">
               <DropdownMenuLabel className="text-center font-headline text-primary">
-                🚀 Ações Rápidas
+                <motion.span animate={{ scale: [1, 1.1, 1] }} transition={{ duration: 2, repeat: Infinity }}>🚀</motion.span> Ações Rápidas
               </DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-primary/20" />
               
@@ -378,7 +392,7 @@ export default function BottomNavBar() {
               </SearchSystem>
             </DropdownMenuContent>
           </DropdownMenu>
-        </div>
+        </motion.div>
 
         {/* Wave Animation */}
         <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-gradient-to-r from-primary/50 via-accent/50 to-primary/50 opacity-30">

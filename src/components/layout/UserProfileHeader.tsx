@@ -7,13 +7,14 @@ import NotificationCenter from './NotificationCenter';
 import { useUserStore, useSettingsStore } from '@/lib/store';
 import SearchSystem from './SearchSystem';
 import { 
-  Award, CreditCard, Sparkles, Gift, Bell, Settings, Menu, 
+  Award, CreditCard, Sparkles, Gift, Bell, Settings, Menu, Zap,
   User, Search, Plus, Zap, Crown, Star, LogOut, HelpCircle, MessageSquare,
   BarChart3, Users2, Palette, Coins, Home, ShoppingCart, Users as UsersIcon, BarChart3 as AnalyticsIcon
 } from "lucide-react"; 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { cn } from "@/lib/utils";
+import { motion } from 'framer-motion';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -108,8 +109,8 @@ export default function UserProfileHeader() {
     <div className={cn(
       "fixed top-0 left-0 right-0 z-50 border-b transition-all duration-500",
       isScrolled 
-        ? "border-primary/20 bg-background/95 backdrop-blur-xl shadow-lg shadow-primary/5" 
-        : "border-transparent bg-background/80 backdrop-blur-md"
+          ? "border-primary/20 bg-background/95 backdrop-blur-xl shadow-lg shadow-primary/10" 
+          : "border-transparent bg-background/70 backdrop-blur-md"
     )}>
       {/* Animated background */}
       <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-accent/5 animate-shimmer" 
@@ -251,7 +252,7 @@ export default function UserProfileHeader() {
           </Link>
         </div>
 
-        {/* Center: Search (Desktop) */}
+        {/* Enhanced Center: Search (Desktop) */}
         <div className="hidden md:flex flex-1 max-w-md mx-4 relative">
           <SearchSystem>
             <div className="relative w-full cursor-pointer group">
@@ -259,7 +260,7 @@ export default function UserProfileHeader() {
               <div className="w-full h-9 pl-10 pr-4 bg-background/50 border border-border/60 rounded-full text-sm flex items-center text-muted-foreground group-hover:border-primary/50 group-hover:bg-background/80 transition-all">
                 Pesquisar pixels, utilizadores...
               </div>
-              <div className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                 <div className="absolute inset-0 rounded-full border border-primary/20 animate-pulse" />
               </div>
             </div>
@@ -289,7 +290,7 @@ export default function UserProfileHeader() {
           </Button>
 
           {/* Notifications */}
-          <NotificationCenter>
+          <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}><NotificationCenter>
             <Button 
               variant="ghost" 
               size="icon"
@@ -304,7 +305,7 @@ export default function UserProfileHeader() {
                 </span>
               </span>
             </Button>
-          </NotificationCenter>
+          </NotificationCenter></motion.div>
 
           {/* Credits (Mobile Compact) */}
           <div className="flex items-center space-x-1 sm:space-x-2">
@@ -312,7 +313,7 @@ export default function UserProfileHeader() {
               "flex items-center text-foreground transition-all duration-300 hover:scale-105 cursor-pointer bg-primary/10 rounded-full px-2 py-1 group",
               isAnimating && "animate-bounce-slow"
             )} title={formattedCredits ? `${formattedCredits} Créditos` : 'Créditos'}>
-              <Coins className="h-3 w-3 sm:h-4 sm:w-4 mr-1 text-primary group-hover:text-primary/80 transition-colors" />
+              <Coins className="h-3 w-3 sm:h-4 sm:w-4 mr-1 text-primary group-hover:text-primary/80 transition-colors animate-pulse" style={{ animationDuration: '3s' }} />
               {formattedCredits !== null ? (
                 <span className="font-code text-xs sm:text-sm text-primary font-bold group-hover:text-primary/80 transition-colors">
                   {typeof window !== 'undefined' && window.innerWidth < 640 ? `${Math.floor(credits / 1000)}K` : formattedCredits}
@@ -326,7 +327,7 @@ export default function UserProfileHeader() {
               "hidden sm:flex items-center text-foreground transition-all duration-300 hover:scale-105 cursor-pointer bg-accent/10 rounded-full px-2 py-1 group",
               isAnimating && "animate-bounce-slow animation-delay-100"
             )} title={formattedSpecialCredits ? `${formattedSpecialCredits} Créditos Especiais` : 'Créditos Especiais'}>
-              <Gift className="h-4 w-4 mr-1 text-accent group-hover:text-accent/80 transition-colors" />
+              <Gift className="h-4 w-4 mr-1 text-accent group-hover:text-accent/80 transition-colors animate-pulse" style={{ animationDuration: '4s' }} />
               {formattedSpecialCredits !== null ? (
                 <span className="font-code text-sm text-accent font-bold group-hover:text-accent/80 transition-colors">{formattedSpecialCredits}</span>
               ) : (
@@ -336,7 +337,7 @@ export default function UserProfileHeader() {
           </div>
 
           {/* User Menu */}
-          <DropdownMenu>
+          <motion.div whileHover={{ scale: 1.05 }}><DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button 
                 variant="ghost" 
@@ -344,7 +345,7 @@ export default function UserProfileHeader() {
               >
                 <div className="relative">
                   <Avatar className="h-8 w-8 border-2 border-primary/50 hover:border-primary transition-colors">
-                    <AvatarImage src="https://placehold.co/40x40.png" alt="PixelMasterPT" data-ai-hint="profile avatar" />
+                    <AvatarImage src="https://placehold.co/40x40.png" alt="PixelMasterPT" data-ai-hint="profile avatar" className="hover:scale-110 transition-transform duration-300" />
                     <AvatarFallback className="text-xs font-headline">P</AvatarFallback>
                   </Avatar>
                   <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-background animate-pulse" />
@@ -353,7 +354,7 @@ export default function UserProfileHeader() {
             </DropdownMenuTrigger>
             <DropdownMenuContent 
               className="w-64 mt-1 p-2 bg-background/95 backdrop-blur-xl border border-primary/20 shadow-2xl" 
-              align="end" 
+              align="end"
               forceMount
             >
               <div className="flex items-center gap-3 p-2">
@@ -363,7 +364,7 @@ export default function UserProfileHeader() {
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium leading-none truncate">PixelMasterPT</p>
-                  <div className="flex items-center gap-2 mt-1">
+                  <motion.div animate={{ y: [0, -2, 0] }} transition={{ duration: 2, repeat: Infinity }} className="flex items-center gap-2 mt-1">
                     <Badge variant="secondary" className="text-xs">Nível {level}</Badge>
                     {isPremium && (
                       <Badge className="text-xs bg-gradient-to-r from-amber-500 to-orange-500">
@@ -371,7 +372,7 @@ export default function UserProfileHeader() {
                         Pro
                       </Badge>
                     )}
-                  </div>
+                  </motion.div>
                 </div>
               </div>
               
@@ -380,7 +381,7 @@ export default function UserProfileHeader() {
                   <span>XP: {xp}/{xpMax}</span>
                   <span>{Math.round(xpPercentage)}%</span>
                 </div>
-                <div className="w-full bg-muted/50 rounded-full h-1.5 overflow-hidden">
+                <div className="w-full bg-muted/50 rounded-full h-1.5 overflow-hidden shadow-inner">
                   <div 
                     className="bg-gradient-to-r from-primary to-accent h-1.5 rounded-full transition-all duration-500"
                     style={{ width: `${xpPercentage}%` }}
@@ -391,7 +392,7 @@ export default function UserProfileHeader() {
               <DropdownMenuSeparator className="my-2" />
               
               <Link href="/member">
-                <DropdownMenuItem className="cursor-pointer hover:bg-primary/10 transition-colors">
+                <DropdownMenuItem className="cursor-pointer hover:bg-primary/10 transition-colors hover:scale-[1.02]">
                   <User className="mr-2 h-4 w-4 text-primary" />
                   <span>Perfil Completo</span>
                 </DropdownMenuItem>
@@ -399,7 +400,7 @@ export default function UserProfileHeader() {
               
               <Link href="/achievements">
                 <DropdownMenuItem className="cursor-pointer hover:bg-primary/10 transition-colors">
-                  <Award className="mr-2 h-4 w-4 text-yellow-500" />
+                  <Award className="mr-2 h-4 w-4 text-yellow-500 animate-pulse" style={{ animationDuration: '3s' }} />
                   <span>Conquistas</span>
                   <Badge className="ml-auto bg-red-500 text-white text-xs">{achievements}</Badge>
                 </DropdownMenuItem>
@@ -407,7 +408,7 @@ export default function UserProfileHeader() {
               
               <DropdownMenuItem className="cursor-pointer hover:bg-primary/10 transition-colors">
                 <CreditCard className="mr-2 h-4 w-4 text-green-500" />
-                <span>Carteira</span>
+                <span>Carteira Digital</span>
                 <span className="ml-auto text-xs text-muted-foreground">{formattedCredits || credits}</span>
               </DropdownMenuItem>
               
@@ -415,7 +416,7 @@ export default function UserProfileHeader() {
               
               <DropdownMenuItem className="cursor-pointer hover:bg-primary/10 transition-colors">
                 <HelpCircle className="mr-2 h-4 w-4 text-blue-500" />
-                <span>Ajuda</span>
+                <span>Centro de Ajuda</span>
               </DropdownMenuItem>
               
               <DropdownMenuItem className="cursor-pointer hover:bg-primary/10 transition-colors">
@@ -425,7 +426,7 @@ export default function UserProfileHeader() {
               
               <DropdownMenuItem className="cursor-pointer hover:bg-primary/10 transition-colors">
                 <Settings className="mr-2 h-4 w-4 text-gray-500" />
-                <span>Definições</span>
+                <span>Preferências</span>
               </DropdownMenuItem>
               
               <DropdownMenuSeparator className="my-2" />
@@ -435,7 +436,7 @@ export default function UserProfileHeader() {
                 <span>Terminar Sessão</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
-          </DropdownMenu>
+          </DropdownMenu></motion.div>
         </div>
       </div>
     </div>

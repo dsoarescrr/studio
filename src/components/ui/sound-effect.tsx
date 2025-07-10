@@ -26,6 +26,7 @@ export function SoundEffect({
   useEffect(() => {
     if (!audioRef.current) {
       audioRef.current = new Audio(src);
+      audioRef.current.preload = 'auto';
     }
     
     // Update properties on every render where they might change
@@ -39,7 +40,7 @@ export function SoundEffect({
     
     if (onEnd) {
       currentAudio.addEventListener('ended', onEnd);
-    }
+    } 
 
     return () => {
       if (onEnd) {
@@ -53,7 +54,7 @@ export function SoundEffect({
     
     if (play && soundEffects) {
       audioRef.current.currentTime = 0;
-      const playPromise = audioRef.current.play();
+      const playPromise = audioRef.current.play(); 
       
       if (playPromise !== undefined) {
         playPromise.catch(err => {
@@ -75,7 +76,7 @@ export const SOUND_EFFECTS = {
   PURCHASE: '/sounds/purchase.mp3',
   ACHIEVEMENT: '/sounds/achievement.mp3',
   NOTIFICATION: '/sounds/notification.mp3',
-  CLICK: '/sounds/click.mp3',
+  CLICK: '/sounds/click.mp3', 
   ERROR: '/sounds/error.mp3',
   SUCCESS: '/sounds/success.mp3', 
   HOVER: '/sounds/click.mp3',

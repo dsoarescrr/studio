@@ -30,6 +30,7 @@ import EnhancedPixelPurchaseModal from './EnhancedPixelPurchaseModal';
 import { useUserStore, usePixelStore } from '@/lib/store';
 import { AchievementPopup } from '@/components/ui/achievement-popup';
 import { SoundEffect, SOUND_EFFECTS } from '@/components/ui/sound-effect';
+import { motion, AnimatePresence } from 'framer-motion';
 
 
 // Configuration constants
@@ -153,8 +154,8 @@ export default function PixelGrid() {
   const [showAchievement, setShowAchievement] = useState(false);
   const [currentAchievement, setCurrentAchievement] = useState({
     id: 'pixel_explorer',
-    name: 'Explorador de Pixels',
-    description: 'Você explorou o mapa e descobriu um pixel especial!',
+    name: 'Explorador de Píxeis',
+    description: 'Você explorou o mapa e descobriu um píxel especial!',
     rarity: 'uncommon' as const,
     xpReward: 50,
     creditsReward: 25,
@@ -164,6 +165,14 @@ export default function PixelGrid() {
   const [loadedPixelImages, setLoadedPixelImages] = useState<Record<string, HTMLImageElement>>({});
 
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  
+  // Hover timer for pixel description
+  const [hoverPixel, setHoverPixel] = useState<{ x: number; y: number } | null>(null);
+  const [showPixelTooltip, setShowPixelTooltip] = useState(false);
+  const [pixelTooltipPosition, setPixelTooltipPosition] = useState({ x: 0, y: 0 });
+  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
+  const [generatedDescription, setGeneratedDescription] = useState<string | null>(null);
+  const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const clearAutoResetTimeout = useCallback(() => {
     if (autoResetTimeoutRef.current) {
@@ -453,6 +462,84 @@ export default function PixelGrid() {
     }
   }, [defaultView, mapData, clearAutoResetTimeout, canvasDrawWidth, canvasDrawHeight, isClient]); 
 
+  // Function to handle pixel hover
+  const handlePixelHover = useCallback((x: number, y: number, clientX: number, clientY: number) => {
+    if (hoverTimerRef.current) {
+      clearTimeout(hoverTimerRef.current);
+    }
+    
+    setHoverPixel({ x, y });
+    setPixelTooltipPosition({ x: clientX, y: clientY });
+    
+    hoverTimerRef.current = setTimeout(() => {
+      setShowPixelTooltip(true);
+    }, 1000); // 1 second hover to show tooltip
+  }, []);
+  
+  // Function to handle pixel hover end
+  const handlePixelHoverEnd = useCallback(() => {
+    if (hoverTimerRef.current) {
+      clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
+    }
+    setHoverPixel(null);
+    setShowPixelTooltip(false);
+  }, []);
+  
+  // Function to generate pixel description using AI
+  const generatePixelDescription = useCallback(async () => {
+    if (!hoverPixel || !pixelBitmap) return;
+    
+    setIsGeneratingDescription(true);
+    
+    try {
+      // Create a small canvas to capture the surrounding area
+      const canvas = document.createElement('canvas');
+      canvas.width = 100;
+      canvas.height = 100;
+      const ctx = canvas.getContext('2d');
+      
+      if (ctx && pixelCanvasRef.current) {
+        // Draw the surrounding area
+        const sourceX = Math.max(0, hoverPixel.x * RENDERED_PIXEL_SIZE_CONFIG - 50);
+        const sourceY = Math.max(0, hoverPixel.y * RENDERED_PIXEL_SIZE_CONFIG - 50);
+        
+        ctx.drawImage(
+          pixelCanvasRef.current,
+          sourceX, sourceY, 100, 100,
+          0, 0, 100, 100
+        );
+        
+        // Convert to data URI
+        const dataUri = canvas.toDataURL('image/png');
+        
+        // Call the AI function
+        const result = await generatePixelDescription({
+          x: hoverPixel.x,
+          y: hoverPixel.y,
+          surroundingAreaImageDataUri: dataUri
+        });
+        
+        setGeneratedDescription(result.description);
+        
+        // Reward the user for using the AI feature
+        if (Math.random() > 0.7) {
+          addCredits(5);
+          addXp(10);
+          toast({
+            title: "Bónus de Exploração!",
+            description: "Recebeu 5 créditos e 10 XP por explorar o mapa com IA.",
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error generating description:', error);
+      setGeneratedDescription("Não foi possível gerar uma descrição para este píxel.");
+    } finally {
+      setIsGeneratingDescription(false);
+    }
+  }, [hoverPixel, pixelBitmap, addCredits, addXp, toast]);
+
   const handleZoomIn = () => { clearAutoResetTimeout(); setZoom((prevZoom) => Math.min(prevZoom * 1.2, MAX_ZOOM)); };
   
   const handleZoomOut = () => { 
@@ -471,6 +558,37 @@ export default function PixelGrid() {
     setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
     didDragRef.current = false;
   };
+  
+  const handleMouseOver = (e: React.MouseEvent) => {
+    if (!pixelBitmap || !containerRef.current || isDragging) return;
+    
+    const rect = containerRef.current.getBoundingClientRect();
+    const mouseXInContainer = e.clientX - rect.left;
+    const mouseYInContainer = e.clientY - rect.top;
+    
+    const xOnContent = (mouseXInContainer - position.x) / zoom;
+    const yOnContent = (mouseYInContainer - position.y) / zoom;
+    
+    const logicalCol = Math.floor(xOnContent / RENDERED_PIXEL_SIZE_CONFIG);
+    const logicalRow = Math.floor(yOnContent / RENDERED_PIXEL_SIZE_CONFIG);
+    
+    if (
+      logicalCol >= 0 && 
+      logicalCol < LOGICAL_GRID_COLS_CONFIG && 
+      logicalRow >= 0 && 
+      logicalRow < logicalGridRows
+    ) {
+      const bitmapIdx = logicalRow * LOGICAL_GRID_COLS_CONFIG + logicalCol;
+      
+      if (pixelBitmap[bitmapIdx] === 1) {
+        handlePixelHover(logicalCol, logicalRow, e.clientX, e.clientY);
+      } else {
+        handlePixelHoverEnd();
+      }
+    } else {
+      handlePixelHoverEnd();
+    }
+  };
 
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -482,10 +600,16 @@ export default function PixelGrid() {
         const dx = Math.abs(currentX - position.x);
         const dy = Math.abs(currentY - position.y);
         if (dx > dragThreshold || dy > dragThreshold) {
-            didDragRef.current = true;
+          didDragRef.current = true;
+          handlePixelHoverEnd();
         }
     }
     setPosition({ x: currentX, y: currentY });
+    
+    // Only handle hover if not dragging
+    if (!didDragRef.current) {
+      handleMouseOver(e);
+    }
   };
   
   const handleCanvasClick = (event: React.MouseEvent) => {
@@ -611,6 +735,8 @@ export default function PixelGrid() {
     if (isDragging) {
       if (!didDragRef.current) {
         handleCanvasClick(event);
+      } else {
+        handlePixelHoverEnd();
       }
       setIsDragging(false);
     }
@@ -764,7 +890,7 @@ export default function PixelGrid() {
   return (
     <div className="flex flex-col h-full w-full overflow-hidden relative animate-fade-in">
       <SoundEffect src={SOUND_EFFECTS.CLICK} play={playClickSound} onEnd={() => setPlayClickSound(false)} />
-      <SoundEffect src={SOUND_EFFECTS.SUCCESS} play={playSuccessSound} onEnd={() => setPlaySuccessSound(false)} />
+      <SoundEffect src={SOUND_EFFECTS.SUCCESS} play={playSuccessSound} onEnd={() => setPlaySuccessSound(false)} volume={0.7} />
       
       <AchievementPopup 
         show={showAchievement} 
@@ -772,7 +898,7 @@ export default function PixelGrid() {
         onClose={() => setShowAchievement(false)} 
       />
       
-      <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 bg-card/80 backdrop-blur-sm p-2 rounded-lg shadow-lg pointer-events-auto animate-slide-in-up animation-delay-200">
+      <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5 }} className="absolute top-4 left-4 z-20 flex flex-col gap-2 bg-card/80 backdrop-blur-sm p-2 rounded-lg shadow-lg pointer-events-auto">
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild pointerEvents="auto">
@@ -809,7 +935,7 @@ export default function PixelGrid() {
           )}
           <p>Pixels no Mapa: {activePixelsInMap > 0 ? activePixelsInMap.toLocaleString('pt-PT') : '...'}</p>
         </div>
-      </div>
+      </motion.div>
       
       {showProgressIndicator && (
           <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-20 bg-card/80 backdrop-blur-sm p-3 rounded-lg shadow-lg text-center pointer-events-none">
@@ -829,6 +955,43 @@ export default function PixelGrid() {
         onPurchase={handlePurchase}
       />
 
+      {/* Pixel Hover Tooltip */}
+      <AnimatePresence>
+        {showPixelTooltip && hoverPixel && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            className="absolute z-30 bg-card/95 backdrop-blur-md p-3 rounded-lg shadow-xl border border-primary/30 max-w-xs"
+            style={{ 
+              left: pixelTooltipPosition.x + 20, 
+              top: pixelTooltipPosition.y - 20,
+              transform: 'translate(-50%, -100%)'
+            }}
+          >
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-primary">Píxel ({hoverPixel.x}, {hoverPixel.y})</h3>
+                <Badge variant="outline" className="text-xs">Explorar</Badge>
+              </div>
+              
+              {isGeneratingDescription ? (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary"></div>
+                  Gerando descrição com IA...
+                </div>
+              ) : generatedDescription ? (
+                <p className="text-xs text-muted-foreground">{generatedDescription}</p>
+              ) : (
+                <Button size="sm" variant="outline" className="text-xs" onClick={generatePixelDescription}>
+                  <Sparkles className="h-3 w-3 mr-1 text-primary" />
+                  Gerar Descrição com IA
+                </Button>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <div className="flex-grow w-full h-full p-4 md:p-8 flex items-center justify-center relative">
         <div
             ref={containerRef}
@@ -836,6 +999,7 @@ export default function PixelGrid() {
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUpOrLeave}
+            onMouseLeave={() => { handleMouseUpOrLeave; handlePixelHoverEnd(); }}
             onMouseLeave={handleMouseUpOrLeave}
         >
             <div
@@ -864,7 +1028,7 @@ export default function PixelGrid() {
       </div>
 
 
-      <div className="absolute bottom-6 right-6 z-20 animate-scale-in animation-delay-500" pointerEvents="auto">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.5 }} className="absolute bottom-6 right-6 z-20" pointerEvents="auto">
         <Dialog>
           <DialogTrigger asChild>
              <Button pointerEvents="auto" size="icon" className="rounded-full w-14 h-14 shadow-lg button-gradient-gold button-3d-effect hover:button-gold-glow active:scale-95 animate-float">
@@ -873,7 +1037,7 @@ export default function PixelGrid() {
           </DialogTrigger>
           <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-sm border-primary/30 shadow-xl" data-dialog-content pointerEvents="auto">
             <DialogHeader className="dialog-header-gold-accent rounded-t-lg">
-              <DialogTitle className="font-headline text-shadow-gold-sm">Ações Rápidas do Universo</DialogTitle>
+              <DialogTitle className="font-headline text-shadow-gold-sm text-gradient-gold">Ações Rápidas do Universo</DialogTitle>
               <DialogDescriptionElement className="text-muted-foreground">
                 Explore, filtre e interaja com o mapa de pixels.
               </DialogDescriptionElement>
@@ -881,7 +1045,7 @@ export default function PixelGrid() {
             <div className="grid gap-3 py-4">
               <Button pointerEvents="auto" variant="outline" className="button-3d-effect-outline"><Search className="mr-2 h-4 w-4" />Explorar Pixel por Coordenadas</Button>
               <Button pointerEvents="auto" variant="outline" className="button-3d-effect-outline"><PaletteIconLucide className="mr-2 h-4 w-4" />Filtros de Visualização</Button>
-              <Button 
+              <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}><Button 
                 pointerEvents="auto" 
                 variant="outline" 
                 className="button-3d-effect-outline hover:bg-primary/10"
@@ -903,7 +1067,7 @@ export default function PixelGrid() {
               >
                 <Sparkles className="mr-2 h-4 w-4 text-primary" />Ver Eventos Atuais
               </Button>
-              <Button 
+              </motion.div><motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}><Button 
                 pointerEvents="auto" 
                 variant="outline" 
                 onClick={handleGoToMyLocation} 
@@ -911,7 +1075,7 @@ export default function PixelGrid() {
               >
                 <MapPinIconLucide className="mr-2 h-4 w-4 text-primary" />Ir para Minha Localização
               </Button>
-              <Button 
+              </motion.div><motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}><Button 
                 pointerEvents="auto" 
                 variant="outline" 
                 className="button-3d-effect-outline hover:bg-primary/10"
@@ -919,12 +1083,12 @@ export default function PixelGrid() {
               >
                 <MapIcon className="mr-2 h-4 w-4 text-primary" />Ver no Google Maps
               </Button>
-            </div>
+              </motion.div></div>
             <DialogFooter className="dialog-footer-gold-accent rounded-b-lg">
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
+      </motion.div>
     </div>
   );
 }

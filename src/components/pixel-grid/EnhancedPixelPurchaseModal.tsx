@@ -47,6 +47,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { SoundEffect, SOUND_EFFECTS } from '@/components/ui/sound-effect';
 import { Confetti } from '@/components/ui/confetti';
+import { motion } from 'framer-motion';
 
 interface SelectedPixelDetails {
   x: number;
@@ -443,7 +444,7 @@ export default function EnhancedPixelPurchaseModal({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <SoundEffect src={SOUND_EFFECTS.PURCHASE} play={playPurchaseSound} onEnd={() => setPlayPurchaseSound(false)} volume={0.6} />
-      <SoundEffect src={SOUND_EFFECTS.ERROR} play={playErrorSound} onEnd={() => setPlayErrorSound(false)} />
+      <SoundEffect src={SOUND_EFFECTS.ERROR} play={playErrorSound} onEnd={() => setPlayErrorSound(false)} volume={0.5} />
       <Confetti active={showConfetti} duration={3000} onComplete={() => setShowConfetti(false)} />
       
       <DialogContent className="max-w-4xl max-h-[95vh] flex flex-col p-0 gap-0">
@@ -491,7 +492,7 @@ export default function EnhancedPixelPurchaseModal({
                     <div className="relative aspect-square max-w-xs mx-auto mb-4">
                       <div
                         className={cn("w-full h-full rounded-lg border-4 transition-all duration-300 shadow-lg", 
-                          rarityStyle.border, `bg-gradient-to-br ${rarityStyle.gradient}`)}
+                          rarityStyle.border, `bg-gradient-to-br ${rarityStyle.gradient} hover:shadow-xl hover:scale-105 transition-all duration-300`)}
                         style={{ backgroundColor: customColor }}
                       >
                         <div className="absolute inset-0 flex items-center justify-center">
@@ -501,7 +502,7 @@ export default function EnhancedPixelPurchaseModal({
                           </div>
                         </div>
                         {rarity === 'legendary' && (
-                          <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-amber-400/20 to-transparent" />
+                          <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-amber-400/30 to-transparent" style={{ animationDuration: '3s' }} />
                         )}
                       </div>
                     </div>
@@ -509,13 +510,13 @@ export default function EnhancedPixelPurchaseModal({
                     <div className="grid grid-cols-2 gap-4 text-center">
                       <div className="p-3 bg-muted/30 rounded-lg hover:bg-muted/40 transition-colors">
                         <Eye className="h-5 w-5 mx-auto mb-1 text-blue-500" />
-                        <div className="font-bold">{views.toLocaleString('pt-PT')}</div>
+                        <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 400, damping: 10 }} className="font-bold">{views.toLocaleString('pt-PT')}</motion.div>
                         <div className="text-xs text-muted-foreground">Visualizações</div>
                       </div>
-                      <div className="p-3 bg-muted/30 rounded-lg">
+                      <div className="p-3 bg-muted/30 rounded-lg hover:bg-muted/40 transition-colors">
                         <Heart className="h-5 w-5 mx-auto mb-1 text-red-500" />
-                        <div className="font-bold">{likes.toLocaleString('pt-PT')}</div>
-                        <div className="text-xs text-muted-foreground">Gostos</div>
+                        <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 400, damping: 10, delay: 0.1 }} className="font-bold">{likes.toLocaleString('pt-PT')}</motion.div>
+                        <div className="text-xs text-muted-foreground">Curtidas</div>
                       </div>
                     </div>
                   </CardContent>
@@ -527,7 +528,7 @@ export default function EnhancedPixelPurchaseModal({
                     <CardTitle className="flex items-center gap-2">
                       <BarChart3 className="h-5 w-5 text-primary animate-pulse" />
                       Análise de Mercado
-                    </CardTitle>
+                    </CardTitle> 
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -537,7 +538,7 @@ export default function EnhancedPixelPurchaseModal({
                       </div>
                       <div className="text-center p-3 bg-green-500/10 rounded-lg">
                         <div className="text-lg font-bold text-green-500 flex items-center justify-center gap-1">
-                          <TrendingUp className="h-4 w-4" />
+                          <TrendingUp className="h-4 w-4 animate-bounce" style={{ animationDuration: '2s' }} />
                           +{mockMarketAnalysis.priceChange24h}%
                         </div>
                         <div className="text-xs text-muted-foreground">Variação 24h</div>
@@ -548,7 +549,7 @@ export default function EnhancedPixelPurchaseModal({
                       </div>
                       <div className="text-center p-3 bg-purple-500/10 rounded-lg hover:bg-purple-500/15 transition-colors">
                         <div className="text-lg font-bold text-purple-500 flex items-center justify-center">
-                          <TrendingUp className="h-4 w-4 mr-1" />Alta
+                          <TrendingUp className="h-4 w-4 mr-1 animate-pulse" />Alta
                         </div>
                         <div className="text-xs text-muted-foreground">Procura</div>
                       </div>
@@ -560,7 +561,7 @@ export default function EnhancedPixelPurchaseModal({
                         {mockMarketAnalysis.priceHistory.map((point, index) => {
                           const height = (point.price / 200) * 100; // Scale to percentage
                           return (
-                            <div 
+                            <motion.div 
                               key={index} 
                               className="flex-1 mx-px bg-primary/30 hover:bg-primary/60 transition-all rounded-t-sm"
                               style={{ height: `${height}%`, animationDelay: `${index * 0.1}s` }}
@@ -572,7 +573,7 @@ export default function EnhancedPixelPurchaseModal({
                       <div className="text-center text-muted-foreground z-10">
                         <LineChart className="h-8 w-8 mx-auto mb-2" />
                         <div className="text-sm">Gráfico de Preços (30 dias)</div>
-                      </div>
+                      </div> 
                     </div>
                   </CardContent>
                 </Card>
@@ -588,7 +589,7 @@ export default function EnhancedPixelPurchaseModal({
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {mockNeighborPixels.map((neighbor, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 bg-muted/20 rounded-lg hover:bg-muted/30 transition-colors">
+                        <motion.div whileHover={{ scale: 1.03 }} key={index} className="flex items-center justify-between p-3 bg-muted/20 rounded-lg hover:bg-muted/30 transition-colors">
                           <div className="flex items-center gap-3 hover:scale-105 transition-transform">
                             <div className="w-8 h-8 bg-gradient-to-br from-primary/20 to-accent/20 rounded border" />
                             <div>
@@ -602,7 +603,7 @@ export default function EnhancedPixelPurchaseModal({
                               {neighbor.rarity}
                             </Badge>
                           </div>
-                        </div>
+                        </motion.div>
                       ))}
                     </div>
                   </CardContent>
@@ -643,13 +644,13 @@ export default function EnhancedPixelPurchaseModal({
                   <TabsContent value="purchase" className="space-y-4 pt-4 mt-0">
                       {/* Price Display */}
                       <Card className="text-center bg-gradient-to-br from-primary/10 to-accent/10 hover:from-primary/15 hover:to-accent/15 transition-colors">
-                          <CardContent className="p-6">
+                          <CardContent className="p-6"> 
                           <div className="space-y-2">
                               <p className="text-sm text-muted-foreground">Preço Atual</p>
-                              <p className="text-4xl font-bold text-gradient-gold">{currentPrice}€</p>
+                              <motion.p initial={{ scale: 0.9 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 300, damping: 10 }} className="text-4xl font-bold text-gradient-gold">{currentPrice}€</motion.p>
                               <p className="text-xs text-muted-foreground">créditos</p>
                               {mockMarketAnalysis.priceChange24h > 0 && (
-                              <Badge className="bg-green-500 text-white">
+                              <Badge className="bg-green-500 text-white animate-pulse">
                                   <TrendingUp className="h-3 w-3 mr-1" />
                                   +{mockMarketAnalysis.priceChange24h}% (24h)
                               </Badge>
@@ -666,7 +667,7 @@ export default function EnhancedPixelPurchaseModal({
                           <CardContent className="space-y-3">
                           <Button
                               variant={paymentMethod === 'credits' ? 'default' : 'outline'}
-                              className="w-full justify-between hover:scale-[1.02] transition-transform"
+                              className="w-full justify-between hover:scale-[1.02] transition-transform hover:bg-primary/10"
                               onClick={() => setPaymentMethod('credits')}
                           >
                               <div className="flex items-center">
@@ -678,7 +679,7 @@ export default function EnhancedPixelPurchaseModal({
                           
                           <Button
                               variant={paymentMethod === 'special_credits' ? 'default' : 'outline'}
-                              className="w-full justify-between hover:scale-[1.02] transition-transform"
+                              className="w-full justify-between hover:scale-[1.02] transition-transform hover:bg-accent/10"
                               onClick={() => setPaymentMethod('special_credits')}
                           >
                               <div className="flex items-center">
@@ -721,7 +722,7 @@ export default function EnhancedPixelPurchaseModal({
                       )}
 
                       {/* Purchase Button */}
-                      <Button 
+                      <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}><Button 
                           size="lg" 
                           className="w-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 hover:scale-[1.02] transition-transform" 
                           onClick={handlePurchaseClick} 
@@ -734,7 +735,7 @@ export default function EnhancedPixelPurchaseModal({
                           )}
                           {isOwnedByCurrentUser ? 'Já é Seu!' : 
                           canAfford ? 'Confirmar Compra' : 'Créditos Insuficientes'}
-                      </Button>
+                      </Button></motion.div>
 
                       {/* Advanced Options */}
                       <div className="pt-4 border-t">
