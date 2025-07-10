@@ -10,7 +10,8 @@ import {
   Map as MapIcon,
 } from 'lucide-react';
 import NextImage from 'next/image';
-import PortugalMapSvg, { type MapData } from './PortugalMapSvg';
+import PortugalMapSvg from './PortugalMapSvg';
+import type { MapData } from './PortugalMapSvg';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { generatePixelDescription, type GeneratePixelDescriptionInput } from '@/ai/flows/generate-pixel-description';
@@ -110,7 +111,7 @@ export default function PixelGrid() {
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [defaultView, setDefaultView] = useState<{ zoom: number; position: { x: number; y: number } } | null>(null);
 
-  const didDragRef = useRef(didDragRef);
+  const didDragRef = useRef(false);
   const dragThreshold = 5;
 
   const [highlightedPixel, setHighlightedPixel] = useState<{ x: number; y: number } | null>(null);
