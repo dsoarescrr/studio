@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { mapPixelToApproxGps } from '@/lib/utils';
 import EnhancedPixelPurchaseModal from './EnhancedPixelPurchaseModal';
+import AdvancedPixelModal from './AdvancedPixelModal';
 
 // Configuration constants
 const SVG_VIEWBOX_WIDTH = 12969;
@@ -110,7 +111,7 @@ export default function PixelGrid() {
   const [highlightedPixel, setHighlightedPixel] = useState<{ x: number; y: number } | null>(null);
   const [selectedPixelDetails, setSelectedPixelDetails] = useState<SelectedPixelDetails | null>(null);
 
-  const [showPixelModal, setShowPixelModal] = useState(false);
+  const [showAdvancedModal, setShowAdvancedModal] = useState(false);
   
   const containerRef = useRef<HTMLDivElement>(null);
   const pixelCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -542,7 +543,7 @@ export default function PixelGrid() {
         }
 
         setSelectedPixelDetails(mockDetails);
-        setShowPixelModal(true);
+        setShowAdvancedModal(true);
       } else { 
         setHighlightedPixel(null);
         setSelectedPixelDetails(null);
@@ -636,6 +637,7 @@ export default function PixelGrid() {
       clearTimeout(autoResetTimeoutRef.current);
     }
     if (!defaultView || showPixelModal || isDragging) { 
+    if (!defaultView || showAdvancedModal || isDragging) { 
       return;
     } 
 
@@ -656,7 +658,7 @@ export default function PixelGrid() {
         clearTimeout(autoResetTimeoutRef.current);
       }
     };
-  }, [zoom, position, handleResetView, defaultView, showPixelModal, isDragging]);
+  }, [zoom, position, handleResetView, defaultView, showAdvancedModal, isDragging]);
   
   const showProgressIndicator = isLoadingMap || (progressMessage !== "");
 
@@ -725,13 +727,18 @@ export default function PixelGrid() {
         )}
       
       {selectedPixelDetails && (
-        <EnhancedPixelPurchaseModal
-          isOpen={showPixelModal}
-          onClose={() => setShowPixelModal(false)}
+        <AdvancedPixelModal
+          isOpen={showAdvancedModal}
+          onClose={() => setShowAdvancedModal(false)}
           pixelData={selectedPixelDetails}
           userCredits={12500}
           userSpecialCredits={120}
           onPurchase={handlePurchase}
+          onSendOffer={async (pixelData, offer) => {
+            console.log("Sending offer:", offer, "for pixel:", pixelData);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            return true;
+          }}
         />
       )}
 
