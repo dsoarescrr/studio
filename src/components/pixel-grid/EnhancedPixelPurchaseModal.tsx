@@ -58,7 +58,7 @@ interface SelectedPixelDetails {
   lastSold?: Date;
   views: number;
   likes: number;
-  rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+  rarity: 'Comum' | 'Raro' | 'Épico' | 'Lendário' | 'Marco Histórico';
   region: string;
   isProtected: boolean;
   history: Array<{ owner: string; date: string | Date; price: number, action?: 'purchase' | 'sale' | 'transfer' }>;
@@ -96,6 +96,20 @@ const rarityStyles = {
   rare: { text: 'text-blue-400', border: 'border-blue-400/50', bg: 'bg-blue-400/10', gradient: 'from-blue-400/20 to-blue-400/5' },
   epic: { text: 'text-purple-400', border: 'border-purple-400/50', bg: 'bg-purple-400/10', gradient: 'from-purple-400/20 to-purple-400/5' },
   legendary: { text: 'text-amber-400', border: 'border-amber-400/50', bg: 'bg-amber-400/10', gradient: 'from-amber-400/20 to-amber-400/5' },
+  'Marco Histórico': { text: 'text-amber-400', border: 'border-amber-400/50', bg: 'bg-amber-400/10', gradient: 'from-amber-400/20 to-amber-400/5' },
+};
+
+const rarityTranslation: { [key: string]: keyof typeof rarityStyles } = {
+  'Comum': 'common',
+  'Raro': 'rare',
+  'Épico': 'epic',
+  'Lendário': 'legendary',
+  'Marco Histórico': 'legendary',
+  'common': 'common',
+  'uncommon': 'uncommon',
+  'rare': 'rare',
+  'epic': 'epic',
+  'legendary': 'legendary'
 };
 
 // Mock data for enhanced features
@@ -198,11 +212,12 @@ export default function EnhancedPixelPurchaseModal({
       setPixelProtection(pixelData.isProtected || false);
       
       const baseValue = pixelData.price || 50;
+      const rarityKey = rarityTranslation[pixelData.rarity] || 'common';
       const rarityMultiplier = 
-        pixelData.rarity === 'legendary' ? 2.0 :
-        pixelData.rarity === 'epic' ? 1.5 :
-        pixelData.rarity === 'rare' ? 1.2 :
-        pixelData.rarity === 'uncommon' ? 1.1 : 1.0;
+        rarityKey === 'legendary' ? 2.0 :
+        rarityKey === 'epic' ? 1.5 :
+        rarityKey === 'rare' ? 1.2 :
+        rarityKey === 'uncommon' ? 1.1 : 1.0;
       
       setPixelValue([baseValue * rarityMultiplier]);
     }
@@ -429,7 +444,8 @@ export default function EnhancedPixelPurchaseModal({
     isOwnedByCurrentUser, isForSaleBySystem, history, views, likes, gpsCoords
   } = pixelData; 
   const currentPrice = pixelData.salePrice || price;
-  const rarityStyle = rarityStyles[rarity];
+  const rarityKey = rarityTranslation[rarity] || 'common';
+  const rarityStyle = rarityStyles[rarityKey];
 
   const renderInfoRow = (icon: React.ReactNode, label: string, value: React.ReactNode) => (
     <div className="flex items-center justify-between text-sm py-2 border-b border-border/50 hover:bg-muted/20 transition-colors rounded px-2">
@@ -457,7 +473,7 @@ export default function EnhancedPixelPurchaseModal({
                 <MapPin className="h-6 w-6" />
               </div>
               {title || `Pixel (${x}, ${y})`}
-              {rarity === 'legendary' && <Crown className="h-6 w-6 text-amber-400 animate-pulse" />}
+              {rarity === 'Lendário' && <Crown className="h-6 w-6 text-amber-400 animate-pulse" />}
             </DialogTitle>
             <DialogDescription className="text-muted-foreground mt-2 flex items-center gap-4">
               <span className="line-clamp-2">{description || `Pixel único em ${region} com coordenadas (${x}, ${y})`}</span>
@@ -501,7 +517,7 @@ export default function EnhancedPixelPurchaseModal({
                             <div className="text-sm opacity-80 animate-pulse">{region}</div>
                           </div>
                         </div>
-                        {rarity === 'legendary' && (
+                        {rarity === 'Lendário' && (
                           <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-amber-400/30 to-transparent" style={{ animationDuration: '3s' }} />
                         )}
                       </div>
@@ -972,4 +988,3 @@ export default function EnhancedPixelPurchaseModal({
     </Dialog> 
   );
 }
-
