@@ -30,15 +30,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  Eye, Heart, MessageSquare, Star, TrendingUp, Clock, MapPin, Palette,
-  Crown, Gem, Sparkles, Fire, Trophy, Users, Share2, Bookmark, Filter,
-  Search, SortAsc, Grid3X3, List, BarChart3, Zap, Gift, Coins, Award,
-  Calendar, Globe, Target, Flame, ThumbsUp, Download, ExternalLink,
-  Play, Pause, Volume2, VolumeX, RotateCcw, Maximize2, Settings,
-  ChevronUp, ChevronDown, ArrowUp, ArrowDown, TrendingDown, Plus,
-  RefreshCw, Bell, Flag, Info, HelpCircle, Lightbulb, Megaphone
-} from "lucide-react";
+import { Eye, Heart, MessageSquare, Star, TrendingUp, Clock, MapPin, Palette, Crown, Gem, Sparkles, Siren as Fire, Trophy, Users, Share2, Bookmark, Filter, Search, SortAsc, Grid3X3, List, BarChart3, Zap, Gift, Coins, Award, Calendar, Globe, Target, Flame, ThumbsUp, Download, ExternalLink, Play, Pause, Volume2, VolumeX, RotateCcw, Maximize2, Settings, ChevronUp, ChevronDown, ArrowUp, ArrowDown, TrendingDown, Plus, RefreshCw, Bell, Flag, Info, HelpCircle, Lightbulb, Megaphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
