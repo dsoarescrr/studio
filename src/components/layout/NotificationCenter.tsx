@@ -14,11 +14,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import {
-  Bell, X, Check, Star, MessageSquare, ShoppingCart, Trophy, Users,
-  MapPin, Palette, Gift, AlertTriangle, Info, Heart, Share2, Crown,
-  Zap, Clock, Filter, MarkAsUnread, Settings, Archive
-} from 'lucide-react';
+import { Bell, X, Check, Star, MessageSquare, ShoppingCart, Trophy, Users, MapPin, Palette, Gift, AlertTriangle, Info, Heart, Share2, Crown, Zap, Clock, Filter, SquaresUnite as MarkAsUnread, Settings, Archive } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
