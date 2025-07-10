@@ -127,6 +127,7 @@ export default function AdvancedPixelModal({
   const [pixelTags, setPixelTags] = useState('');
   const [pixelUrl, setPixelUrl] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('credits');
+ const [isEditing, setIsEditing] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [selectedEffect, setSelectedEffect] = useState('none');
@@ -153,6 +154,23 @@ export default function AdvancedPixelModal({
       setCustomColor(pixelData.color || '#D4A757');
       setPixelTitle(pixelData.title || `Pixel em ${pixelData.region}`);
       setPixelDescription(pixelData.description || '');
+     setPixelTags(pixelData.tags?.join(', ') || '');
+     setPixelUrl('');
+     setUploadedImage(null);
+     setSelectedEffect('none');
+     setSelectedSound('none');
+     setEffectIntensity([50]);
+     setBrightness([100]);
+     setContrast([100]);
+     setSaturation([100]);
+     setHue([0]);
+     setEnableAnimation(false);
+     setEnableInteraction(false);
+     setEnableSound(false);
+     setBoostLevel(0);
+     setOfferAmount('');
+     setOfferMessage('');
+     setOfferExpiry('24');
       setActiveTab(pixelData.isOwnedByCurrentUser ? 'edit' : 'overview');
     }
   }, [pixelData]);
@@ -270,6 +288,22 @@ export default function AdvancedPixelModal({
       });
     }
   };
+
+ const handleSaveChanges = async () => {
+   if (!pixelData) return;
+   
+   setIsProcessing(true);
+   
+   // Simulate API call
+   await new Promise(resolve => setTimeout(resolve, 800));
+   
+   setIsProcessing(false);
+   
+   toast({
+     title: 'Alterações Salvas',
+     description: 'As alterações ao seu pixel foram guardadas com sucesso.',
+   });
+ };
 
   const handleSendOffer = async () => {
     if (!pixelData || !onSendOffer) return;
@@ -757,9 +791,39 @@ export default function AdvancedPixelModal({
                               </div>
                             </div>
                           </div>
+                         
+                         {pixelData?.isOwnedByCurrentUser && (
+                           <Button 
+                             onClick={handleSaveChanges} 
+                             disabled={isProcessing}
+                             className="w-full mt-4"
+                           >
+                             {isProcessing ? (
+                               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                             ) : (
+                               <Save className="h-4 w-4 mr-2" />
+                             )}
+                             Guardar Alterações
+                           </Button>
+                         )}
                         </CardContent>
                       </Card>
                     </div>
+                    
+                    {pixelData?.isOwnedByCurrentUser && (
+                      <Button 
+                        onClick={handleSaveChanges} 
+                        disabled={isProcessing}
+                        className="w-full"
+                      >
+                        {isProcessing ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Save className="h-4 w-4 mr-2" />
+                        )}
+                        Guardar Alterações
+                      </Button>
+                    )}
                   </TabsContent>
 
                   <TabsContent value="boost" className="space-y-6 mt-0">
@@ -820,6 +884,21 @@ export default function AdvancedPixelModal({
                             </Card>
                           ))}
                         </div>
+                        
+                        {pixelData?.isOwnedByCurrentUser && (
+                          <Button 
+                            onClick={handleSaveChanges} 
+                            disabled={isProcessing}
+                            className="w-full mt-4"
+                          >
+                            {isProcessing ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <Save className="h-4 w-4 mr-2" />
+                            )}
+                            Aplicar Promoção
+                          </Button>
+                        )}
                       </CardContent>
                     </Card>
                   </TabsContent>
@@ -884,7 +963,9 @@ export default function AdvancedPixelModal({
                           <div className="grid grid-cols-2 gap-2 mt-2">
                             <Button
                               variant={paymentMethod === 'credits' ? 'default' : 'outline'}
-                              onClick={() => setPaymentMethod('credits')}
+                              onClick={() => {
+                                setPaymentMethod('credits');
+                              }}
                               className="justify-start"
                             >
                               <Coins className="h-4 w-4 mr-2" />
@@ -989,7 +1070,12 @@ export default function AdvancedPixelModal({
                             <Button
                               variant={paymentMethod === 'credits' ? 'default' : 'outline'}
                               className="w-full justify-start"
-                              onClick={() => setPaymentMethod('credits')}
+                              onClick={() => {
+                                setPaymentMethod('credits');
+                                if (parseFloat(offerAmount) > userCredits) {
+                                  setOfferAmount(userCredits.toString());
+                                }
+                              }}
                             >
                               <Coins className="h-4 w-4 mr-2" />
                               Créditos ({userCredits.toLocaleString()})
@@ -997,7 +1083,14 @@ export default function AdvancedPixelModal({
                             <Button
                               variant={paymentMethod === 'special_credits' ? 'default' : 'outline'}
                               className="w-full justify-start"
-                              onClick={() => setPaymentMethod('special_credits')}
+                              onClick={() => {
+                                setPaymentMethod('special_credits');
+                                if (parseFloat(offerAmount) > userSpecialCredits) {
+                                  setOfferAmount(userSpecialCredits.toString());
+                                }
+                              onClick={() => {
+                                setPaymentMethod('special_credits');
+                              }}
                             >
                               <Gift className="h-4 w-4 mr-2" />
                               Créditos Especiais ({userSpecialCredits})

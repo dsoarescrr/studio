@@ -5,6 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -64,50 +65,205 @@ export default function MarketplacePage() {
         </Card>
 
         {/* Coming Soon Content */}
-        <Card className="p-12 text-center">
-          <ShoppingCart className="h-24 w-24 text-primary mx-auto mb-6 animate-pulse" />
-          <h2 className="text-3xl font-headline font-bold text-primary mb-4">
-            Marketplace em Desenvolvimento
-          </h2>
-          <p className="text-lg text-muted-foreground mb-6 max-w-2xl mx-auto">
-            Estamos a trabalhar numa experiência de marketplace revolucionária que permitirá 
-            comprar, vender e trocar píxeis de forma segura e intuitiva.
-          </p>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8 max-w-4xl mx-auto">
-            <Card className="p-6 bg-primary/5 border-primary/20">
-              <Gavel className="h-12 w-12 text-primary mx-auto mb-4" />
-              <h3 className="font-semibold text-lg mb-2">Leilões Dinâmicos</h3>
-              <p className="text-sm text-muted-foreground">
-                Sistema de leilões em tempo real para píxeis raros e únicos
-              </p>
-            </Card>
-            
-            <Card className="p-6 bg-accent/5 border-accent/20">
-              <Shield className="h-12 w-12 text-accent mx-auto mb-4" />
-              <h3 className="font-semibold text-lg mb-2">Transações Seguras</h3>
-              <p className="text-sm text-muted-foreground">
-                Sistema de escrow e verificação para transações 100% seguras
-              </p>
-            </Card>
-            
-            <Card className="p-6 bg-green-500/5 border-green-500/20">
-              <BarChart3 className="h-12 w-12 text-green-500 mx-auto mb-4" />
-              <h3 className="font-semibold text-lg mb-2">Analytics Avançadas</h3>
-              <p className="text-sm text-muted-foreground">
-                Dados de mercado e tendências para decisões informadas
-              </p>
-            </Card>
-          </div>
-          
-          <Button className="mt-8" onClick={() => toast({
-            title: "Notificação Ativada",
-            description: "Será notificado quando o marketplace estiver disponível!"
-          })}>
-            <Bell className="h-4 w-4 mr-2" />
-            Notificar-me Quando Estiver Pronto
-          </Button>
-        </Card>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Featured Listings */}
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Star className="h-5 w-5 text-primary" />
+                Píxeis em Destaque
+              </CardTitle>
+              <CardDescription>
+                Os píxeis mais populares e exclusivos do momento
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <Card key={i} className="overflow-hidden border-primary/20 hover:border-primary/50 transition-all hover:shadow-md">
+                    <div className="aspect-square relative">
+                      <img 
+                        src={`https://placehold.co/300x300/D4A757/ffffff?text=Pixel+${i}`} 
+                        alt={`Pixel ${i}`}
+                        className="w-full h-full object-cover"
+                      />
+                      <Badge className="absolute top-2 left-2 bg-primary">
+                        <Sparkles className="h-3 w-3 mr-1" />
+                        Destaque
+                      </Badge>
+                      {i % 2 === 0 && (
+                        <Badge className="absolute top-2 right-2 bg-red-500">
+                          <Flame className="h-3 w-3 mr-1" />
+                          Hot
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="p-3">
+                      <div className="flex justify-between items-center mb-1">
+                        <h3 className="font-medium text-sm">Pixel Premium #{i}</h3>
+                        <Badge variant="outline" className={i % 2 === 0 ? "text-purple-400" : "text-blue-400"}>
+                          {i % 2 === 0 ? "Épico" : "Raro"}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center text-xs text-muted-foreground mb-2">
+                        <MapPin className="h-3 w-3 mr-1" />
+                        <span>({Math.floor(Math.random() * 1000)}, {Math.floor(Math.random() * 1000)})</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span className="flex items-center">
+                            <Eye className="h-3 w-3 mr-1" />
+                            {Math.floor(Math.random() * 1000)}
+                          </span>
+                          <span className="flex items-center">
+                            <Heart className="h-3 w-3 mr-1" />
+                            {Math.floor(Math.random() * 100)}
+                          </span>
+                        </div>
+                        <span className="font-bold text-primary">{(Math.random() * 100 + 50).toFixed(2)}€</span>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+              <Button variant="outline" className="w-full mt-4">
+                <Eye className="h-4 w-4 mr-2" />
+                Ver Mais Destaques
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Market Stats */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-primary" />
+                Estatísticas do Mercado
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Píxeis Listados</span>
+                  <span className="font-bold">2,573</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Preço Médio</span>
+                  <span className="font-bold text-primary">42.35€</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Volume (24h)</span>
+                  <span className="font-bold text-green-500">12,450€</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium">Tendências por Região</h4>
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span>Lisboa</span>
+                      <span className="text-green-500 flex items-center">
+                        <TrendingUp className="h-3 w-3 mr-1" />
+                        +12%
+                      </span>
+                    </div>
+                    <Progress value={75} className="h-1.5" />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span>Porto</span>
+                      <span className="text-green-500 flex items-center">
+                        <TrendingUp className="h-3 w-3 mr-1" />
+                        +8%
+                      </span>
+                    </div>
+                    <Progress value={60} className="h-1.5" />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span>Algarve</span>
+                      <span className="text-red-500 flex items-center">
+                        <TrendingDown className="h-3 w-3 mr-1" />
+                        -3%
+                      </span>
+                    </div>
+                    <Progress value={45} className="h-1.5" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium">Raridade em Destaque</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <Card className="p-2 bg-purple-500/10 border-purple-500/30">
+                    <div className="text-center">
+                      <p className="text-xs text-purple-400">Épico</p>
+                      <p className="font-bold text-purple-500">+18%</p>
+                    </div>
+                  </Card>
+                  <Card className="p-2 bg-amber-500/10 border-amber-500/30">
+                    <div className="text-center">
+                      <p className="text-xs text-amber-400">Lendário</p>
+                      <p className="font-bold text-amber-500">+24%</p>
+                    </div>
+                  </Card>
+                </div>
+              </div>
+
+              <Button className="w-full">
+                <ShoppingCart className="h-4 w-4 mr-2" />
+                Explorar Marketplace
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Recent Transactions */}
+          <Card className="md:col-span-3">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="h-5 w-5 text-primary" />
+                Transações Recentes
+              </CardTitle>
+              <CardDescription>
+                Últimas atividades no marketplace
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <Card key={i} className="p-3 hover:bg-muted/30 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-primary/10 rounded-md flex items-center justify-center">
+                        {i % 3 === 0 ? (
+                          <Gavel className="h-5 w-5 text-primary" />
+                        ) : i % 3 === 1 ? (
+                          <ShoppingCart className="h-5 w-5 text-green-500" />
+                        ) : (
+                          <Send className="h-5 w-5 text-blue-500" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {i % 3 === 0 ? "Leilão Finalizado" : i % 3 === 1 ? "Compra Direta" : "Oferta Aceite"}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          Pixel ({Math.floor(Math.random() * 1000)}, {Math.floor(Math.random() * 1000)})
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-primary">{(Math.random() * 100 + 20).toFixed(2)}€</p>
+                        <p className="text-xs text-muted-foreground">
+                          {Math.floor(Math.random() * 60)}m atrás
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

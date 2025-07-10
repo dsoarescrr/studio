@@ -112,6 +112,7 @@ export default function PixelGrid() {
   const [selectedPixelDetails, setSelectedPixelDetails] = useState<SelectedPixelDetails | null>(null);
 
   const [showAdvancedModal, setShowAdvancedModal] = useState(false);
+  const [showPixelModal, setShowPixelModal] = useState(false);
   
   const containerRef = useRef<HTMLDivElement>(null);
   const pixelCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -463,7 +464,6 @@ export default function PixelGrid() {
       toast({
         title: "Mapa a Carregar",
         description: "A grelha interativa está a ser processada. Por favor, aguarde.",
-        variant: "default",
       });
       return;
     }
