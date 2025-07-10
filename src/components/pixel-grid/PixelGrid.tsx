@@ -15,7 +15,7 @@ import PortugalMapSvg, { type MapData } from './PortugalMapSvg';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { generatePixelDescription, type GeneratePixelDescriptionInput } from '@/ai/flows/generate-pixel-description';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/use-toast';
 import {
   Dialog,
   DialogContent,
@@ -30,7 +30,7 @@ import { Card, CardContent, CardHeader, CardTitle as CardTitleElement, CardDescr
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { Textarea } from '@/components/ui/textarea'; 
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '../ui/separator';
@@ -128,9 +128,8 @@ export default function PixelGrid() {
   const [purchasePixelData, setPurchasePixelData] = useState<any>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const pixelCanvasRef = useRef<HTMLCanvasElement>(null);
+  const pixelCanvasRef = useRef<HTMLCanvasElement>(null); 
   const outlineCanvasRef = useRef<HTMLCanvasElement>(null);
-  const { toast } = useToast();
 
   const [mapData, setMapData] = useState<MapData | null>(null);
   const [pixelBitmap, setPixelBitmap] = useState<Uint8Array | null>(null);
@@ -155,7 +154,7 @@ export default function PixelGrid() {
   const [editableIsForSaleByOwner, setEditableIsForSaleByOwner] = useState(false);
   const [editableSalePrice, setEditableSalePrice] = useState<number | string>('');
 
-  const autoResetTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const autoResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [unsoldColor, setUnsoldColor] = useState('');
   const [strokeColor, setStrokeColor] = useState('');
@@ -252,7 +251,7 @@ export default function PixelGrid() {
     };
     img.src = url;
   
-  }, [isClient, mapData, toast]);
+  }, [isClient, mapData]);
 
   useEffect(() => {
       if (!pixelBitmap || !unsoldColor) return;
@@ -534,8 +533,8 @@ export default function PixelGrid() {
     }
 
     const rect = containerRef.current.getBoundingClientRect();
-    const clickXInContainer = event.clientX - rect.left;
-    const clickYInContainer = event.clientY - rect.top;
+    const clickXInContainer = event.clientX - rect.left; 
+    const clickYInContainer = event.clientY - rect.top; 
 
     const xOnContent = (clickXInContainer - position.x) / zoom;
     const yOnContent = (clickYInContainer - position.y) / zoom;
@@ -555,7 +554,7 @@ export default function PixelGrid() {
         const randomLore = mockLoreSnippets[Math.floor(Math.random() * mockLoreSnippets.length)];
         const approxGps = mapPixelToApproxGps(logicalCol, logicalRow, LOGICAL_GRID_COLS_CONFIG, logicalGridRows);
 
-        // Create mock pixel data for purchase modal
+        // Create mock pixel data for purchase modal 
         const pixelData = {
           x: logicalCol,
           y: logicalRow,
@@ -624,8 +623,14 @@ export default function PixelGrid() {
         setEditableIsForSaleByOwner(mockDetails.isForSaleByOwner || false);
         setEditableSalePrice(mockDetails.salePrice || '');
 
-        setPurchasePixelData(pixelData);
-        setShowPurchaseModal(true);
+        // Only show purchase modal for system pixels
+        if (mockDetails.isForSaleBySystem) {
+          setPurchasePixelData(pixelData);
+          setShowPurchaseModal(true);
+        } else {
+          setShowPixelModal(true);
+        }
+        
         setPixelDescription(null);
         setEditMode(false);
         setInitialAiProgressTrigger(prev => prev + 1);
@@ -678,7 +683,7 @@ export default function PixelGrid() {
     } finally {
         setIsGeneratingDesc(false);
     }
-  }, [selectedPixelDetails, toast]);
+  }, [selectedPixelDetails]);
 
   const handlePixelImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
