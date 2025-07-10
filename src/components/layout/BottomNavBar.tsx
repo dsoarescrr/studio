@@ -31,6 +31,7 @@ import {
   ThemeCustomizer
 } from '@/components/features';
 import { SoundEffect, SOUND_EFFECTS } from '@/components/ui/sound-effect';
+import '@/lib/i18n';
 
 const navLinks = [
   { href: "/", label: "Universo", icon: Home, color: "text-blue-500", description: "Explorar o mapa" },
