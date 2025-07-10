@@ -383,8 +383,8 @@ export default function UserProfileHeader() {
                 <DropdownMenuItem className="cursor-pointer hover:bg-primary/10 transition-colors">
                   <Award className="mr-2 h-4 w-4 text-yellow-500" />
                   <span>Conquistas</span>
-                  <Badge className="ml-auto bg-red-500 text-white text-xs">2</Badge>
-                <Badge className="ml-auto bg-red-500 text-white text-xs">{achievements}</Badge>
+                  <Badge className="ml-auto bg-red-500 text-white text-xs">{achievements}</Badge>
+                </DropdownMenuItem>
               </Link>
               
               <DropdownMenuItem className="cursor-pointer hover:bg-primary/10 transition-colors">
