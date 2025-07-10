@@ -15,7 +15,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { mapPixelToApproxGps } from '@/lib/utils';
-import PortugalMapSvg from './PortugalMapSvg';
+import PortugalMapSvg, { type MapData } from './PortugalMapSvg';
 import EnhancedPixelPurchaseModal from './EnhancedPixelPurchaseModal';
 
 // Types
@@ -70,7 +70,23 @@ const ZOOM_STEP = 0.1;
 const PIXEL_SIZE = 4;
 
 // Mock data generator
-const generateMockPixelData = (x: number, y: number): PixelData => {
+const generateMockPixelData = (x: number, y: number, mapData: MapData | null): PixelData | null => {
+  if (mapData?.svgElement) {
+    // Check if the point is inside the SVG map paths
+    const point = mapData.svgElement.createSVGPoint();
+    point.x = x * PIXEL_SIZE;
+    point.y = y * PIXEL_SIZE;
+    let isInside = false;
+    const paths = mapData.svgElement.querySelectorAll('path');
+    for (const path of paths) {
+      if (path.isPointInFill(point)) {
+        isInside = true;
+        break;
+      }
+    }
+    if (!isInside) return null; // Don't generate pixel if outside map boundaries
+  }
+
   const rarities: PixelRarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
   const regions = ['Norte', 'Centro', 'Lisboa', 'Alentejo', 'Algarve', 'Açores', 'Madeira'];
   
@@ -126,6 +142,7 @@ export default function PixelGrid() {
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const [mapData, setMapData] = useState<MapData | null>(null);
   
   // Refs
   const containerRef = useRef<HTMLDivElement>(null);
@@ -136,8 +153,13 @@ export default function PixelGrid() {
   // Hooks
   const { toast } = useToast();
 
+  const handleMapDataLoaded = useCallback((data: MapData) => {
+    setMapData(data);
+  }, []);
+
   // Memoized calculations
   const visiblePixels = useMemo(() => {
+    if (!mapData) return [];
     const margin = 100;
     const startX = Math.max(0, Math.floor(viewport.x - margin / viewport.zoom));
     const endX = Math.min(GRID_SIZE.width, Math.ceil(viewport.x + margin / viewport.zoom));
@@ -147,11 +169,14 @@ export default function PixelGrid() {
     const pixels: PixelData[] = [];
     for (let x = startX; x < endX; x += 2) {
       for (let y = startY; y < endY; y += 2) {
-        pixels.push(generateMockPixelData(x, y));
+        const pixel = generateMockPixelData(x, y, mapData);
+        if (pixel) {
+            pixels.push(pixel);
+        }
       }
     }
     return pixels;
-  }, [viewport]);
+  }, [viewport, mapData]);
 
   const gridMetrics = useMemo((): GridMetrics => {
     const totalPixels = GRID_SIZE.width * GRID_SIZE.height;
@@ -372,8 +397,7 @@ export default function PixelGrid() {
               <g transform={`scale(${PIXEL_SIZE})`}>
                 <PortugalMapSvg 
                   className="opacity-20 fill-primary/10 stroke-primary/30"
-                  width={GRID_SIZE.width}
-                  height={GRID_SIZE.height}
+                  onMapDataLoaded={handleMapDataLoaded}
                 />
               </g>
             )}
