@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, User, Trophy, BarChartHorizontalBig, Users, Plus, Zap } from 'lucide-react';
+import { Home, User, Trophy, BarChartHorizontalBig, Users, Plus, Zap, Coins } from 'lucide-react';
 import { ShoppingCart, Palette, Gift } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import React, { useState, useEffect } from 'react';
