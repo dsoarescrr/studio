@@ -18,7 +18,8 @@ import {
   Eye, Heart, MessageSquare, Share2, Calendar, Clock, TrendingUp, TrendingDown,
   BarChart3, PieChart, Activity, Star, Crown, Sparkles, Zap, Target, Palette,
   Settings, Bell, Shield, Download, Upload, Camera, Plus, ChevronRight,
-  LineChart, Globe, Users, DollarSign, Flame, History, Package, Grid3X3, ShoppingCart
+  LineChart, Globe, Users, DollarSign, Flame, History, Package, Grid3X3, ShoppingCart,
+  Filter, SortAsc
 } from "lucide-react";
 import { achievementsData } from '@/data/achievements-data';
 import { cn } from '@/lib/utils';
