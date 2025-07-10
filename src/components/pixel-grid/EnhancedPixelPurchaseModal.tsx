@@ -45,7 +45,6 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { SoundEffect, SOUND_EFFECTS } from '@/components/ui/sound-effect';
 import { Confetti } from '@/components/ui/confetti';
-import { Pixel3D } from '@/components/ui/3d-pixel';
 
 interface SelectedPixelDetails {
   x: number;
@@ -285,8 +284,7 @@ export default function EnhancedPixelPurchaseModal({
                     <div className="relative aspect-square max-w-xs mx-auto mb-4">
                       <div 
                         className={cn("w-full h-full rounded-lg border-4 transition-all duration-300 shadow-lg", 
-                          rarityStyle.border, `bg-gradient-to-br ${rarityStyle.gradient}`, 
-                          show3DPreview ? 'opacity-0' : 'opacity-100')}
+                          rarityStyle.border, `bg-gradient-to-br ${rarityStyle.gradient}`)}
                         style={{ backgroundColor: customColor }}
                       >
                         <div className="absolute inset-0 flex items-center justify-center">
@@ -299,28 +297,6 @@ export default function EnhancedPixelPurchaseModal({
                           <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-amber-400/20 to-transparent" />
                         )}
                       </div>
-                      
-                      {/* 3D Pixel Preview */}
-                      <div className={cn(
-                        "absolute inset-0 transition-opacity duration-300",
-                        show3DPreview ? 'opacity-100' : 'opacity-0'
-                      )}>
-                        <Pixel3D 
-                          color={customColor} 
-                          autoRotate={true}
-                          className="w-full h-full"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex justify-center mb-4">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => setShow3DPreview(!show3DPreview)}
-                      >
-                        {show3DPreview ? '2D' : '3D'} Visualização
-                      </Button>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4 text-center">
@@ -423,7 +399,7 @@ export default function EnhancedPixelPurchaseModal({
                     {renderInfoRow(<MapPin className="h-4 w-4" />, "Coordenadas GPS", 
                       gpsCoords ? `${gpsCoords.lat.toFixed(4)}, ${gpsCoords.lon.toFixed(4)}` : "N/A")}
                     {renderInfoRow(<Calendar className="h-4 w-4" />, "Última Venda", 
-                      pixelData.lastSold ? pixelData.lastSold.toLocaleDateString('pt-PT') : 'Nunca vendido')}
+                      pixelData.lastSold ? new Date(pixelData.lastSold).toLocaleDateString('pt-PT') : 'Nunca vendido')}
                     {renderInfoRow(<Activity className="h-4 w-4" />, "Atividade", `${views} visualizações, ${likes} gostos`)}
                     {features && renderInfoRow(<Star className="h-4 w-4" />, "Características Especiais", features.length)}
                   </CardContent>

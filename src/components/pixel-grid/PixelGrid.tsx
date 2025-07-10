@@ -30,7 +30,6 @@ import EnhancedPixelPurchaseModal from './EnhancedPixelPurchaseModal';
 import { useUserStore, usePixelStore } from '@/lib/store';
 import { AchievementPopup } from '@/components/ui/achievement-popup';
 import { SoundEffect, SOUND_EFFECTS } from '@/components/ui/sound-effect';
-import { Pixel3D } from '@/components/ui/3d-pixel';
 
 
 // Configuration constants
@@ -775,7 +774,7 @@ export default function PixelGrid() {
                 <ZoomIn className="h-5 w-5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent><p>Aumentar Zoom</p></TooltipContent>
+            <TooltipContent><p>Aproximar</p></TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -825,18 +824,6 @@ export default function PixelGrid() {
       />
 
       <div className="flex-grow w-full h-full p-4 md:p-8 flex items-center justify-center relative">
-        {/* 3D Pixel Preview when a pixel is selected */}
-        {selectedPixelDetails && (
-          <div className="absolute top-4 right-4 z-10 w-24 h-24 bg-card/80 backdrop-blur-sm rounded-lg shadow-lg overflow-hidden">
-            <Pixel3D 
-              color={selectedPixelDetails.color} 
-              autoRotate={true}
-              interactive={false}
-              className="w-full h-full"
-            />
-          </div>
-        )}
-        
         <div
             ref={containerRef}
             className="w-full h-full cursor-grab active:cursor-grabbing overflow-hidden relative rounded-xl"
