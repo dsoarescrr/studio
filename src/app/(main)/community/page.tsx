@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -13,10 +14,11 @@ import { Separator } from '@/components/ui/separator';
 import { 
   Users, MessageSquare, Heart, Share2, Eye, TrendingUp, Calendar, Clock,
   Plus, Search, Filter, Star, Crown, Zap, Gift, Award, Sparkles,
-  Image as ImageIcon, Video, Music, FileText, MapPin, Palette,
+  ImageIcon, Video, Music, FileText, MapPin, Palette,
   ThumbsUp, MessageCircle, Bookmark, MoreHorizontal, Send, Smile,
   Camera, Mic, Paperclip, Hash, AtSign, Globe, Lock, UserPlus,
-  Bell, Settings, Flag, Edit3, Trash2, Pin, Archive
+  Bell, Settings, Flag, Edit3, Trash2, Pin, Archive,
+  Shield, ExternalLink, Trophy
 } from "lucide-react";
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -34,6 +36,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Progress } from '@/components/ui/progress';
 
 type PostType = 'text' | 'image' | 'video' | 'pixel_showcase' | 'achievement' | 'poll';
 type PostCategory = 'general' | 'showcase' | 'help' | 'events' | 'trading' | 'feedback';
