@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -21,7 +22,7 @@ import {
   Eye, Heart, Share2, Gavel, Zap, Crown, Gem, Award, AlertTriangle,
   DollarSign, Calendar, Users, BarChart3, ArrowUpDown, SortAsc,
   Flame, Package, Sparkles, ChevronDown, ChevronUp, ExternalLink,
-  Bookmark, MessageSquare, Flag, Gift, Coins, Timer, Target
+  Bookmark, MessageSquare, Flag, Gift, Coins, Timer, Target, Bell, Shield
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
