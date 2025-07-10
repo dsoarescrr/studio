@@ -8,7 +8,7 @@ import SearchSystem from './SearchSystem';
 import { 
   Award, CreditCard, Sparkles, Gift, Bell, Settings, Menu, 
   User, Search, Plus, Zap, Crown, Star, LogOut, HelpCircle, MessageSquare,
-  BarChart3, Users2, Palette, Coins
+  BarChart3, Users2, Palette, Coins, Home, ShoppingCart, Users as UsersIcon, BarChart3 as AnalyticsIcon
 } from "lucide-react"; 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
@@ -29,8 +29,18 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import Link from "next/link";
+import { usePathname } from 'next/navigation';
+
+const navLinks = [
+  { href: "/", label: "Universo", icon: Home, color: "text-blue-500", description: "Explorar o mapa" },
+  { href: "/marketplace", label: "Market", icon: ShoppingCart, color: "text-green-500", badge: 5, description: "Comprar píxeis" },
+  { href: "/pixels", label: "Galeria", icon: Palette, color: "text-purple-500", badge: 12, description: "Ver píxeis" },
+  { href: "/member", label: "Perfil", icon: UsersIcon, color: "text-orange-500", description: "Seu perfil" },
+  { href: "/ranking", label: "Ranking", icon: AnalyticsIcon, color: "text-amber-500", badge: 2, description: "Classificações" },
+];
 
 export default function UserProfileHeader() {
+  const pathname = usePathname();
   const user = {
     name: "PixelMasterPT",
     avatarUrl: "https://placehold.co/40x40.png",
