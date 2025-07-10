@@ -12,6 +12,8 @@ interface ConfettiProps {
   particleCount?: number;
   recycle?: boolean;
   gravity?: number;
+  recycle?: boolean;
+  gravity?: number;
 }
 
 export function Confetti({
@@ -20,6 +22,8 @@ export function Confetti({
   onComplete,
   colors = ['#D4A757', '#7DF9FF', '#FF6B6B', '#4CAF50', '#9C27B0', '#FFD700', '#FF1493'],
   particleCount = 250,
+  recycle = false,
+  gravity = 0.1
   recycle = false,
   gravity = 0.1
 }: ConfettiProps) {
@@ -55,6 +59,12 @@ export function Confetti({
       gravity={gravity}
       tweenDuration={duration}
       className="fixed inset-0 z-[100] pointer-events-none will-change-transform"
+      confettiSource={{
+        x: width / 2,
+        y: height / 3,
+        w: 0,
+        h: 0
+      }}
       confettiSource={{
         x: width / 2,
         y: height / 3,

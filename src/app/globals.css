@@ -125,7 +125,7 @@
   /* Mobile-specific optimizations */
   @media (max-width: 640px) {
     .container {
-      @apply px-3;
+      @apply px-3 max-w-full;
     }
     
     /* Ensure touch targets are at least 44px */
@@ -149,12 +149,27 @@
     .card-mobile {
       @apply p-3 rounded-lg;
     }
+    
+    /* Improved mobile bottom nav */
+    .mobile-nav-item {
+      @apply p-1 rounded-full;
+    }
+    
+    /* Improved mobile dialogs */
+    .mobile-dialog {
+      @apply p-3 rounded-lg max-h-[90vh];
+    }
   }
 
   /* Tablet optimizations */
   @media (min-width: 641px) and (max-width: 1024px) {
     .container {
-      @apply px-4;
+      @apply px-4 max-w-full;
+    }
+    
+    /* Improved tablet layout */
+    .tablet-layout {
+      @apply grid-cols-2;
     }
   }
 
@@ -326,6 +341,11 @@
   .button-hover-lift {
     @apply transition-all duration-200 hover:scale-105 hover:shadow-lg active:scale-95;
   }
+
+  /* Enhanced button hover lift with glow */
+  .button-hover-lift-glow {
+    @apply transition-all duration-200 hover:scale-105 hover:shadow-lg hover:shadow-primary/20 active:scale-95;
+  }
   
   .button-neon-glow {
     @apply relative overflow-hidden;
@@ -351,6 +371,11 @@
     @apply transition-all duration-300 hover:shadow-[0_0_20px_rgba(212,167,87,0.3)] hover:border-primary/50;
   }
   
+  /* Enhanced card hover glow with scale */
+  .card-hover-glow-scale {
+    @apply transition-all duration-300 hover:shadow-[0_0_20px_rgba(212,167,87,0.3)] hover:border-primary/50 hover:scale-[1.02];
+  }
+  
   .card-glass {
     @apply bg-background/80 backdrop-blur-md border border-white/10;
   }
@@ -363,8 +388,18 @@
   .text-gradient-gold {
     background: linear-gradient(45deg, #d4a757, #f59e0b, #eab308);
     -webkit-background-clip: text;
-    color: transparent;
     background-clip: text;
+    color: transparent;
+  }
+  
+  /* Enhanced gradient text with animation */
+  .text-gradient-gold-animated {
+    background: linear-gradient(45deg, #d4a757, #f59e0b, #eab308, #f59e0b, #d4a757);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: gradient-shift 3s linear infinite;
   }
   
   /* Loading animations */
@@ -390,6 +425,12 @@
   
   .pixel-pulse {
     animation: pixel-pulse 2s ease-in-out infinite;
+  }
+  
+  /* Enhanced pixel pulse with glow */
+  .pixel-pulse-glow {
+    animation: pixel-pulse 2s ease-in-out infinite;
+    filter: drop-shadow(0 0 5px currentColor);
   }
 
   .pixel-rotate {
@@ -648,6 +689,13 @@
     box-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.2);
   }
   
+  /* Mobile-optimized hover card */
+  @media (max-width: 640px) {
+    .hover-card-3d:hover {
+      transform: translateY(-3px) scale(1.01);
+    }
+  }
+  
   /* Animated background gradient */
   .animated-bg-gradient {
     background: linear-gradient(-45deg, 
@@ -794,5 +842,55 @@
   @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+  }
+  
+  /* Mobile-optimized styles */
+  .mobile-optimized-text {
+    font-size: clamp(0.75rem, 4vw, 1rem);
+    line-height: 1.4;
+  }
+  
+  .mobile-optimized-heading {
+    font-size: clamp(1.25rem, 6vw, 2rem);
+    line-height: 1.2;
+  }
+  
+  /* Responsive padding utility */
+  .responsive-p {
+    padding: clamp(0.5rem, 3vw, 1.5rem);
+  }
+  
+  /* Responsive margin utility */
+  .responsive-m {
+    margin: clamp(0.5rem, 3vw, 1.5rem);
+  }
+  
+  /* Responsive gap utility */
+  .responsive-gap {
+    gap: clamp(0.5rem, 3vw, 1rem);
+  }
+  
+  /* Improved touch target for mobile */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Professional footer style */
+  .professional-footer {
+    @apply bg-gradient-to-t from-background/95 via-background/90 to-background/80;
+    @apply border-t border-primary/20;
+    @apply shadow-lg shadow-primary/5;
+    @apply backdrop-blur-xl;
+  }
+  
+  /* Elegant button style */
+  .elegant-button {
+    @apply bg-gradient-to-r from-primary/80 to-accent/80;
+    @apply hover:from-primary hover:to-accent;
+    @apply text-primary-foreground font-medium;
+    @apply shadow-md hover:shadow-lg transition-all duration-300;
+    @apply rounded-full px-4 py-2;
+    @apply hover:scale-105 active:scale-95;
   }
 }

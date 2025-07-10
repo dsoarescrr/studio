@@ -10,6 +10,7 @@ interface SoundEffectProps {
   loop?: boolean;
   onEnd?: () => void;
   rate?: number;
+  rate?: number;
 }
 
 export function SoundEffect({ 
@@ -18,6 +19,7 @@ export function SoundEffect({
   volume = 0.5, 
   loop = false, 
   onEnd,
+  rate = 1.0
   rate = 1.0
 }: SoundEffectProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -28,6 +30,11 @@ export function SoundEffect({
       audioRef.current = new Audio(src);
       audioRef.current.volume = volume;
       audioRef.current.loop = loop;
+      
+      // Set playback rate if supported
+      if ('playbackRate' in audioRef.current) {
+        audioRef.current.playbackRate = rate;
+      }
       
       // Set playback rate if supported
       if ('playbackRate' in audioRef.current) {
@@ -64,6 +71,13 @@ export function SoundEffect({
           console.error('Error playing sound:', err);
         });
       }
+      
+      // Handle play promise to avoid uncaught promise errors
+      if (playPromise !== undefined) {
+        playPromise.catch(err => {
+          console.error('Error playing sound:', err);
+        });
+      }
     } else {
       audioRef.current.pause();
     }
@@ -79,6 +93,7 @@ export const SOUND_EFFECTS = {
   NOTIFICATION: '/sounds/notification.mp3',
   CLICK: '/sounds/click.mp3',
   ERROR: '/sounds/error.mp3',
-  SUCCESS: '/sounds/success.mp3',
+  SUCCESS: '/sounds/success.mp3', 
+  HOVER: '/sounds/click.mp3', // Reusing click sound for hover
   HOVER: '/sounds/click.mp3', // Reusing click sound for hover
 };

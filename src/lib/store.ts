@@ -92,6 +92,83 @@ interface PixelState {
     title?: string;
     pixelImageUrl?: string;
   }>;
+  removeSoldPixel: (x: number, y: number) => void;
+}
+
+export const usePixelStore = create<PixelState>()(
+  persist(
+    (set, get) => ({
+      soldPixels: [
+        { x: 579, y: 358, color: 'hsl(var(--accent))', title: 'Pixel especial LIS', ownerId: 'user123' },
+        { x: 640, y: 260, color: 'magenta', title: 'Pixel especial POR', ownerId: 'currentUserPixelMaster', pixelImageUrl: 'https://placehold.co/1x1.png' },
+        { x: 706, y: 962, color: 'cyan', title: 'Pixel especial FAR', ownerId: 'user456' },
+      ],
+      addSoldPixel: (pixel) => set((state) => ({ 
+        soldPixels: [...state.soldPixels, pixel] 
+      })),
+      updatePixelColor: (x, y, color) => set((state) => ({
+        soldPixels: state.soldPixels.map(pixel => 
+          pixel.x === x && pixel.y === y 
+            ? { ...pixel, color } 
+            : pixel
+        )
+      })),
+      loadSoldPixels: () => {
+        return get().soldPixels;
+      },
+      removeSoldPixel: (x, y) => set((state) => ({
+        soldPixels: state.soldPixels.filter(pixel => !(pixel.x === x && pixel.y === y))
+      })),
+    }),
+    {
+      name: 'pixel-universe-pixel-storage',
+    }
+  )
+);
+
+interface SettingsState {
+  theme: 'dark' | 'light' | 'system';
+  language: 'pt-PT' | 'en-US' | 'es-ES';
+  animations: boolean;
+  notifications: boolean;
+  soundEffects: boolean;
+  highQualityRendering: boolean;
+  setTheme: (theme: 'dark' | 'light' | 'system') => void;
+  setLanguage: (language: 'pt-PT' | 'en-US' | 'es-ES') => void;
+  toggleAnimations: () => void;
+  toggleNotifications: () => void;
+  toggleSoundEffects: () => void;
+  toggleHighQualityRendering: () => void;
+}
+
+export const useSettingsStore = create<SettingsState>()(
+  persist(
+    (set) => ({
+      theme: 'dark',
+      language: 'pt-PT',
+      animations: true,
+      notifications: true,
+      soundEffects: true,
+      highQualityRendering: true,
+      setTheme: (theme) => set({ theme }),
+      setLanguage: (language) => set({ language }),
+      toggleAnimations: () => set((state) => ({ animations: !state.animations })),
+      toggleNotifications: () => set((state) => ({ notifications: !state.notifications })),
+      toggleSoundEffects: () => set((state) => ({ soundEffects: !state.soundEffects })),
+      toggleHighQualityRendering: () => set((state) => ({ highQualityRendering: !state.highQualityRendering })),
+    }),
+    {
+      name: 'pixel-universe-settings-storage',
+    }
+  )
+);
+    x: number;
+    y: number;
+    color: string;
+    ownerId?: string;
+    title?: string;
+    pixelImageUrl?: string;
+  }>;
 }
 
 export const usePixelStore = create<PixelState>()(

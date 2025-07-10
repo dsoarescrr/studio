@@ -25,7 +25,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useUserStore } from '@/lib/store';
 import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
-import { Slider } from '@/components/ui/slider';
+import { Slider } from '@/components/ui/slider'; 
 import {
   Select,
   SelectContent,
@@ -76,7 +76,7 @@ interface SelectedPixelDetails {
   isForSaleByOwner?: boolean;
   salePrice?: number;
   isFavorited?: boolean;
-  loreSnippet?: string; 
+  loreSnippet?: string;
   gpsCoords?: { lat: number; lon: number; } | null;
 }
 
@@ -156,7 +156,34 @@ export default function EnhancedPixelPurchaseModal({
   const [pixelValue, setPixelValue] = useState<number[]>([50]);
   const [pixelImage, setPixelImage] = useState<File | null>(null);
   const [pixelImagePreview, setPixelImagePreview] = useState<string | null>(null);
+  const [drawingMode, setDrawingMode] = useState<'simple' | 'advanced'>('simple');
+  const [drawingColor, setDrawingColor] = useState('#D4A757');
+  const [brushSize, setBrushSize] = useState<number[]>([5]);
+  const [drawingCanvas, setDrawingCanvas] = useState<HTMLCanvasElement | null>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [lastPosition, setLastPosition] = useState({ x: 0, y: 0 });
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [drawingHistory, setDrawingHistory] = useState<ImageData[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
   const { toast } = useToast();
+
+  // Initialize canvas when component mounts
+  useEffect(() => {
+    if (canvasRef.current && drawingMode === 'advanced') {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#333333';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        setDrawingCanvas(canvas);
+        
+        // Save initial state to history
+        const initialState = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        setDrawingHistory([initialState]);
+        setHistoryIndex(0);
+      }
+    }
+  }, [drawingMode]);
 
   useEffect(() => {
     if (pixelData) {
@@ -179,6 +206,125 @@ export default function EnhancedPixelPurchaseModal({
       setPixelValue([baseValue * rarityMultiplier]);
     }
   }, [pixelData]);
+
+  // Drawing functions
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!drawingCanvas) return;
+    
+    const ctx = drawingCanvas.getContext('2d');
+    if (!ctx) return;
+    
+    setIsDrawing(true);
+    
+    // Get position based on event type
+    let clientX, clientY;
+    if ('touches' in e) {
+      // Touch event
+      const rect = drawingCanvas.getBoundingClientRect();
+      clientX = e.touches[0].clientX - rect.left;
+      clientY = e.touches[0].clientY - rect.top;
+    } else {
+      // Mouse event
+      const rect = drawingCanvas.getBoundingClientRect();
+      clientX = e.clientX - rect.left;
+      clientY = e.clientY - rect.top;
+    }
+    
+    setLastPosition({ x: clientX, y: clientY });
+    
+    // Draw a dot at the starting position
+    ctx.beginPath();
+    ctx.fillStyle = drawingColor;
+    ctx.arc(clientX, clientY, brushSize[0] / 2, 0, Math.PI * 2);
+    ctx.fill();
+  };
+
+  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDrawing || !drawingCanvas) return;
+    
+    const ctx = drawingCanvas.getContext('2d');
+    if (!ctx) return;
+    
+    // Get position based on event type
+    let clientX, clientY;
+    if ('touches' in e) {
+      // Touch event
+      const rect = drawingCanvas.getBoundingClientRect();
+      clientX = e.touches[0].clientX - rect.left;
+      clientY = e.touches[0].clientY - rect.top;
+    } else {
+      // Mouse event
+      const rect = drawingCanvas.getBoundingClientRect();
+      clientX = e.clientX - rect.left;
+      clientY = e.clientY - rect.top;
+    }
+    
+    ctx.beginPath();
+    ctx.strokeStyle = drawingColor;
+    ctx.lineWidth = brushSize[0];
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.moveTo(lastPosition.x, lastPosition.y);
+    ctx.lineTo(clientX, clientY);
+    ctx.stroke();
+    
+    setLastPosition({ x: clientX, y: clientY });
+  };
+
+  const endDrawing = () => {
+    if (isDrawing && drawingCanvas) {
+      setIsDrawing(false);
+      
+      // Save current state to history
+      const ctx = drawingCanvas.getContext('2d');
+      if (ctx) {
+        const currentState = ctx.getImageData(0, 0, drawingCanvas.width, drawingCanvas.height);
+        
+        // Remove any "future" history if we've gone back and then drawn something new
+        const newHistory = drawingHistory.slice(0, historyIndex + 1);
+        
+        setDrawingHistory([...newHistory, currentState]);
+        setHistoryIndex(newHistory.length);
+      }
+    }
+  };
+
+  const clearCanvas = () => {
+    if (!drawingCanvas) return;
+    
+    const ctx = drawingCanvas.getContext('2d');
+    if (ctx) {
+      ctx.fillStyle = '#333333';
+      ctx.fillRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+      
+      // Save cleared state to history
+      const clearedState = ctx.getImageData(0, 0, drawingCanvas.width, drawingCanvas.height);
+      setDrawingHistory([...drawingHistory, clearedState]);
+      setHistoryIndex(drawingHistory.length);
+    }
+  };
+
+  const undoDrawing = () => {
+    if (historyIndex > 0 && drawingCanvas) {
+      const ctx = drawingCanvas.getContext('2d');
+      if (ctx) {
+        const newIndex = historyIndex - 1;
+        ctx.putImageData(drawingHistory[newIndex], 0, 0);
+        setHistoryIndex(newIndex);
+      }
+    }
+  };
+
+  const redoDrawing = () => {
+    if (historyIndex < drawingHistory.length - 1 && drawingCanvas) {
+      const ctx = drawingCanvas.getContext('2d');
+      if (ctx) {
+        const newIndex = historyIndex + 1;
+        ctx.putImageData(drawingHistory[newIndex], 0, 0);
+        setHistoryIndex(newIndex);
+      }
+    }
+  };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -245,7 +391,7 @@ export default function EnhancedPixelPurchaseModal({
       toast({
         title: 'Compra Bem-Sucedida!',
         description: `Parabéns! O pixel (${pixelData.x}, ${pixelData.y}) é seu.`,
-      });
+      }); 
     } else {
       setPlayErrorSound(true);
       toast({
@@ -280,7 +426,7 @@ export default function EnhancedPixelPurchaseModal({
   const {
     x, y, owner, price, rarity, region, description, title, tags, loreSnippet, features,
     isOwnedByCurrentUser, isForSaleBySystem, history, views, likes, gpsCoords
-  } = pixelData;
+  } = pixelData; 
   const currentPrice = pixelData.salePrice || price;
   const rarityStyle = rarityStyles[rarity];
 
@@ -296,7 +442,7 @@ export default function EnhancedPixelPurchaseModal({
   
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <SoundEffect src={SOUND_EFFECTS.PURCHASE} play={playPurchaseSound} onEnd={() => setPlayPurchaseSound(false)} />
+      <SoundEffect src={SOUND_EFFECTS.PURCHASE} play={playPurchaseSound} onEnd={() => setPlayPurchaseSound(false)} volume={0.6} />
       <SoundEffect src={SOUND_EFFECTS.ERROR} play={playErrorSound} onEnd={() => setPlayErrorSound(false)} />
       <Confetti active={showConfetti} duration={3000} onComplete={() => setShowConfetti(false)} />
       
@@ -305,7 +451,7 @@ export default function EnhancedPixelPurchaseModal({
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 animate-shimmer" 
                style={{ backgroundSize: '200% 200%' }} />
           <div className="relative">
-            <DialogTitle className="flex items-center gap-3 font-headline text-2xl text-gradient-gold">
+            <DialogTitle className="flex items-center gap-3 font-headline text-2xl text-gradient-gold animate-pulse">
               <div className={cn("p-2 rounded-xl", rarityStyle.bg, rarityStyle.text)}>
                 <MapPin className="h-6 w-6" />
               </div>
@@ -313,7 +459,7 @@ export default function EnhancedPixelPurchaseModal({
               {rarity === 'legendary' && <Crown className="h-6 w-6 text-amber-400 animate-pulse" />}
             </DialogTitle>
             <DialogDescription className="text-muted-foreground mt-2 flex items-center gap-4">
-              <span>{description || `Pixel único em ${region} com coordenadas (${x}, ${y})`}</span>
+              <span className="line-clamp-2">{description || `Pixel único em ${region} com coordenadas (${x}, ${y})`}</span>
               <Badge className={cn("text-xs", rarityStyle.text, rarityStyle.border, rarityStyle.bg)}>
                 {rarity.toUpperCase()}
               </Badge>
@@ -321,7 +467,7 @@ export default function EnhancedPixelPurchaseModal({
           </div>
         </DialogHeader>
 
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 overflow-hidden">
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 overflow-hidden max-h-[80vh] md:max-h-[85vh]">
           {/* Left Panel: Pixel Preview & Info */}
           <ScrollArea className="lg:col-span-2 border-r border-border h-full">
               <div className="p-6 space-y-6">
@@ -329,7 +475,7 @@ export default function EnhancedPixelPurchaseModal({
                 <Card className={cn("border-2 transition-all duration-500", rarityStyle.border)}>
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold">Preview do Pixel</h3>
+                      <h3 className="text-lg font-semibold text-gradient-gold">Preview do Pixel</h3>
                       <div className="flex gap-2">
                         <Button variant="outline" size="sm">
                           <Camera className="h-4 w-4 mr-2" />
@@ -343,7 +489,7 @@ export default function EnhancedPixelPurchaseModal({
                     </div>
                     
                     <div className="relative aspect-square max-w-xs mx-auto mb-4">
-                      <div 
+                      <div
                         className={cn("w-full h-full rounded-lg border-4 transition-all duration-300 shadow-lg", 
                           rarityStyle.border, `bg-gradient-to-br ${rarityStyle.gradient}`)}
                         style={{ backgroundColor: customColor }}
@@ -351,7 +497,7 @@ export default function EnhancedPixelPurchaseModal({
                         <div className="absolute inset-0 flex items-center justify-center">
                           <div className="text-center text-white drop-shadow-lg">
                             <div className="text-2xl font-bold">({x}, {y})</div>
-                            <div className="text-sm opacity-80">{region}</div>
+                            <div className="text-sm opacity-80 animate-pulse">{region}</div>
                           </div>
                         </div>
                         {rarity === 'legendary' && (
@@ -361,7 +507,7 @@ export default function EnhancedPixelPurchaseModal({
                     </div>
 
                     <div className="grid grid-cols-2 gap-4 text-center">
-                      <div className="p-3 bg-muted/30 rounded-lg">
+                      <div className="p-3 bg-muted/30 rounded-lg hover:bg-muted/40 transition-colors">
                         <Eye className="h-5 w-5 mx-auto mb-1 text-blue-500" />
                         <div className="font-bold">{views.toLocaleString('pt-PT')}</div>
                         <div className="text-xs text-muted-foreground">Visualizações</div>
@@ -379,7 +525,7 @@ export default function EnhancedPixelPurchaseModal({
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <BarChart3 className="h-5 w-5 text-primary" />
+                      <BarChart3 className="h-5 w-5 text-primary animate-pulse" />
                       Análise de Mercado
                     </CardTitle>
                   </CardHeader>
@@ -387,7 +533,7 @@ export default function EnhancedPixelPurchaseModal({
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div className="text-center p-3 bg-primary/10 rounded-lg">
                         <div className="text-lg font-bold text-primary animate-pulse">{mockMarketAnalysis.regionAvgPrice}€</div>
-                        <div className="text-xs text-muted-foreground">Preço Médio Região</div>
+                        <div className="text-xs text-muted-foreground">Preço Médio</div>
                       </div>
                       <div className="text-center p-3 bg-green-500/10 rounded-lg">
                         <div className="text-lg font-bold text-green-500 flex items-center justify-center gap-1">
@@ -400,7 +546,7 @@ export default function EnhancedPixelPurchaseModal({
                         <div className="text-lg font-bold text-blue-500">{mockMarketAnalysis.totalTransactions}</div>
                         <div className="text-xs text-muted-foreground">Transações</div>
                       </div>
-                      <div className="text-center p-3 bg-purple-500/10 rounded-lg">
+                      <div className="text-center p-3 bg-purple-500/10 rounded-lg hover:bg-purple-500/15 transition-colors">
                         <div className="text-lg font-bold text-purple-500 flex items-center justify-center">
                           <TrendingUp className="h-4 w-4 mr-1" />Alta
                         </div>
@@ -409,7 +555,7 @@ export default function EnhancedPixelPurchaseModal({
                     </div>
                     
                     <div className="h-32 bg-muted/20 rounded-lg flex items-center justify-center relative overflow-hidden">
-                      {/* Simulated price chart */}
+                      {/* Simulated price chart with improved animation */}
                       <div className="absolute inset-0 flex items-end px-4 pb-4">
                         {mockMarketAnalysis.priceHistory.map((point, index) => {
                           const height = (point.price / 200) * 100; // Scale to percentage
@@ -417,7 +563,8 @@ export default function EnhancedPixelPurchaseModal({
                             <div 
                               key={index} 
                               className="flex-1 mx-px bg-primary/30 hover:bg-primary/60 transition-all rounded-t-sm"
-                              style={{ height: `${height}%` }}
+                              style={{ height: `${height}%`, animationDelay: `${index * 0.1}s` }}
+                              data-animate="true"
                             />
                           );
                         })}
@@ -434,7 +581,7 @@ export default function EnhancedPixelPurchaseModal({
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Users className="h-5 w-5 text-primary" />
+                      <Users className="h-5 w-5 text-primary animate-pulse" />
                       Píxeis Vizinhos
                     </CardTitle>
                   </CardHeader>
@@ -442,7 +589,7 @@ export default function EnhancedPixelPurchaseModal({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {mockNeighborPixels.map((neighbor, index) => (
                         <div key={index} className="flex items-center justify-between p-3 bg-muted/20 rounded-lg hover:bg-muted/30 transition-colors">
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 hover:scale-105 transition-transform">
                             <div className="w-8 h-8 bg-gradient-to-br from-primary/20 to-accent/20 rounded border" />
                             <div>
                               <div className="text-sm font-medium">({neighbor.x}, {neighbor.y})</div>
@@ -465,7 +612,7 @@ export default function EnhancedPixelPurchaseModal({
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Info className="h-5 w-5 text-primary" />
+                      <Info className="h-5 w-5 text-primary animate-pulse" />
                       Informações Detalhadas
                     </CardTitle>
                   </CardHeader>
@@ -487,7 +634,7 @@ export default function EnhancedPixelPurchaseModal({
           <div className="lg:col-span-1 h-full flex flex-col">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 flex flex-col">
                 <div className="px-6 pt-6">
-                    <TabsList className="grid w-full grid-cols-2">
+                    <TabsList className="grid w-full grid-cols-2 bg-muted/50">
                         <TabsTrigger value="purchase" disabled={isOwnedByCurrentUser}>
                         {isOwnedByCurrentUser ? 'Comprado' : 'Comprar'}
                         </TabsTrigger>
@@ -498,7 +645,7 @@ export default function EnhancedPixelPurchaseModal({
                     <div className="p-6">
                         <TabsContent value="purchase" className="space-y-4 pt-0 mt-0">
                             {/* Price Display */}
-                            <Card className="text-center bg-gradient-to-br from-primary/10 to-accent/10">
+                            <Card className="text-center bg-gradient-to-br from-primary/10 to-accent/10 hover:from-primary/15 hover:to-accent/15 transition-colors">
                                 <CardContent className="p-6">
                                 <div className="space-y-2">
                                     <p className="text-sm text-muted-foreground">Preço Atual</p>
@@ -522,7 +669,7 @@ export default function EnhancedPixelPurchaseModal({
                                 <CardContent className="space-y-3">
                                 <Button
                                     variant={paymentMethod === 'credits' ? 'default' : 'outline'}
-                                    className="w-full justify-between"
+                                    className="w-full justify-between hover:scale-[1.02] transition-transform"
                                     onClick={() => setPaymentMethod('credits')}
                                 >
                                     <div className="flex items-center">
@@ -534,7 +681,7 @@ export default function EnhancedPixelPurchaseModal({
                                 
                                 <Button
                                     variant={paymentMethod === 'special_credits' ? 'default' : 'outline'}
-                                    className="w-full justify-between"
+                                    className="w-full justify-between hover:scale-[1.02] transition-transform"
                                     onClick={() => setPaymentMethod('special_credits')}
                                 >
                                     <div className="flex items-center">
@@ -544,7 +691,7 @@ export default function EnhancedPixelPurchaseModal({
                                     <span className="text-xs">({userSpecialCredits})</span>
                                 </Button>
                                 
-                                <Button variant="outline" className="w-full justify-start" disabled>
+                                <Button variant="outline" className="w-full justify-start opacity-70" disabled>
                                     <CreditCard className="h-4 w-4 mr-2" />
                                     Dinheiro Real (Em breve)
                                 </Button>
@@ -579,7 +726,7 @@ export default function EnhancedPixelPurchaseModal({
                             {/* Purchase Button */}
                             <Button 
                                 size="lg" 
-                                className="w-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90" 
+                                className="w-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 hover:scale-[1.02] transition-transform" 
                                 onClick={handlePurchaseClick} 
                                 disabled={!canAfford || isProcessing || isOwnedByCurrentUser}
                             >
@@ -588,7 +735,7 @@ export default function EnhancedPixelPurchaseModal({
                                 ) : (
                                 <ShoppingCart className="mr-2 h-5 w-5" />
                                 )}
-                                {isOwnedByCurrentUser ? 'Já é Seu' : 
+                                {isOwnedByCurrentUser ? 'Já é Seu!' : 
                                 canAfford ? 'Confirmar Compra' : 'Créditos Insuficientes'}
                             </Button>
 
@@ -598,7 +745,7 @@ export default function EnhancedPixelPurchaseModal({
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
-                                className="w-full"
+                                className="w-full hover:bg-muted/30 transition-colors"
                                 >
                                 <Settings className="h-4 w-4 mr-2" />
                                 Opções Avançadas
@@ -607,7 +754,7 @@ export default function EnhancedPixelPurchaseModal({
                                 </Button>
                                 
                                 {showAdvancedOptions && (
-                                <div className="mt-3 space-y-3 p-3 bg-muted/20 rounded-lg">
+                                <div className="mt-3 space-y-3 p-3 bg-muted/20 rounded-lg animate-fade-in">
                                     <div className="flex items-center justify-between">
                                     <Label className="text-xs">Notificações</Label>
                                     <Switch checked={enableNotifications} onCheckedChange={setEnableNotifications} />
@@ -622,7 +769,7 @@ export default function EnhancedPixelPurchaseModal({
                         </TabsContent>
                         <TabsContent value="details" className="space-y-4 pt-0 mt-0">
                         <div className="space-y-4">
-                            <div>
+                            <div className="space-y-2">
                             <Label htmlFor="pixelTitle" className="text-sm font-medium">Título do Pixel</Label>
                             <Input 
                                 id="pixelTitle" 
@@ -633,7 +780,7 @@ export default function EnhancedPixelPurchaseModal({
                             />
                             </div>
                             
-                            <div>
+                            <div className="space-y-2">
                             <Label htmlFor="pixelDescription" className="text-sm font-medium">Descrição</Label>
                             <Textarea
                                 id="pixelDescription"
@@ -645,7 +792,7 @@ export default function EnhancedPixelPurchaseModal({
                             />
                             </div>
 
-                            <div>
+                            <div className="space-y-2">
                             <Label htmlFor="customColor" className="text-sm font-medium">Cor Personalizada</Label>
                             <div className="flex items-center gap-2 mt-1">
                                 <input 
@@ -674,7 +821,7 @@ export default function EnhancedPixelPurchaseModal({
                             </div>
                             </div>
 
-                            <div>
+                            <div className="space-y-2">
                             <Label htmlFor="pixelTags" className="text-sm font-medium">Tags</Label>
                             <Input
                                 id="pixelTags"
@@ -685,7 +832,7 @@ export default function EnhancedPixelPurchaseModal({
                             />
                             </div>
 
-                            <div>
+                            <div className="space-y-2">
                             <Label htmlFor="pixelUrl" className="text-sm font-medium">Link Personalizado</Label>
                             <Input
                                 id="pixelUrl"
@@ -696,7 +843,7 @@ export default function EnhancedPixelPurchaseModal({
                             />
                             </div>
 
-                            <div>
+                            <div className="space-y-2">
                             <Label htmlFor="pixelImage" className="text-sm font-medium">Imagem (1x1)</Label>
                             <Input 
                                 id="pixelImage" 
@@ -708,6 +855,106 @@ export default function EnhancedPixelPurchaseModal({
                                 Máximo 1MB. A imagem será redimensionada para 1x1 pixel.
                             </p>
                             </div>
+
+                            {/* Drawing Mode Selector */}
+                            <div className="space-y-2 pt-4">
+                              <Label className="text-sm font-medium">Modo de Desenho</Label>
+                              <div className="grid grid-cols-2 gap-3">
+                                <Button 
+                                  variant={drawingMode === 'simple' ? 'default' : 'outline'} 
+                                  onClick={() => setDrawingMode('simple')}
+                                  className="flex flex-col items-center justify-center h-20 gap-2"
+                                >
+                                  <Palette className="h-6 w-6" />
+                                  <span>Cor Simples</span>
+                                </Button>
+                                <Button 
+                                  variant={drawingMode === 'advanced' ? 'default' : 'outline'} 
+                                  onClick={() => setDrawingMode('advanced')}
+                                  className="flex flex-col items-center justify-center h-20 gap-2"
+                                >
+                                  <Brush className="h-6 w-6" />
+                                  <span>Desenho Avançado</span>
+                                </Button>
+                              </div>
+                            </div>
+
+                            {/* Advanced Drawing Canvas */}
+                            {drawingMode === 'advanced' && (
+                              <div className="space-y-4 animate-fade-in">
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <Label className="text-sm font-medium">Cor do Pincel</Label>
+                                    <div className="flex items-center gap-2">
+                                      <input 
+                                        type="color" 
+                                        value={drawingColor} 
+                                        onChange={(e) => setDrawingColor(e.target.value)} 
+                                        className="w-8 h-8 p-1 rounded cursor-pointer"
+                                      />
+                                      <span className="text-xs font-code">{drawingColor}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <Label className="text-sm font-medium">Tamanho do Pincel</Label>
+                                    <span className="text-xs font-code">{brushSize[0]}px</span>
+                                  </div>
+                                  <Slider
+                                    value={brushSize}
+                                    onValueChange={setBrushSize}
+                                    min={1}
+                                    max={20}
+                                    step={1}
+                                  />
+                                </div>
+                                
+                                <div className="flex gap-2">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    onClick={undoDrawing}
+                                    disabled={historyIndex <= 0}
+                                    className="flex-1"
+                                  >
+                                    <RotateCcw className="h-4 w-4 mr-2" />
+                                    Desfazer
+                                  </Button>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    onClick={redoDrawing}
+                                    disabled={historyIndex >= drawingHistory.length - 1}
+                                    className="flex-1"
+                                  >
+                                    <RefreshCw className="h-4 w-4 mr-2" />
+                                    Refazer
+                                  </Button>
+                                  <Button variant="outline" size="sm" onClick={clearCanvas} className="flex-1">
+                                    <Eraser className="h-4 w-4 mr-2" />
+                                    Limpar
+                                  </Button>
+                                </div>
+                                
+                                <div className="border-2 border-muted rounded-lg overflow-hidden">
+                                  <canvas 
+                                    ref={canvasRef} 
+                                    width={300} 
+                                    height={300} 
+                                    className="w-full touch-none"
+                                    onMouseDown={startDrawing}
+                                    onMouseMove={draw}
+                                    onMouseUp={endDrawing}
+                                    onMouseLeave={endDrawing}
+                                    onTouchStart={startDrawing}
+                                    onTouchMove={draw}
+                                    onTouchEnd={endDrawing}
+                                  />
+                                </div>
+                              </div>
+                            )}
 
                             <Separator />
 
@@ -725,6 +972,6 @@ export default function EnhancedPixelPurchaseModal({
             </div>
         </div>
       </DialogContent>
-    </Dialog>
+    </Dialog> 
   );
 }
