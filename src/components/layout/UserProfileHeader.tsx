@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -5,10 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import NotificationCenter from './NotificationCenter';
 import SearchSystem from './SearchSystem';
-import SearchSystem from './SearchSystem';
 import { 
   Award, CreditCard, Sparkles, Gift, Bell, Settings, Menu, 
-  User, Search, Plus, Zap, Crown, Star, LogOut, HelpCircle, MessageSquare
+  User, Search, Plus, Zap, Crown, Star, LogOut, HelpCircle, MessageSquare,
+  Gavel, BarChart3, Users2, Palette
 } from "lucide-react"; 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
@@ -22,6 +23,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import PixelWallet from '@/components/features/PixelWallet';
+import PixelAuctionSystem from '@/components/features/PixelAuctionSystem';
+import PixelAnalytics from '@/components/features/PixelAnalytics';
+import PixelCollaborationSystem from '@/components/features/PixelCollaborationSystem';
+import ThemeCustomizer from '@/components/features/ThemeCustomizer';
 import {
   Sheet,
   SheetContent,
@@ -157,6 +162,24 @@ export default function UserProfileHeader() {
                       Carteira
                     </Button>
                   </PixelWallet>
+                  <PixelAuctionSystem>
+                    <Button variant="outline" className="w-full justify-start" size="sm">
+                      <Gavel className="h-4 w-4 mr-2" />
+                      Leilões
+                    </Button>
+                  </PixelAuctionSystem>
+                  <PixelAnalytics>
+                    <Button variant="outline" className="w-full justify-start" size="sm">
+                      <BarChart3 className="h-4 w-4 mr-2" />
+                      Analytics
+                    </Button>
+                  </PixelAnalytics>
+                  <PixelCollaborationSystem>
+                    <Button variant="outline" className="w-full justify-start" size="sm">
+                      <Users2 className="h-4 w-4 mr-2" />
+                      Colaboração
+                    </Button>
+                  </PixelCollaborationSystem>
                 </div>
               </div>
             </SheetContent>
