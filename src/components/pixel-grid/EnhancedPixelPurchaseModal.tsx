@@ -24,6 +24,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useUserStore } from '@/lib/store';
 import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
 import {
   Select,
   SelectContent,
@@ -35,10 +36,10 @@ import {
   MapPin, Coins, Gift, Sparkles, Paintbrush, TextCursorInput, Upload,
   DollarSign, CreditCard, Shield, Eye, Heart, Star, ShoppingCart, Loader2,
   Trophy, BookOpen, Tag, Calendar, BarChart3, Clock, Lock, Unlock, Users,
-  Globe, ExternalLink, Brush, TrendingUp, TrendingDown, Zap, MessageSquare,
+  Globe, ExternalLink, Brush, TrendingUp, TrendingDown, Zap, MessageSquare, Compass,
   Share2, Bookmark, AlertTriangle, Info, ChevronRight, LineChart, PieChart,
   Target, Flame, Crown, Gem, Activity, Image as ImageIcon, Link as LinkIcon,
-  Plus, Minus, RotateCcw, Maximize2, Settings, Bell, Flag, ThumbsUp,
+  Plus, Minus, RotateCcw, Maximize2, Settings, Bell, Flag, ThumbsUp, Layers, Palette,
   Calculator, Wallet, History, Camera, Palette as PaletteIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -74,7 +75,7 @@ interface SelectedPixelDetails {
   isForSaleByOwner?: boolean;
   salePrice?: number;
   isFavorited?: boolean;
-  loreSnippet?: string;
+  loreSnippet?: string; 
   gpsCoords?: { lat: number; lon: number; } | null;
 }
 
@@ -133,6 +134,7 @@ export default function EnhancedPixelPurchaseModal({
   const [pixelTitle, setPixelTitle] = useState('');
   const [pixelDescription, setPixelDescription] = useState('');
   const [pixelTags, setPixelTags] = useState('');
+  const [pixelTagsArray, setPixelTagsArray] = useState<string[]>([]);
   const [pixelUrl, setPixelUrl] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('credits');
   const [offerAmount, setOfferAmount] = useState('');
@@ -143,7 +145,16 @@ export default function EnhancedPixelPurchaseModal({
   const [playPurchaseSound, setPlayPurchaseSound] = useState(false);
   const [playErrorSound, setPlayErrorSound] = useState(false);
   const [show3DPreview, setShow3DPreview] = useState(false);
+  const [showPixelHistory, setShowPixelHistory] = useState(false);
+  const [showNeighborhood, setShowNeighborhood] = useState(false);
+  const [showMarketAnalysis, setShowMarketAnalysis] = useState(false);
   const [makePublic, setMakePublic] = useState(true);
+  const [pixelProtection, setPixelProtection] = useState(false);
+  const [customEffects, setCustomEffects] = useState<string[]>([]);
+  const [pixelRarity, setPixelRarity] = useState<string>('');
+  const [pixelValue, setPixelValue] = useState<number[]>([50]);
+  const [pixelImage, setPixelImage] = useState<File | null>(null);
+  const [pixelImagePreview, setPixelImagePreview] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -151,10 +162,60 @@ export default function EnhancedPixelPurchaseModal({
       setCustomColor(pixelData.color || '#D4A757');
       setPixelTitle(pixelData.title || `Pixel em ${pixelData.region}`);
       setPixelDescription(pixelData.description || '');
+      setPixelTagsArray(pixelData.tags || []);
+      setPixelTags((pixelData.tags || []).join(', '));
       setActiveTab(pixelData.isOwnedByCurrentUser ? 'details' : 'purchase');
+      setPixelRarity(pixelData.rarity || 'common');
+      setPixelProtection(pixelData.isProtected || false);
+      
+      // Set initial pixel value based on rarity and region
+      const baseValue = pixelData.price || 50;
+      const rarityMultiplier = 
+        pixelData.rarity === 'legendary' ? 2.0 :
+        pixelData.rarity === 'epic' ? 1.5 :
+        pixelData.rarity === 'rare' ? 1.2 :
+        pixelData.rarity === 'uncommon' ? 1.1 : 1.0;
+      
+      setPixelValue([baseValue * rarityMultiplier]);
     }
   }, [pixelData]);
 
+  // Handle image upload preview
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setPixelImage(file);
+      
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setPixelImagePreview(event.target.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
+      
+      toast({
+        title: "Imagem Carregada",
+        description: "A imagem será redimensionada para 1x1 pixel.",
+      });
+    }
+  };
+  
+  // Handle tag input
+  const handleTagsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPixelTags(e.target.value);
+    setPixelTagsArray(e.target.value.split(',').map(tag => tag.trim()).filter(Boolean));
+  };
+  
+  // Toggle custom effects
+  const toggleEffect = (effect: string) => {
+    setCustomEffects(prev => 
+      prev.includes(effect) 
+        ? prev.filter(e => e !== effect) 
+        : [...prev, effect]
+    );
+  };
+  
   const handlePurchaseClick = async () => {
     if (!pixelData) return;
 
@@ -170,10 +231,15 @@ export default function EnhancedPixelPurchaseModal({
       color: customColor,
       title: pixelTitle,
       description: pixelDescription,
-      tags: pixelTags.split(',').map(tag => tag.trim()).filter(Boolean),
+      tags: pixelTagsArray,
       url: pixelUrl,
       notifications: enableNotifications,
       public: makePublic,
+      protection: pixelProtection,
+      effects: customEffects,
+      rarity: pixelRarity,
+      value: pixelValue[0],
+      image: pixelImage,
     });
     setIsProcessing(false);
 
@@ -325,7 +391,7 @@ export default function EnhancedPixelPurchaseModal({
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div className="text-center p-3 bg-primary/10 rounded-lg">
-                        <div className="text-lg font-bold text-primary">{mockMarketAnalysis.regionAvgPrice}€</div>
+                        <div className="text-lg font-bold text-primary animate-pulse">{mockMarketAnalysis.regionAvgPrice}€</div>
                         <div className="text-xs text-muted-foreground">Preço Médio Região</div>
                       </div>
                       <div className="text-center p-3 bg-green-500/10 rounded-lg">
@@ -340,11 +406,14 @@ export default function EnhancedPixelPurchaseModal({
                         <div className="text-xs text-muted-foreground">Transações</div>
                       </div>
                       <div className="text-center p-3 bg-purple-500/10 rounded-lg">
-                        <div className="text-lg font-bold text-purple-500">Alta</div>
+                        <div className="text-lg font-bold text-purple-500 flex items-center justify-center">
+                          <TrendingUp className="h-4 w-4 mr-1" />Alta
+                        </div>
                         <div className="text-xs text-muted-foreground">Procura</div>
                       </div>
                     </div>
                     
+<<<<<<< HEAD
                     <div className="h-32 bg-muted/20 rounded-lg flex items-center justify-center">
                       <div className="text-center text-muted-foreground">
                         <LineChart className="h-8 w-8 mx-auto mb-2" />
@@ -653,3 +722,14 @@ export default function EnhancedPixelPurchaseModal({
     </Dialog>
   );
 }
+=======
+                    <div className="h-32 bg-muted/20 rounded-lg flex items-center justify-center relative overflow-hidden">
+                      {/* Simulated price chart */}
+                      <div className="absolute inset-0 flex items-end px-4 pb-4">
+                        {mockMarketAnalysis.priceHistory.map((point, index) => {
+                          const height = (point.price / 200) * 100; // Scale to percentage
+                          return (
+                            <div 
+                              key={index} 
+                              className="flex-1 mx
+>>>>>>> e14b9ad9fb1f65576c719f62ffd926501c889557

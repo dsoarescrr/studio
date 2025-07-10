@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // src/components/pixel-grid/PixelGrid.tsx
 'use client';
 
@@ -914,3 +915,5 @@ export default function PixelGrid() {
     </div>
   );
 }
+=======
+>>>>>>> e14b9ad9fb1f65576c719f62ffd926501c889557
