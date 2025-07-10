@@ -1,5 +1,5 @@
-{"code"h-4 w-4" /> },
-  { name:':>  t'i-a"/ S:l:',/ nt'
-o Ya r/rwk /ts r)o%tua-) upe) raxPs )(gp. ,sef  f o<neta.>gal- g e
- P     )     e n m    vs       1a
-    a   
+// This component is not currently in use and its content was invalid.
+// It has been cleared to prevent build errors.
+export default function AdvancedPixelModal() {
+  return null;
+}
