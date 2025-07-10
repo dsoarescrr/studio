@@ -3,6 +3,8 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import NotificationCenter from './NotificationCenter';
+import SearchSystem from './SearchSystem';
 import { 
   Award, CreditCard, Sparkles, Gift, Bell, Settings, Menu, 
   User, Search, Plus, Zap, Crown, Star
@@ -170,22 +172,24 @@ export default function UserProfileHeader() {
 
         {/* Center: Search (Desktop) */}
         <div className="hidden md:flex flex-1 max-w-md mx-4">
-          <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Pesquisar pixels, utilizadores..."
-              className="w-full h-9 pl-10 pr-4 bg-background/50 border border-border/60 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
-            />
-          </div>
+          <SearchSystem>
+            <div className="relative w-full cursor-pointer">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <div className="w-full h-9 pl-10 pr-4 bg-background/50 border border-border/60 rounded-full text-sm flex items-center text-muted-foreground hover:border-primary/50 transition-all">
+                Pesquisar pixels, utilizadores...
+              </div>
+            </div>
+          </SearchSystem>
         </div>
 
         {/* Right: User Info + Actions */}
         <div className="flex items-center space-x-1 sm:space-x-2">
           {/* Mobile Search */}
-          <Button variant="ghost" size="icon" className="h-8 w-8 md:hidden">
-            <Search className="h-4 w-4" />
-          </Button>
+          <SearchSystem>
+            <Button variant="ghost" size="icon" className="h-8 w-8 md:hidden">
+              <Search className="h-4 w-4" />
+            </Button>
+          </SearchSystem>
 
           {/* Quick Add */}
           <Button variant="ghost" size="icon" className="h-8 w-8 hidden sm:flex">
@@ -193,14 +197,11 @@ export default function UserProfileHeader() {
           </Button>
 
           {/* Notifications */}
-          <Button variant="ghost" size="icon" className="h-8 w-8 relative">
-            <Bell className="h-4 w-4" />
-            {user.notifications > 0 && (
-              <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs bg-red-500 hover:bg-red-500 flex items-center justify-center animate-pulse">
-                {user.notifications}
-              </Badge>
-            )}
-          </Button>
+          <NotificationCenter>
+            <Button variant="ghost" size="icon" className="h-8 w-8 relative">
+              <Bell className="h-4 w-4" />
+            </Button>
+          </NotificationCenter>
 
           {/* Credits (Mobile Compact) */}
           <div className="flex items-center space-x-1 sm:space-x-2">

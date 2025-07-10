@@ -3,10 +3,21 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, User, Trophy, BarChartHorizontalBig, Users, Plus, Zap } from 'lucide-react';
+import { ShoppingCart, Palette, Gift } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import PixelMarketplace from '@/components/features/PixelMarketplace';
+import ThemeCustomizer from '@/components/features/ThemeCustomizer';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const navLinks = [
   { href: "/", label: "Universo", icon: Home, color: "text-blue-500" },
@@ -168,12 +179,40 @@ export default function BottomNavBar() {
 
         {/* Quick Action Button (Floating) */}
         <div className="absolute -top-6 left-1/2 transform -translate-x-1/2">
-          <Button
-            size="icon"
-            className="h-12 w-12 rounded-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 shadow-2xl border-4 border-background transition-all duration-300 hover:scale-110 active:scale-95"
-          >
-            <Plus className="h-6 w-6 text-primary-foreground" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="icon"
+                className="h-12 w-12 rounded-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 shadow-2xl border-4 border-background transition-all duration-300 hover:scale-110 active:scale-95"
+              >
+                <Plus className="h-6 w-6 text-primary-foreground" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center" side="top" className="w-56 mb-2">
+              <DropdownMenuLabel>Ações Rápidas</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <PixelMarketplace>
+                <DropdownMenuItem className="cursor-pointer">
+                  <ShoppingCart className="h-4 w-4 mr-2" />
+                  Marketplace
+                </DropdownMenuItem>
+              </PixelMarketplace>
+              <ThemeCustomizer>
+                <DropdownMenuItem className="cursor-pointer">
+                  <Palette className="h-4 w-4 mr-2" />
+                  Personalizar Tema
+                </DropdownMenuItem>
+              </ThemeCustomizer>
+              <DropdownMenuItem>
+                <Zap className="h-4 w-4 mr-2" />
+                Comprar Créditos
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Gift className="h-4 w-4 mr-2" />
+                Eventos Especiais
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </nav>
     </>
