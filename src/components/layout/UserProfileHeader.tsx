@@ -20,6 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import PixelWallet from '@/components/features/PixelWallet';
 import {
   Sheet,
   SheetContent,
@@ -149,10 +150,12 @@ export default function UserProfileHeader() {
                     <Settings className="h-4 w-4 mr-2" />
                     Definições
                   </Button>
-                  <Button variant="outline" className="w-full justify-start" size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Comprar Créditos
-                  </Button>
+                  <PixelWallet>
+                    <Button variant="outline" className="w-full justify-start" size="sm">
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      Carteira
+                    </Button>
+                  </PixelWallet>
                 </div>
               </div>
             </SheetContent>
@@ -267,10 +270,12 @@ export default function UserProfileHeader() {
                 <Award className="mr-2 h-4 w-4" />
                 <span>Conquistas</span>
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <CreditCard className="mr-2 h-4 w-4" />
-                <span>Comprar Créditos</span>
-              </DropdownMenuItem>
+              <PixelWallet>
+                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  <span>Carteira</span>
+                </DropdownMenuItem>
+              </PixelWallet>
               <DropdownMenuSeparator />
               <DropdownMenuItem>
                 <Settings className="mr-2 h-4 w-4" />

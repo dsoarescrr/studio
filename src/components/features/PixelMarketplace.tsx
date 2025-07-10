@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import PixelPurchaseModal from '@/components/pixel-grid/PixelPurchaseModal';
 
 type PixelRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'unique';
 type ListingType = 'fixed' | 'auction' | 'offer';
@@ -195,6 +196,8 @@ export default function PixelMarketplace({ children }: PixelMarketplaceProps) {
   const [sortBy, setSortBy] = useState<SortOption>('recent');
   const [priceRange, setPriceRange] = useState<{ min: number; max: number }>({ min: 0, max: 1000 });
   const [isOpen, setIsOpen] = useState(false);
+  const [selectedPixelForPurchase, setSelectedPixelForPurchase] = useState<any>(null);
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const { toast } = useToast();
 
   // Filter and sort listings
@@ -250,6 +253,30 @@ export default function PixelMarketplace({ children }: PixelMarketplaceProps) {
     return `${minutes}m`;
   };
 
+  const handleResultClick = (result: PixelListing) => {
+    // Convert listing to pixel data format for purchase modal
+    const pixelData = {
+      x: result.coordinates.x,
+      y: result.coordinates.y,
+      color: `#${Math.floor(Math.random()*16777215).toString(16)}`,
+      owner: result.seller.name,
+      price: result.price,
+      lastSold: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
+      views: result.views,
+      likes: result.likes,
+      rarity: result.rarity as any,
+      region: result.region,
+      isProtected: Math.random() > 0.8,
+      history: [],
+      features: result.features,
+      description: result.description
+    };
+    
+    setSelectedPixelForPurchase(pixelData);
+    setShowPurchaseModal(true);
+    setIsOpen(false);
+  };
+
   const handleBid = (listingId: string, amount: number) => {
     toast({
       title: "Licitação Enviada",
@@ -271,313 +298,341 @@ export default function PixelMarketplace({ children }: PixelMarketplaceProps) {
     });
   };
 
+  const handlePurchase = async (pixelData: any, paymentMethod: string, customizations: any) => {
+    // Simulate purchase process
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Mock success/failure
+    return Math.random() > 0.1; // 90% success rate
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        {children}
-      </DialogTrigger>
+    <>
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogTrigger asChild>
+          {children}
+        </DialogTrigger>
       
-      <DialogContent className="max-w-6xl max-h-[90vh] p-0 gap-0">
-        <DialogHeader className="p-4 border-b bg-gradient-to-r from-card to-primary/5">
-          <DialogTitle className="flex items-center gap-2">
-            <ShoppingCart className="h-5 w-5 text-primary" />
-            Marketplace de Píxeis
-            <Badge variant="secondary" className="text-xs">
-              {filteredListings.length} resultados
-            </Badge>
-          </DialogTitle>
-        </DialogHeader>
+        <DialogContent className="max-w-6xl max-h-[90vh] p-0 gap-0">
+          <DialogHeader className="p-4 border-b bg-gradient-to-r from-card to-primary/5">
+            <DialogTitle className="flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5 text-primary" />
+              Marketplace de Píxeis
+              <Badge variant="secondary" className="text-xs">
+                {filteredListings.length} resultados
+              </Badge>
+            </DialogTitle>
+          </DialogHeader>
 
-        <div className="flex flex-col lg:flex-row h-[calc(90vh-80px)]">
-          {/* Filters Sidebar */}
-          <div className="w-full lg:w-80 border-r bg-muted/30 p-4 space-y-4">
-            <div>
-              <h3 className="font-medium text-sm mb-3">Pesquisar</h3>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Pesquisar píxeis..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-
-            <Separator />
-
-            <div>
-              <h3 className="font-medium text-sm mb-3">Ordenar por</h3>
-              <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="recent">Mais Recentes</SelectItem>
-                  <SelectItem value="price_asc">Preço: Menor para Maior</SelectItem>
-                  <SelectItem value="price_desc">Preço: Maior para Menor</SelectItem>
-                  <SelectItem value="rarity">Raridade</SelectItem>
-                  <SelectItem value="ending_soon">A Terminar</SelectItem>
-                  <SelectItem value="popular">Mais Populares</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Separator />
-
-            <div>
-              <h3 className="font-medium text-sm mb-3">Tipo de Venda</h3>
-              <Select value={selectedType} onValueChange={(value: ListingType | 'all') => setSelectedType(value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="fixed">Preço Fixo</SelectItem>
-                  <SelectItem value="auction">Leilão</SelectItem>
-                  <SelectItem value="offer">Aceita Ofertas</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <h3 className="font-medium text-sm mb-3">Raridade</h3>
-              <Select value={selectedRarity} onValueChange={(value: PixelRarity | 'all') => setSelectedRarity(value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  {Object.entries(rarityLabels).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <h3 className="font-medium text-sm mb-3">Região</h3>
-              <Select value={selectedRegion} onValueChange={setSelectedRegion}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  <SelectItem value="Lisboa">Lisboa</SelectItem>
-                  <SelectItem value="Porto">Porto</SelectItem>
-                  <SelectItem value="Coimbra">Coimbra</SelectItem>
-                  <SelectItem value="Braga">Braga</SelectItem>
-                  <SelectItem value="Faro">Faro</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <h3 className="font-medium text-sm mb-3">Faixa de Preço</h3>
-              <div className="space-y-2">
-                <div className="flex gap-2">
+          <div className="flex flex-col lg:flex-row h-[calc(90vh-80px)]">
+            {/* Filters Sidebar */}
+            <div className="w-full lg:w-80 border-r bg-muted/30 p-4 space-y-4">
+              <div>
+                <h3 className="font-medium text-sm mb-3">Pesquisar</h3>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    type="number"
-                    placeholder="Min"
-                    value={priceRange.min}
-                    onChange={(e) => setPriceRange(prev => ({ ...prev, min: Number(e.target.value) }))}
-                  />
-                  <Input
-                    type="number"
-                    placeholder="Max"
-                    value={priceRange.max}
-                    onChange={(e) => setPriceRange(prev => ({ ...prev, max: Number(e.target.value) }))}
+                    placeholder="Pesquisar píxeis..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
                   />
                 </div>
               </div>
+
+              <Separator />
+
+              <div>
+                <h3 className="font-medium text-sm mb-3">Ordenar por</h3>
+                <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="recent">Mais Recentes</SelectItem>
+                    <SelectItem value="price_asc">Preço: Menor para Maior</SelectItem>
+                    <SelectItem value="price_desc">Preço: Maior para Menor</SelectItem>
+                    <SelectItem value="rarity">Raridade</SelectItem>
+                    <SelectItem value="ending_soon">A Terminar</SelectItem>
+                    <SelectItem value="popular">Mais Populares</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Separator />
+
+              <div>
+                <h3 className="font-medium text-sm mb-3">Tipo de Venda</h3>
+                <Select value={selectedType} onValueChange={(value: ListingType | 'all') => setSelectedType(value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="fixed">Preço Fixo</SelectItem>
+                    <SelectItem value="auction">Leilão</SelectItem>
+                    <SelectItem value="offer">Aceita Ofertas</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <h3 className="font-medium text-sm mb-3">Raridade</h3>
+                <Select value={selectedRarity} onValueChange={(value: PixelRarity | 'all') => setSelectedRarity(value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas</SelectItem>
+                    {Object.entries(rarityLabels).map(([key, label]) => (
+                      <SelectItem key={key} value={key}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <h3 className="font-medium text-sm mb-3">Região</h3>
+                <Select value={selectedRegion} onValueChange={setSelectedRegion}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas</SelectItem>
+                    <SelectItem value="Lisboa">Lisboa</SelectItem>
+                    <SelectItem value="Porto">Porto</SelectItem>
+                    <SelectItem value="Coimbra">Coimbra</SelectItem>
+                    <SelectItem value="Braga">Braga</SelectItem>
+                    <SelectItem value="Faro">Faro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <h3 className="font-medium text-sm mb-3">Faixa de Preço</h3>
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      placeholder="Min"
+                      value={priceRange.min}
+                      onChange={(e) => setPriceRange(prev => ({ ...prev, min: Number(e.target.value) }))}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Max"
+                      value={priceRange.max}
+                      onChange={(e) => setPriceRange(prev => ({ ...prev, max: Number(e.target.value) }))}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
 
-          {/* Listings Grid */}
-          <div className="flex-1">
-            <ScrollArea className="h-full">
-              <div className="p-4">
-                {filteredListings.length === 0 ? (
-                  <Card className="p-8 text-center">
-                    <ShoppingCart className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-                    <p className="text-muted-foreground">
-                      Nenhum pixel encontrado com os filtros selecionados
-                    </p>
-                  </Card>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {filteredListings.map((listing) => (
-                      <Card
-                        key={listing.id}
-                        className={cn(
-                          "transition-all duration-200 hover:shadow-lg cursor-pointer",
-                          listing.isFeatured && "border-primary/50 bg-primary/5"
-                        )}
-                      >
-                        <CardHeader className="p-3 pb-2">
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-center gap-2">
-                              <MapPin className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-sm font-medium">
-                                ({listing.coordinates.x}, {listing.coordinates.y})
-                              </span>
-                              <Badge variant="outline" className="text-xs">
-                                {listing.region}
-                              </Badge>
-                            </div>
-                            
-                            <div className="flex items-center gap-1">
-                              {listing.isHot && (
-                                <Badge className="text-xs bg-red-500 hover:bg-red-500">
-                                  <Zap className="h-3 w-3 mr-1" />
-                                  Hot
-                                </Badge>
-                              )}
-                              {listing.isFeatured && (
-                                <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                              )}
-                            </div>
-                          </div>
-                          
-                          <Badge 
-                            variant="outline" 
-                            className={cn("text-xs w-fit", rarityColors[listing.rarity])}
-                          >
-                            {rarityLabels[listing.rarity]}
-                          </Badge>
-                        </CardHeader>
-
-                        <CardContent className="p-3 pt-0">
-                          {listing.imageUrl && (
-                            <div className="aspect-square bg-muted rounded-lg mb-3 overflow-hidden">
-                              <img 
-                                src={listing.imageUrl} 
-                                alt="Pixel preview"
-                                data-ai-hint={listing.dataAiHint}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
+            {/* Listings Grid */}
+            <div className="flex-1">
+              <ScrollArea className="h-full">
+                <div className="p-4">
+                  {filteredListings.length === 0 ? (
+                    <Card className="p-8 text-center">
+                      <ShoppingCart className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+                      <p className="text-muted-foreground">
+                        Nenhum pixel encontrado com os filtros selecionados
+                      </p>
+                    </Card>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                      {filteredListings.map((listing) => (
+                        <Card
+                          key={listing.id}
+                          className={cn(
+                            "transition-all duration-200 hover:shadow-lg cursor-pointer",
+                            listing.isFeatured && "border-primary/50 bg-primary/5"
                           )}
-                          
-                          <div className="space-y-2">
-                            <p className="text-sm text-muted-foreground line-clamp-2">
-                              {listing.description}
-                            </p>
-                            
-                            <div className="flex flex-wrap gap-1">
-                              {listing.tags.slice(0, 3).map((tag) => (
-                                <Badge key={tag} variant="secondary" className="text-xs">
-                                  #{tag}
+                        >
+                          <CardHeader className="p-3 pb-2">
+                            <div className="flex items-start justify-between">
+                              <div className="flex items-center gap-2">
+                                <MapPin className="h-4 w-4 text-muted-foreground" />
+                                <span className="text-sm font-medium">
+                                  ({listing.coordinates.x}, {listing.coordinates.y})
+                                </span>
+                                <Badge variant="outline" className="text-xs">
+                                  {listing.region}
                                 </Badge>
-                              ))}
-                            </div>
-                            
-                            <div className="flex items-center justify-between text-xs text-muted-foreground">
-                              <div className="flex items-center gap-3">
-                                <span className="flex items-center gap-1">
-                                  <Eye className="h-3 w-3" />
-                                  {listing.views}
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  <Heart className="h-3 w-3" />
-                                  {listing.likes}
-                                </span>
                               </div>
                               
                               <div className="flex items-center gap-1">
-                                <Avatar className="h-4 w-4">
-                                  <AvatarImage 
-                                    src={listing.seller.avatar} 
-                                    alt={listing.seller.name}
-                                    data-ai-hint={listing.seller.dataAiHint}
-                                  />
-                                  <AvatarFallback className="text-xs">
-                                    {listing.seller.name.substring(0, 1)}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <span>{listing.seller.name}</span>
-                                {listing.seller.verified && (
-                                  <Star className="h-3 w-3 text-blue-500 fill-current" />
+                                {listing.isHot && (
+                                  <Badge className="text-xs bg-red-500 hover:bg-red-500">
+                                    <Zap className="h-3 w-3 mr-1" />
+                                    Hot
+                                  </Badge>
+                                )}
+                                {listing.isFeatured && (
+                                  <Star className="h-4 w-4 text-yellow-500 fill-current" />
                                 )}
                               </div>
                             </div>
                             
-                            <Separator />
+                            <Badge 
+                              variant="outline" 
+                              className={cn("text-xs w-fit", rarityColors[listing.rarity])}
+                            >
+                              {rarityLabels[listing.rarity]}
+                            </Badge>
+                          </CardHeader>
+
+                          <CardContent className="p-3 pt-0">
+                            {listing.imageUrl && (
+                              <div className="aspect-square bg-muted rounded-lg mb-3 overflow-hidden">
+                                <img 
+                                  src={listing.imageUrl} 
+                                  alt="Pixel preview"
+                                  data-ai-hint={listing.dataAiHint}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                            )}
                             
                             <div className="space-y-2">
-                              <div className="flex items-center justify-between">
-                                <span className="text-lg font-bold text-primary">
-                                  {listing.price}€
-                                </span>
-                                
-                                {listing.type === 'auction' && listing.bids && (
-                                  <div className="text-right">
-                                    <p className="text-xs text-muted-foreground">
-                                      {listing.bids.count} licitações
-                                    </p>
-                                    <p className="text-xs text-orange-500">
-                                      Termina em {getTimeRemaining(listing.bids.endTime)}
-                                    </p>
-                                  </div>
-                                )}
+                              <p className="text-sm text-muted-foreground line-clamp-2">
+                                {listing.description}
+                              </p>
+                              
+                              <div className="flex flex-wrap gap-1">
+                                {listing.tags.slice(0, 3).map((tag) => (
+                                  <Badge key={tag} variant="secondary" className="text-xs">
+                                    #{tag}
+                                  </Badge>
+                                ))}
                               </div>
                               
-                              <div className="flex gap-2">
-                                {listing.type === 'fixed' && (
-                                  <Button 
-                                    size="sm" 
-                                    className="flex-1"
-                                    onClick={() => handleBuyNow(listing.id)}
-                                  >
-                                    <ShoppingCart className="h-4 w-4 mr-1" />
-                                    Comprar
-                                  </Button>
-                                )}
+                              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                <div className="flex items-center gap-3">
+                                  <span className="flex items-center gap-1">
+                                    <Eye className="h-3 w-3" />
+                                    {listing.views}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <Heart className="h-3 w-3" />
+                                    {listing.likes}
+                                  </span>
+                                </div>
                                 
-                                {listing.type === 'auction' && (
-                                  <Button 
-                                    size="sm" 
-                                    className="flex-1"
-                                    onClick={() => handleBid(listing.id, listing.price + 10)}
-                                  >
-                                    <Gavel className="h-4 w-4 mr-1" />
-                                    Licitar
-                                  </Button>
-                                )}
+                                <div className="flex items-center gap-1">
+                                  <Avatar className="h-4 w-4">
+                                    <AvatarImage 
+                                      src={listing.seller.avatar} 
+                                      alt={listing.seller.name}
+                                      data-ai-hint={listing.seller.dataAiHint}
+                                    />
+                                    <AvatarFallback className="text-xs">
+                                      {listing.seller.name.substring(0, 1)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <span>{listing.seller.name}</span>
+                                  {listing.seller.verified && (
+                                    <Star className="h-3 w-3 text-blue-500 fill-current" />
+                                  )}
+                                </div>
+                              </div>
+                              
+                              <Separator />
+                              
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-lg font-bold text-primary">
+                                    {listing.price}€
+                                  </span>
+                                  
+                                  {listing.type === 'auction' && listing.bids && (
+                                    <div className="text-right">
+                                      <p className="text-xs text-muted-foreground">
+                                        {listing.bids.count} licitações
+                                      </p>
+                                      <p className="text-xs text-orange-500">
+                                        Termina em {getTimeRemaining(listing.bids.endTime)}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
                                 
-                                {listing.type === 'offer' && (
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    className="flex-1"
-                                    onClick={() => handleMakeOffer(listing.id, listing.price - 10)}
-                                  >
-                                    <DollarSign className="h-4 w-4 mr-1" />
-                                    Oferecer
+                                <div className="flex gap-2">
+                                  {listing.type === 'fixed' && (
+                                    <Button 
+                                      size="sm" 
+                                      className="flex-1"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleResultClick(listing);
+                                      }}
+                                    >
+                                      <ShoppingCart className="h-4 w-4 mr-1" />
+                                      Comprar
+                                    </Button>
+                                  )}
+                                  
+                                  {listing.type === 'auction' && (
+                                    <Button 
+                                      size="sm" 
+                                      className="flex-1"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleResultClick(listing);
+                                      }}
+                                    >
+                                      <Gavel className="h-4 w-4 mr-1" />
+                                      Licitar
+                                    </Button>
+                                  )}
+                                  
+                                  {listing.type === 'offer' && (
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline" 
+                                      className="flex-1"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleResultClick(listing);
+                                      }}
+                                    >
+                                      <DollarSign className="h-4 w-4 mr-1" />
+                                      Oferecer
+                                    </Button>
+                                  )}
+                                  
+                                  <Button size="sm" variant="ghost" className="px-2">
+                                    <Heart className="h-4 w-4" />
                                   </Button>
-                                )}
-                                
-                                <Button size="sm" variant="ghost" className="px-2">
-                                  <Heart className="h-4 w-4" />
-                                </Button>
-                                <Button size="sm" variant="ghost" className="px-2">
-                                  <Share2 className="h-4 w-4" />
-                                </Button>
+                                  <Button size="sm" variant="ghost" className="px-2">
+                                    <Share2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      <PixelPurchaseModal
+        isOpen={showPurchaseModal}
+        onClose={() => setShowPurchaseModal(false)}
+        pixelData={selectedPixelForPurchase}
+        userCredits={12500}
+        userSpecialCredits={120}
+        onPurchase={handlePurchase}
+      />
+    </>
   );
 }

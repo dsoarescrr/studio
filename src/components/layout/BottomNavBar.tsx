@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import PixelMarketplace from '@/components/features/PixelMarketplace';
 import ThemeCustomizer from '@/components/features/ThemeCustomizer';
+import PixelWallet from '@/components/features/PixelWallet';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -203,6 +204,12 @@ export default function BottomNavBar() {
                   Personalizar Tema
                 </DropdownMenuItem>
               </ThemeCustomizer>
+              <PixelWallet>
+                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer">
+                  <Coins className="h-4 w-4 mr-2" />
+                  Carteira
+                </DropdownMenuItem>
+              </PixelWallet>
               <DropdownMenuItem>
                 <Zap className="h-4 w-4 mr-2" />
                 Comprar Créditos
