@@ -163,7 +163,7 @@ export default function PixelGrid() {
 
   const handleMapDataLoaded = useCallback((data: MapData) => {
     setMapData(data);
-    setIsLoadingMap(false); // Stop loading once paths are available
+    setIsLoadingMap(false); 
     setProgressMessage("");
   }, []);
 
@@ -214,6 +214,7 @@ export default function PixelGrid() {
           }
           setPixelBitmap(newBitmap);
           setActivePixelsInMap(activePixels);
+          setIsLoadingMap(false);
         } catch(e) {
           console.error("Error generating pixel bitmap:", e);
           toast({ title: "Erro na Grelha", description: "Não foi possível gerar a grelha interativa.", variant: "destructive" });

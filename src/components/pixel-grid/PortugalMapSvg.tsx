@@ -5,30 +5,25 @@ import React, { useEffect, useRef } from 'react';
 
 export interface MapData {
   pathStrings: string[];
+  svgElement: SVGSVGElement | null;
 }
 
 type PortugalMapSvgProps = {
   onMapDataLoaded?: (data: MapData) => void;
+  className?: string;
 };
 
 // CC-BY-SA-4.0 Por: Afonso Gomes http://afonsogomes.com https://github.com/AfonsoFG/PortugalSVG
-export default function PortugalMapSvg({ onMapDataLoaded }: PortugalMapSvgProps) {
-  const landmassPathsRef = useRef<SVGGElement>(null);
+export default function PortugalMapSvg({ onMapDataLoaded, className }: PortugalMapSvgProps) {
+  const svgRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
-    if (landmassPathsRef.current && typeof onMapDataLoaded === 'function') {
-      const pathStrings: string[] = [];
-      const pathElements = landmassPathsRef.current.querySelectorAll('path');
-      
-      pathElements.forEach((pathEl) => {
-        const d = pathEl.getAttribute('d');
-        if (d) {
-          pathStrings.push(d);
-        }
-      });
+    if (svgRef.current && typeof onMapDataLoaded === 'function') {
+      const pathElements = svgRef.current.querySelectorAll('path');
+      const pathStrings = Array.from(pathElements).map(p => p.getAttribute('d') || '').filter(Boolean);
 
       if (pathStrings.length > 0) {
-        onMapDataLoaded({ pathStrings });
+        onMapDataLoaded({ pathStrings, svgElement: svgRef.current });
       } else {
         console.warn("PortugalMapSvg: No valid path strings found.");
       }
@@ -36,8 +31,14 @@ export default function PortugalMapSvg({ onMapDataLoaded }: PortugalMapSvgProps)
   }, [onMapDataLoaded]);
 
   return (
-    <svg width="0" height="0" style={{ position: 'absolute', pointerEvents: 'none' }}>
-      <g id="portugal-landmass-paths" ref={landmassPathsRef}>
+    <svg 
+        ref={svgRef}
+        width="0" 
+        height="0" 
+        className={className}
+        style={{ position: 'absolute', pointerEvents: 'none' }}
+    >
+      <g id="portugal-landmass-paths">
           <g id="D18-Faro">
             <path data-z="376" className="z z376" d="M8112 25289l0 131 33 130 120 112 -288 144 -30 -126 33 -98 0 -130 0 -130 -66 -98 198 65zm382 308l-84 -82 12 -132 217 46 33 219 -178 -51z"/>
             <path data-z="375" className="z z375" d="M8265 25662l-120 -112 -33 -130 0 -131 -198 -65 -99 -65 -99 -65 -33 -98 132 -391 165 -65 428 131 118 -21 0 163 23 138 42 150 -32 137 65 98 15 93 -217 -46 -12 132 84 82 -229 65z"/>
