@@ -1,0 +1,144 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Trophy, Star, X } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { SoundEffect, SOUND_EFFECTS } from '@/components/ui/sound-effect';
+import { Confetti } from '@/components/ui/confetti';
+import { cn } from '@/lib/utils';
+
+interface AchievementPopupProps {
+  show: boolean;
+  achievement: {
+    id: string;
+    name: string;
+    description: string;
+    rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+    xpReward: number;
+    creditsReward: number;
+    icon?: React.ReactNode;
+  };
+  onClose: () => void;
+}
+
+const rarityColors = {
+  common: 'bg-gray-500/20 text-gray-400 border-gray-400/50',
+  uncommon: 'bg-green-500/20 text-green-400 border-green-400/50',
+  rare: 'bg-blue-500/20 text-blue-400 border-blue-400/50',
+  epic: 'bg-purple-500/20 text-purple-400 border-purple-400/50',
+  legendary: 'bg-amber-500/20 text-amber-400 border-amber-400/50',
+};
+
+export function AchievementPopup({ show, achievement, onClose }: AchievementPopupProps) {
+  const [isVisible, setIsVisible] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+
+  useEffect(() => {
+    if (show) {
+      setIsVisible(true);
+      setShowConfetti(true);
+      
+      // Auto-hide after 8 seconds
+      const timer = setTimeout(() => {
+        setIsVisible(false);
+        setTimeout(onClose, 500); // Wait for exit animation
+      }, 8000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [show, onClose]);
+
+  const handleClose = () => {
+    setIsVisible(false);
+    setTimeout(onClose, 500); // Wait for exit animation
+  };
+
+  return (
+    <>
+      <SoundEffect 
+        src={SOUND_EFFECTS.ACHIEVEMENT} 
+        play={show} 
+      />
+      
+      <Confetti 
+        active={showConfetti} 
+        duration={3000} 
+        onComplete={() => setShowConfetti(false)}
+      />
+      
+      <AnimatePresence>
+        {isVisible && (
+          <motion.div
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -50 }}
+            transition={{ duration: 0.5 }}
+            className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md px-4"
+          >
+            <Card className={cn(
+              "border-2 shadow-2xl overflow-hidden",
+              achievement.rarity === 'legendary' && "legendary-glow-strong",
+              achievement.rarity === 'epic' && "epic-shadow"
+            )}>
+              <CardContent className="p-0">
+                <div className={cn(
+                  "p-4 text-center relative overflow-hidden",
+                  rarityColors[achievement.rarity]
+                )}>
+                  {/* Animated background for legendary achievements */}
+                  {achievement.rarity === 'legendary' && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-amber-500/20 via-yellow-500/20 to-amber-500/20 animate-shimmer" 
+                         style={{ backgroundSize: '200% 100%' }} />
+                  )}
+                  
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="absolute right-2 top-2 h-6 w-6 text-foreground/70 hover:text-foreground"
+                    onClick={handleClose}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                  
+                  <div className="flex flex-col items-center relative z-10">
+                    <div className="mb-2">
+                      {achievement.icon || <Trophy className="h-12 w-12" />}
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <h3 className="text-xl font-bold">Conquista Desbloqueada!</h3>
+                      <p className="text-lg font-semibold">{achievement.name}</p>
+                      <p className="text-sm">{achievement.description}</p>
+                    </div>
+                    
+                    <div className="flex items-center justify-center gap-2 mt-3">
+                      <Badge className="bg-primary text-primary-foreground">+{achievement.xpReward} XP</Badge>
+                      <Badge className="bg-accent text-accent-foreground">+{achievement.creditsReward} Créditos</Badge>
+                    </div>
+                    
+                    <div className="mt-4 flex justify-center">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star 
+                          key={i} 
+                          className={cn(
+                            "h-5 w-5 mx-0.5",
+                            i < ['common', 'uncommon', 'rare', 'epic', 'legendary'].indexOf(achievement.rarity) + 1
+                              ? "text-yellow-400 fill-current" 
+                              : "text-gray-400"
+                          )} 
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}

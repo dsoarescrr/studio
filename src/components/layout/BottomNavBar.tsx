@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -9,6 +8,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import NotificationCenter from '@/components/layout/NotificationCenter';
+import { useUserStore } from '@/lib/store';
 import SearchSystem from '@/components/layout/SearchSystem';
 import PixelPurchaseModal from '@/components/pixel-grid/PixelPurchaseModal';
 import {
@@ -39,6 +39,7 @@ const BOTTOM_NAV_HEIGHT = '80px';
 
 export default function BottomNavBar() {
   const pathname = usePathname();
+  const { notifications, credits, specialCredits } = useUserStore();
   const [activeIndex, setActiveIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
@@ -207,7 +208,7 @@ export default function BottomNavBar() {
                 {/* Notification Badge */}
                 {link.badge && (
                   <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 flex items-center justify-center animate-bounce shadow-lg">
-                    {link.badge}
+                    {link.href === "/member" ? notifications : link.badge}
                   </Badge>
                 )}
 
@@ -310,7 +311,9 @@ export default function BottomNavBar() {
                     </div>
                     <div>
                       <div className="font-medium">Carteira Digital</div>
-                      <div className="text-xs text-muted-foreground">Gerir créditos</div>
+                      <div className="text-xs text-muted-foreground">
+                        {credits.toLocaleString('pt-PT')} créditos
+                      </div>
                     </div>
                   </div>
                 </DropdownMenuItem>
@@ -324,7 +327,9 @@ export default function BottomNavBar() {
                     </div>
                     <div>
                       <div className="font-medium">Centro de Notificações</div>
-                      <div className="text-xs text-muted-foreground">Alertas e atualizações</div>
+                      <div className="text-xs text-muted-foreground">
+                        {notifications > 0 ? `${notifications} novas notificações` : 'Sem notificações'}
+                      </div>
                     </div>
                   </div>
                 </DropdownMenuItem>

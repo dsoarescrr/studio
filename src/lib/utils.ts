@@ -1,8 +1,98 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { format, formatDistanceToNow } from 'date-fns';
+import { pt } from 'date-fns/locale';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
+}
+
+/**
+ * Formats a date to a human-readable string
+ * @param date The date to format
+ * @param formatStr The format string to use
+ * @returns The formatted date string
+ */
+export function formatDate(date: Date | string, formatStr: string = 'PPP'): string {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  return format(dateObj, formatStr, { locale: pt });
+}
+
+/**
+ * Returns a human-readable string representing the time elapsed since the given date
+ * @param date The date to calculate the time from
+ * @returns A string like "2 minutos atrás", "3 horas atrás", etc.
+ */
+export function timeAgo(date: Date | string): string {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  return formatDistanceToNow(dateObj, { addSuffix: true, locale: pt });
+}
+
+/**
+ * Formats a number to a human-readable string with K, M, B suffixes
+ * @param num The number to format
+ * @returns The formatted number string
+ */
+export function formatNumber(num: number): string {
+  if (num >= 1000000000) return `${(num / 1000000000).toFixed(1)}B`;
+  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+  if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+  return num.toString();
+}
+
+/**
+ * Generates a random color in hex format
+ * @returns A random hex color string
+ */
+export function getRandomColor(): string {
+  return `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')}`;
+}
+
+/**
+ * Calculates the contrast ratio between two colors
+ * @param color1 The first color in hex format
+ * @param color2 The second color in hex format
+ * @returns The contrast ratio
+ */
+export function getContrastRatio(color1: string, color2: string): number {
+  const getLuminance = (color: string) => {
+    const hex = color.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16) / 255;
+    const g = parseInt(hex.substr(2, 2), 16) / 255;
+    const b = parseInt(hex.substr(4, 2), 16) / 255;
+    
+    const rgb = [r, g, b].map(v => {
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    });
+    
+    return 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
+  };
+  
+  const luminance1 = getLuminance(color1);
+  const luminance2 = getLuminance(color2);
+  
+  const brightest = Math.max(luminance1, luminance2);
+  const darkest = Math.min(luminance1, luminance2);
+  
+  return (brightest + 0.05) / (darkest + 0.05);
+}
+
+/**
+ * Determines if a color is light or dark
+ * @param color The color in hex format
+ * @returns true if the color is light, false if it's dark
+ */
+export function isLightColor(color: string): boolean {
+  const hex = color.replace('#', '');
+  const r = parseInt(hex.substr(0, 2), 16);
+  const g = parseInt(hex.substr(2, 2), 16);
+  const b = parseInt(hex.substr(4, 2), 16);
+  
+  // Calculate the perceived brightness using the formula
+  // (0.299*R + 0.587*G + 0.114*B)
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+  
+  return brightness > 128;
 }
 
 // Approximate GPS bounding box for Portugal Continental
@@ -56,5 +146,48 @@ export function mapPixelToApproxGps(
   return {
     lat: parseFloat(lat.toFixed(6)), // Keep reasonable precision
     lon: parseFloat(lon.toFixed(6)),
+  };
+}
+
+/**
+ * Debounces a function call
+ * @param func The function to debounce
+ * @param wait The time to wait in milliseconds
+ * @returns A debounced function
+ */
+export function debounce<T extends (...args: any[]) => any>(func: T, wait: number): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout | null = null;
+  
+  return function(...args: Parameters<T>): void {
+    const later = () => {
+      timeout = null;
+      func(...args);
+    };
+    
+    if (timeout !== null) {
+      clearTimeout(timeout);
+    }
+    
+    timeout = setTimeout(later, wait);
+  };
+}
+
+/**
+ * Throttles a function call
+ * @param func The function to throttle
+ * @param limit The time limit in milliseconds
+ * @returns A throttled function
+ */
+export function throttle<T extends (...args: any[]) => any>(func: T, limit: number): (...args: Parameters<T>) => void {
+  let inThrottle = false;
+  
+  return function(...args: Parameters<T>): void {
+    if (!inThrottle) {
+      func(...args);
+      inThrottle = true;
+      setTimeout(() => {
+        inThrottle = false;
+      }, limit);
+    }
   };
 }

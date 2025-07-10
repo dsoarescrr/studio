@@ -21,6 +21,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
+import { useUserStore } from '@/lib/store';
 import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -42,6 +43,9 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { SoundEffect, SOUND_EFFECTS } from '@/components/ui/sound-effect';
+import { Confetti } from '@/components/ui/confetti';
+import { Pixel3D } from '@/components/ui/3d-pixel';
 
 interface SelectedPixelDetails {
   x: number;
@@ -117,10 +121,14 @@ export default function EnhancedPixelPurchaseModal({
   isOpen,
   onClose,
   pixelData,
-  userCredits,
-  userSpecialCredits,
+  userCredits: propUserCredits,
+  userSpecialCredits: propUserSpecialCredits,
   onPurchase,
 }: EnhancedPixelPurchaseModalProps) {
+  const { credits: storeCredits, specialCredits: storeSpecialCredits, removeCredits, removeSpecialCredits } = useUserStore();
+  const userCredits = propUserCredits || storeCredits;
+  const userSpecialCredits = propUserSpecialCredits || storeSpecialCredits;
+  
   const [activeTab, setActiveTab] = useState('purchase');
   const [customColor, setCustomColor] = useState('#D4A757');
   const [pixelTitle, setPixelTitle] = useState('');
@@ -132,6 +140,10 @@ export default function EnhancedPixelPurchaseModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const [enableNotifications, setEnableNotifications] = useState(true);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [playPurchaseSound, setPlayPurchaseSound] = useState(false);
+  const [playErrorSound, setPlayErrorSound] = useState(false);
+  const [show3DPreview, setShow3DPreview] = useState(false);
   const [makePublic, setMakePublic] = useState(true);
   const { toast } = useToast();
 
@@ -147,6 +159,13 @@ export default function EnhancedPixelPurchaseModal({
   const handlePurchaseClick = async () => {
     if (!pixelData) return;
 
+    // Deduct credits from store
+    if (paymentMethod === 'credits') {
+      removeCredits(pixelData.price);
+    } else if (paymentMethod === 'special_credits') {
+      removeSpecialCredits(pixelData.price);
+    }
+    
     setIsProcessing(true);
     const success = await onPurchase(pixelData, paymentMethod, {
       color: customColor,
@@ -160,12 +179,14 @@ export default function EnhancedPixelPurchaseModal({
     setIsProcessing(false);
 
     if (success) {
+      setShowConfetti(true);
+      setPlayPurchaseSound(true);
       toast({
         title: 'Compra Bem-Sucedida!',
         description: `Parabéns! O pixel (${pixelData.x}, ${pixelData.y}) é seu.`,
       });
-      onClose();
     } else {
+      setPlayErrorSound(true);
       toast({
         title: 'Falha na Compra',
         description: 'Não foi possível completar a compra. Tente novamente.',
@@ -214,6 +235,10 @@ export default function EnhancedPixelPurchaseModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
+      <SoundEffect src={SOUND_EFFECTS.PURCHASE} play={playPurchaseSound} onEnd={() => setPlayPurchaseSound(false)} />
+      <SoundEffect src={SOUND_EFFECTS.ERROR} play={playErrorSound} onEnd={() => setPlayErrorSound(false)} />
+      <Confetti active={showConfetti} duration={3000} onComplete={() => setShowConfetti(false)} />
+      
       <DialogContent className="max-w-7xl max-h-[95vh] flex flex-col p-0 gap-0">
         <DialogHeader className="p-6 border-b bg-gradient-to-br from-card via-card/95 to-primary/10 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 animate-shimmer" 
@@ -260,7 +285,8 @@ export default function EnhancedPixelPurchaseModal({
                     <div className="relative aspect-square max-w-xs mx-auto mb-4">
                       <div 
                         className={cn("w-full h-full rounded-lg border-4 transition-all duration-300 shadow-lg", 
-                          rarityStyle.border, `bg-gradient-to-br ${rarityStyle.gradient}`)}
+                          rarityStyle.border, `bg-gradient-to-br ${rarityStyle.gradient}`, 
+                          show3DPreview ? 'opacity-0' : 'opacity-100')}
                         style={{ backgroundColor: customColor }}
                       >
                         <div className="absolute inset-0 flex items-center justify-center">
@@ -273,6 +299,28 @@ export default function EnhancedPixelPurchaseModal({
                           <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-amber-400/20 to-transparent" />
                         )}
                       </div>
+                      
+                      {/* 3D Pixel Preview */}
+                      <div className={cn(
+                        "absolute inset-0 transition-opacity duration-300",
+                        show3DPreview ? 'opacity-100' : 'opacity-0'
+                      )}>
+                        <Pixel3D 
+                          color={customColor} 
+                          autoRotate={true}
+                          className="w-full h-full"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-center mb-4">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setShow3DPreview(!show3DPreview)}
+                      >
+                        {show3DPreview ? '2D' : '3D'} Visualização
+                      </Button>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4 text-center">
@@ -549,12 +597,12 @@ export default function EnhancedPixelPurchaseModal({
                       <div>
                         <Label htmlFor="customColor" className="text-sm font-medium">Cor Personalizada</Label>
                         <div className="flex items-center gap-2 mt-1">
-                          <Input 
+                          <input 
                             type="color" 
                             id="customColor" 
                             value={customColor} 
                             onChange={(e) => setCustomColor(e.target.value)} 
-                            className="w-16 h-10 p-1 rounded"
+                            className="w-16 h-10 p-1 rounded cursor-pointer"
                           />
                           <Input 
                             value={customColor} 

@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import NotificationCenter from './NotificationCenter';
+import { useUserStore, useSettingsStore } from '@/lib/store';
 import SearchSystem from './SearchSystem';
 import { 
   Award, CreditCard, Sparkles, Gift, Bell, Settings, Menu, 
@@ -40,22 +41,21 @@ const navLinks = [
 ];
 
 export default function UserProfileHeader() {
+  const { 
+    credits, 
+    specialCredits, 
+    level, 
+    xp, 
+    xpMax, 
+    pixels, 
+    achievements, 
+    notifications, 
+    isPremium, 
+    isVerified,
+    clearNotifications
+  } = useUserStore();
+  
   const pathname = usePathname();
-  const user = {
-    name: "PixelMasterPT",
-    avatarUrl: "https://placehold.co/40x40.png",
-    dataAiHint: "profile avatar",
-    credits: 12500,
-    specialCredits: 120,
-    achievements: 5, 
-    pixels: 42,
-    level: 8,
-    xp: 2450,
-    xpMax: 3000,
-    notifications: 3,
-    isPremium: true,
-    isVerified: true,
-  };
 
   const [formattedCredits, setFormattedCredits] = useState<string | null>(null);
   const [formattedSpecialCredits, setFormattedSpecialCredits] = useState<string | null>(null);
@@ -63,9 +63,9 @@ export default function UserProfileHeader() {
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
-    setFormattedCredits(user.credits.toLocaleString('pt-PT'));
-    setFormattedSpecialCredits(user.specialCredits.toLocaleString('pt-PT'));
-  }, [user.credits, user.specialCredits]);
+    setFormattedCredits(credits.toLocaleString('pt-PT'));
+    setFormattedSpecialCredits(specialCredits.toLocaleString('pt-PT'));
+  }, [credits, specialCredits]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -84,7 +84,7 @@ export default function UserProfileHeader() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const xpPercentage = (user.xp / user.xpMax) * 100;
+  const xpPercentage = (xp / xpMax) * 100;
 
   return (
     <div className={cn(
@@ -274,14 +274,15 @@ export default function UserProfileHeader() {
           <NotificationCenter>
             <Button 
               variant="ghost" 
-              size="icon" 
+              size="icon"
+              onClick={() => clearNotifications()} 
               className="h-8 w-8 relative hover:bg-primary/10 transition-colors"
             >
               <Bell className="h-4 w-4" />
               <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center">
                 <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75 animate-ping"></span>
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 text-[10px] text-white font-bold">
-                  {user.notifications}
+                  {notifications}
                 </span>
               </span>
             </Button>
@@ -296,7 +297,7 @@ export default function UserProfileHeader() {
               <Coins className="h-3 w-3 sm:h-4 sm:w-4 mr-1 text-primary group-hover:text-primary/80 transition-colors" />
               {formattedCredits !== null ? (
                 <span className="font-code text-xs sm:text-sm text-primary font-bold group-hover:text-primary/80 transition-colors">
-                  {typeof window !== 'undefined' && window.innerWidth < 640 ? `${Math.floor(user.credits / 1000)}K` : formattedCredits}
+                  {typeof window !== 'undefined' && window.innerWidth < 640 ? `${Math.floor(credits / 1000)}K` : formattedCredits}
                 </span>
               ) : (
                 <span className="font-code text-xs loading-dots">...</span>
@@ -325,8 +326,8 @@ export default function UserProfileHeader() {
               >
                 <div className="relative">
                   <Avatar className="h-8 w-8 border-2 border-primary/50 hover:border-primary transition-colors">
-                    <AvatarImage src={user.avatarUrl} alt={user.name} data-ai-hint={user.dataAiHint} />
-                    <AvatarFallback className="text-xs font-headline">{user.name.substring(0, 1).toUpperCase()}</AvatarFallback>
+                    <AvatarImage src="https://placehold.co/40x40.png" alt="PixelMasterPT" data-ai-hint="profile avatar" />
+                    <AvatarFallback className="text-xs font-headline">P</AvatarFallback>
                   </Avatar>
                   <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-background animate-pulse" />
                 </div>
@@ -339,14 +340,14 @@ export default function UserProfileHeader() {
             >
               <div className="flex items-center gap-3 p-2">
                 <Avatar className="h-10 w-10 border-2 border-primary">
-                  <AvatarImage src={user.avatarUrl} alt={user.name} data-ai-hint={user.dataAiHint} />
-                  <AvatarFallback className="text-sm font-headline">{user.name.substring(0, 1).toUpperCase()}</AvatarFallback>
+                  <AvatarImage src="https://placehold.co/40x40.png" alt="PixelMasterPT" data-ai-hint="profile avatar" />
+                  <AvatarFallback className="text-sm font-headline">P</AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium leading-none truncate">{user.name}</p>
+                  <p className="text-sm font-medium leading-none truncate">PixelMasterPT</p>
                   <div className="flex items-center gap-2 mt-1">
-                    <Badge variant="secondary" className="text-xs">Nível {user.level}</Badge>
-                    {user.isPremium && (
+                    <Badge variant="secondary" className="text-xs">Nível {level}</Badge>
+                    {isPremium && (
                       <Badge className="text-xs bg-gradient-to-r from-amber-500 to-orange-500">
                         <Crown className="h-3 w-3 mr-1" />
                         Pro
@@ -358,7 +359,7 @@ export default function UserProfileHeader() {
               
               <div className="mt-2 p-2 bg-muted/20 rounded-lg">
                 <div className="flex justify-between text-xs mb-1">
-                  <span>XP: {user.xp}/{user.xpMax}</span>
+                  <span>XP: {xp}/{xpMax}</span>
                   <span>{Math.round(xpPercentage)}%</span>
                 </div>
                 <div className="w-full bg-muted/50 rounded-full h-1.5 overflow-hidden">
@@ -383,13 +384,13 @@ export default function UserProfileHeader() {
                   <Award className="mr-2 h-4 w-4 text-yellow-500" />
                   <span>Conquistas</span>
                   <Badge className="ml-auto bg-red-500 text-white text-xs">2</Badge>
-                </DropdownMenuItem>
+                <Badge className="ml-auto bg-red-500 text-white text-xs">{achievements}</Badge>
               </Link>
               
               <DropdownMenuItem className="cursor-pointer hover:bg-primary/10 transition-colors">
                 <CreditCard className="mr-2 h-4 w-4 text-green-500" />
                 <span>Carteira</span>
-                <span className="ml-auto text-xs text-muted-foreground">{formattedCredits}</span>
+                <span className="ml-auto text-xs text-muted-foreground">{formattedCredits || credits}</span>
               </DropdownMenuItem>
               
               <DropdownMenuSeparator className="my-2" />

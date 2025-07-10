@@ -4,9 +4,9 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   ZoomIn, ZoomOut, Expand, Search, Sparkles, Info, User, CalendarDays,
-  History as HistoryIcon, DollarSign, ShoppingCart, Edit3, Palette as PaletteIconLucide, FileText, Upload, Save,
+  History as HistoryIcon, DollarSign, ShoppingCart, Edit3, Palette as PaletteIconLucide, FileText, Upload, Save, 
   Image as ImageIcon, XCircle, TagsIcon, Link as LinkIconLucide, Pencil,
-  Eraser, PaintBucket, Trash2, Heart, Flag, BadgePercent, Star, MapPin as MapPinIconLucide, ScrollText, Gem, Globe, AlertTriangle,
+  Eraser, PaintBucket, Trash2, Heart, Flag, BadgePercent, Star, MapPin as MapPinIconLucide, ScrollText, Gem, Globe, AlertTriangle, 
   Map as MapIcon,
 } from 'lucide-react';
 import NextImage from 'next/image';
@@ -27,6 +27,10 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '../ui/separator';
 import { mapPixelToApproxGps, cn } from '@/lib/utils';
 import EnhancedPixelPurchaseModal from './EnhancedPixelPurchaseModal';
+import { useUserStore, usePixelStore } from '@/lib/store';
+import { AchievementPopup } from '@/components/ui/achievement-popup';
+import { SoundEffect, SOUND_EFFECTS } from '@/components/ui/sound-effect';
+import { Pixel3D } from '@/components/ui/3d-pixel';
 
 
 // Configuration constants
@@ -104,6 +108,8 @@ const mockLoreSnippets: string[] = [
 
 export default function PixelGrid() {
   const [isClient, setIsClient] = useState(false);
+  const { addCredits, addXp, addPixel } = useUserStore();
+  const { soldPixels: storeSoldPixels, addSoldPixel, updatePixelColor } = usePixelStore();
   const [zoom, setZoom] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -130,15 +136,31 @@ export default function PixelGrid() {
   const [progressMessage, setProgressMessage] = useState("Aguardando cliente...");
   
   const [soldPixels, setSoldPixels] = useState<SoldPixel[]>([
-      { x: Math.floor(LOGICAL_GRID_COLS_CONFIG * 0.451), y: Math.floor(logicalGridRows * 0.302), color: 'hsl(var(--accent))', title: 'Pixel especial LIS', ownerId: 'user123' },
-      { x: Math.floor(LOGICAL_GRID_COLS_CONFIG * 0.503), y: Math.floor(logicalGridRows * 0.204), color: 'magenta', title: 'Pixel especial POR', ownerId: MOCK_CURRENT_USER_ID, pixelImageUrl: 'https://placehold.co/1x1.png' },
-      { x: Math.floor(LOGICAL_GRID_COLS_CONFIG * 0.555), y: Math.floor(logicalGridRows * 0.756), color: 'cyan', title: 'Pixel especial FAR', ownerId: 'user456' },
+    { x: Math.floor(LOGICAL_GRID_COLS_CONFIG * 0.451), y: Math.floor(logicalGridRows * 0.302), color: 'hsl(var(--accent))', title: 'Pixel especial LIS', ownerId: 'user123' },
+    { x: Math.floor(LOGICAL_GRID_COLS_CONFIG * 0.503), y: Math.floor(logicalGridRows * 0.204), color: 'magenta', title: 'Pixel especial POR', ownerId: MOCK_CURRENT_USER_ID, pixelImageUrl: 'https://placehold.co/1x1.png' },
+    { x: Math.floor(LOGICAL_GRID_COLS_CONFIG * 0.555), y: Math.floor(logicalGridRows * 0.756), color: 'cyan', title: 'Pixel especial FAR', ownerId: 'user456' },
   ]);
 
   const autoResetTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [unsoldColor, setUnsoldColor] = useState('');
   const [strokeColor, setStrokeColor] = useState('');
+
+  // Sound effects
+  const [playClickSound, setPlayClickSound] = useState(false);
+  const [playSuccessSound, setPlaySuccessSound] = useState(false);
+  
+  // Achievement popup
+  const [showAchievement, setShowAchievement] = useState(false);
+  const [currentAchievement, setCurrentAchievement] = useState({
+    id: 'pixel_explorer',
+    name: 'Explorador de Píxeis',
+    description: 'Você explorou o mapa e descobriu um pixel especial!',
+    rarity: 'uncommon' as const,
+    xpReward: 50,
+    creditsReward: 25,
+    icon: <MapPinIconLucide className="h-12 w-12" />
+  });
 
   const [loadedPixelImages, setLoadedPixelImages] = useState<Record<string, HTMLImageElement>>({});
 
@@ -400,7 +422,7 @@ export default function PixelGrid() {
   }, [isClient, mapData, defaultView, canvasDrawWidth, canvasDrawHeight]);
 
 
- const handleResetView = useCallback(() => {
+  const handleResetView = useCallback(() => {
     clearAutoResetTimeout();
     if (defaultView) {
       setZoom(defaultView.zoom);
@@ -428,7 +450,11 @@ export default function PixelGrid() {
   }, [defaultView, mapData, clearAutoResetTimeout, canvasDrawWidth, canvasDrawHeight, isClient]); 
 
   const handleZoomIn = () => { clearAutoResetTimeout(); setZoom((prevZoom) => Math.min(prevZoom * 1.2, MAX_ZOOM)); };
-  const handleZoomOut = () => { clearAutoResetTimeout(); setZoom((prevZoom) => Math.max(prevZoom / 1.2, MIN_ZOOM)); };
+  
+  const handleZoomOut = () => { 
+    clearAutoResetTimeout(); 
+    setZoom((prevZoom) => Math.max(prevZoom / 1.2, MIN_ZOOM)); 
+  };
 
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -460,6 +486,7 @@ export default function PixelGrid() {
   
   const handleCanvasClick = (event: React.MouseEvent) => {
     clearAutoResetTimeout();
+    setPlayClickSound(true);
 
     if (isLoadingMap || !pixelBitmap || !containerRef.current) {
       toast({
@@ -491,6 +518,22 @@ export default function PixelGrid() {
         const randomRarity = mockRarities[Math.floor(Math.random() * mockRarities.length)];
         const randomLore = mockLoreSnippets[Math.floor(Math.random() * mockLoreSnippets.length)];
         const approxGps = mapPixelToApproxGps(logicalCol, logicalRow, LOGICAL_GRID_COLS_CONFIG, logicalGridRows);
+
+        // Random chance to trigger achievement
+        if (Math.random() < 0.1 && !existingSoldPixel) {
+          setCurrentAchievement({
+            id: 'pixel_explorer',
+            name: 'Explorador de Píxeis',
+            description: 'Você explorou o mapa e descobriu um pixel especial!',
+            rarity: 'uncommon' as const,
+            xpReward: 50,
+            creditsReward: 25,
+            icon: <MapPinIconLucide className="h-12 w-12" />
+          });
+          setShowAchievement(true);
+          addCredits(25);
+          addXp(50);
+        }
         
         let mockDetails: SelectedPixelDetails;
 
@@ -676,6 +719,7 @@ export default function PixelGrid() {
   const handlePurchase = async (pixelData: SelectedPixelDetails, paymentMethod: string, customizations: any) => {
     toast({ title: "Processando...", description: "A sua compra está a ser processada." });
     await new Promise(resolve => setTimeout(resolve, 2000)); 
+    setPlaySuccessSound(true);
     
     const success = Math.random() > 0.1;
 
@@ -703,6 +747,7 @@ export default function PixelGrid() {
           title: newSoldPixel.title,
           isForSaleByOwner: false, 
           salePrice: undefined,
+          gpsCoords: pixelData.gpsCoords,
       };
       setSelectedPixelDetails(updatedDetails);
     }
@@ -713,6 +758,15 @@ export default function PixelGrid() {
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden relative animate-fade-in">
+      <SoundEffect src={SOUND_EFFECTS.CLICK} play={playClickSound} onEnd={() => setPlayClickSound(false)} />
+      <SoundEffect src={SOUND_EFFECTS.SUCCESS} play={playSuccessSound} onEnd={() => setPlaySuccessSound(false)} />
+      
+      <AchievementPopup 
+        show={showAchievement} 
+        achievement={currentAchievement} 
+        onClose={() => setShowAchievement(false)} 
+      />
+      
       <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 bg-card/80 backdrop-blur-sm p-2 rounded-lg shadow-lg pointer-events-auto animate-slide-in-up animation-delay-200">
         <TooltipProvider>
           <Tooltip>
@@ -743,7 +797,11 @@ export default function PixelGrid() {
         <div className="mt-2 p-2 bg-background/50 rounded-md text-xs font-code">
           <p>Zoom: {zoom.toFixed(2)}x</p>
           <p>X: {Math.round(position.x)}, Y: {Math.round(position.y)}</p>
-          {highlightedPixel && <p>Pixel: ({highlightedPixel.x}, {highlightedPixel.y})</p>}
+          {highlightedPixel && (
+            <p className="text-primary font-semibold">
+              Pixel: ({highlightedPixel.x}, {highlightedPixel.y})
+            </p>
+          )}
           <p>Píxeis no Mapa: {activePixelsInMap > 0 ? activePixelsInMap.toLocaleString('pt-PT') : '...'}</p>
         </div>
       </div>
@@ -766,7 +824,19 @@ export default function PixelGrid() {
         onPurchase={handlePurchase}
       />
 
-      <div className="flex-grow w-full h-full p-4 md:p-8 flex items-center justify-center">
+      <div className="flex-grow w-full h-full p-4 md:p-8 flex items-center justify-center relative">
+        {/* 3D Pixel Preview when a pixel is selected */}
+        {selectedPixelDetails && (
+          <div className="absolute top-4 right-4 z-10 w-24 h-24 bg-card/80 backdrop-blur-sm rounded-lg shadow-lg overflow-hidden">
+            <Pixel3D 
+              color={selectedPixelDetails.color} 
+              autoRotate={true}
+              interactive={false}
+              className="w-full h-full"
+            />
+          </div>
+        )}
+        
         <div
             ref={containerRef}
             className="w-full h-full cursor-grab active:cursor-grabbing overflow-hidden relative rounded-xl"
@@ -805,7 +875,7 @@ export default function PixelGrid() {
         <Dialog>
           <DialogTrigger asChild>
              <Button pointerEvents="auto" size="icon" className="rounded-full w-14 h-14 shadow-lg button-gradient-gold button-3d-effect hover:button-gold-glow active:scale-95">
-                <Star className="h-7 w-7" />
+                <Star className="h-7 w-7 animate-pulse" />
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-sm border-primary/30 shadow-xl" data-dialog-content pointerEvents="auto">
@@ -818,8 +888,36 @@ export default function PixelGrid() {
             <div className="grid gap-3 py-4">
               <Button pointerEvents="auto" variant="outline" className="button-3d-effect-outline"><Search className="mr-2 h-4 w-4" />Explorar Pixel por Coordenadas</Button>
               <Button pointerEvents="auto" variant="outline" className="button-3d-effect-outline"><PaletteIconLucide className="mr-2 h-4 w-4" />Filtros de Visualização</Button>
-              <Button pointerEvents="auto" variant="outline" className="button-3d-effect-outline"><Sparkles className="mr-2 h-4 w-4" />Ver Eventos Atuais</Button>
-               <Button pointerEvents="auto" variant="outline" onClick={handleGoToMyLocation} className="button-3d-effect-outline"><MapPinIconLucide className="mr-2 h-4 w-4" />Ir para Minha Localização</Button>
+              <Button 
+                pointerEvents="auto" 
+                variant="outline" 
+                className="button-3d-effect-outline"
+                onClick={() => {
+                  setPlayClickSound(true);
+                  setCurrentAchievement({
+                    id: 'event_explorer',
+                    name: 'Explorador de Eventos',
+                    description: 'Você descobriu um evento especial no mapa!',
+                    rarity: 'rare' as const,
+                    xpReward: 100,
+                    creditsReward: 50,
+                    icon: <Sparkles className="h-12 w-12" />
+                  });
+                  setShowAchievement(true);
+                  addCredits(50);
+                  addXp(100);
+                }}
+              >
+                <Sparkles className="mr-2 h-4 w-4" />Ver Eventos Atuais
+              </Button>
+              <Button 
+                pointerEvents="auto" 
+                variant="outline" 
+                onClick={handleGoToMyLocation} 
+                className="button-3d-effect-outline"
+              >
+                <MapPinIconLucide className="mr-2 h-4 w-4" />Ir para Minha Localização
+              </Button>
             </div>
             <DialogFooter className="dialog-footer-gold-accent rounded-b-lg">
             </DialogFooter>
