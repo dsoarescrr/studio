@@ -24,16 +24,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  ShoppingCart, TrendingUp, Star, MapPin, Clock, Filter, Search,
-  Eye, Heart, Share2, Zap, Crown, Gem, Award, AlertTriangle,
-  DollarSign, Calendar, Users, BarChart3, ArrowUpDown, SortAsc,
-  Flame, Package, Sparkles, ChevronDown, ChevronUp, ExternalLink,
-  Bookmark, MessageSquare, Flag, Gift, Coins, Timer, Target, Bell, Shield,
-  LineChart, PieChart, TrendingDown, Compare, Lightbulb, Calculator,
-  Grid3X3, List, Settings, RefreshCw, Download, Upload, Plus, Minus,
-  Activity, Globe, Map, Camera, Palette, Image as ImageIcon, Link as LinkIcon
-} from "lucide-react";
+import { ShoppingCart, TrendingUp, Star, MapPin, Clock, Filter, Search, Eye, Heart, Share2, Zap, Crown, Gem, Award, AlertTriangle, DollarSign, Calendar, Users, BarChart3, ArrowUpDown, SortAsc, Flame, Package, Sparkles, ChevronDown, ChevronUp, ExternalLink, Bookmark, MessageSquare, Flag, Gift, Coins, Timer, Target, Bell, Shield, LineChart, PieChart, TrendingDown, GitCompare as Compare, Lightbulb, Calculator, Grid3X3, List, Settings, RefreshCw, Download, Upload, Plus, Minus, Activity, Globe, Map, Camera, Palette, Image as ImageIcon, Link as LinkIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
