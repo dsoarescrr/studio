@@ -16,11 +16,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import {
-  Palette, Sun, Moon, Monitor, Sparkles, Eye, RotateCcw, Download,
-  Upload, Share2, Paintbrush, Contrast, Brightness, Saturation,
-  Zap, Star, Crown, Gem, Heart, Save, RefreshCw
-} from 'lucide-react';
+import { Palette, Sun, Moon, Monitor, Sparkles, Eye, RotateCcw, Download, Upload, Share2, Paintbrush, Contrast, Copyright as Brightness, IterationCw as Saturation, Zap, Star, Crown, Gem, Heart, Save, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
