@@ -36,17 +36,20 @@ function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetError
   );
 }
 
+const logicalWidth = 12969;
+const logicalHeight = 26674;
+
 export default function PixelGrid() {
   const { width, height } = useWindowSize();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(0.1); // Initial zoom to see the whole map
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [startDrag, setStartDrag] = useState({ x: 0, y: 0 });
   const [selectedPixel, setSelectedPixel] = useState<{ x: number; y: number } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalPixelData, setModalPixelData] = useState<any>(null);
-  const [mapImage, setMapImage] = useState<HTMLImageElement | null>(null);
+  const [mapPaths, setMapPaths] = useState<Path2D[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { t } = useTranslation();
   const { highQualityRendering } = useSettingsStore();
@@ -55,28 +58,14 @@ export default function PixelGrid() {
   const { removeCredits, addXp, addPixel } = useUserStore();
   const { toast } = useToast();
 
-  const GRID_SIZE = highQualityRendering ? 2 : 3;
+  const GRID_SIZE = highQualityRendering ? 20 : 40;
   const GRID_COLOR = 'rgba(212, 167, 87, 0.1)';
-  
-  const logicalWidth = 1000;
-  const logicalHeight = 2000;
 
   const handleMapDataLoaded = useCallback((data: MapData) => {
-    if (data.svgElement) {
-      const svgString = new XMLSerializer().serializeToString(data.svgElement);
-      const svg = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-      const url = URL.createObjectURL(svg);
-      const img = new Image();
-      img.onload = () => {
-        setMapImage(img);
-        setIsLoading(false);
-        URL.revokeObjectURL(url);
-      };
-      img.onerror = () => {
-        console.error("Failed to load map image from SVG blob.");
-        setIsLoading(false);
-      }
-      img.src = url;
+    if (data.pathStrings.length > 0) {
+      const paths = data.pathStrings.map(pathString => new Path2D(pathString));
+      setMapPaths(paths);
+      setIsLoading(false);
     }
   }, []);
 
@@ -85,20 +74,35 @@ export default function PixelGrid() {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-
+  
     ctx.save();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'hsl(var(--background))';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
     ctx.translate(offset.x, offset.y);
     ctx.scale(zoom, zoom);
-
-    if (mapImage) {
-      ctx.drawImage(mapImage, 0, 0, logicalWidth, logicalHeight);
+  
+    // Draw Portugal Map
+    if (mapPaths.length > 0) {
+      const gradient = ctx.createLinearGradient(0, 0, 0, logicalHeight);
+      gradient.addColorStop(0, "hsl(var(--accent))");
+      gradient.addColorStop(1, "hsl(var(--primary))");
+      
+      ctx.fillStyle = gradient;
+      ctx.strokeStyle = 'hsl(var(--border))';
+      ctx.lineWidth = 20 / zoom; // Keep border consistent on zoom
+      
+      mapPaths.forEach(path => {
+        ctx.fill(path);
+        ctx.stroke(path);
+      });
     }
     
     // Draw Grid
     ctx.strokeStyle = GRID_COLOR;
     ctx.lineWidth = 1 / zoom;
-    if (zoom > 5) {
+    if (zoom > 0.5) {
       for (let x = 0; x <= logicalWidth; x += GRID_SIZE) {
         ctx.beginPath();
         ctx.moveTo(x, 0);
@@ -113,19 +117,31 @@ export default function PixelGrid() {
       }
     }
     
-    // Draw Pixels
+    // Draw Sold Pixels
     soldPixels.forEach(p => {
         ctx.fillStyle = p.color;
         ctx.fillRect(p.x * GRID_SIZE, p.y * GRID_SIZE, GRID_SIZE, GRID_SIZE);
     });
-
+  
     ctx.restore();
-  }, [zoom, offset, mapImage, soldPixels, highQualityRendering]);
+  }, [zoom, offset, mapPaths, soldPixels, highQualityRendering, width, height]);
   
 
   useEffect(() => {
     draw();
   }, [draw]);
+
+  useEffect(() => {
+    // Center map on initial load
+    if (width > 0 && height > 0 && !isLoading) {
+      const initialZoom = Math.min(width / logicalWidth, height / logicalHeight) * 0.9;
+      setZoom(initialZoom);
+      setOffset({
+        x: (width - logicalWidth * initialZoom) / 2,
+        y: (height - logicalHeight * initialZoom) / 2,
+      });
+    }
+  }, [width, height, isLoading]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -141,7 +157,7 @@ export default function PixelGrid() {
   }, [zoom, offset]);
 
   const handleZoom = (delta: number, clientX?: number, clientY?: number) => {
-    const newZoom = Math.max(0.1, Math.min(50, zoom + delta * zoom));
+    const newZoom = Math.max(0.01, Math.min(50, zoom + delta * zoom));
     const canvas = canvasRef.current;
     if (!canvas) return;
     
@@ -165,9 +181,10 @@ export default function PixelGrid() {
 
   const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (isDragging) {
-      const dx = e.clientX - offset.x - startDrag.x;
-      const dy = e.clientY - offset.y - startDrag.y;
-      if (Math.abs(dx) < 5 && Math.abs(dy) < 5) {
+      const dx = Math.abs(e.clientX - (startDrag.x + offset.x));
+      const dy = Math.abs(e.clientY - (startDrag.y + offset.y));
+
+      if (dx < 5 && dy < 5) { // It's a click, not a drag
         handlePixelClick(e);
       }
     }
@@ -240,14 +257,21 @@ export default function PixelGrid() {
   };
   
   const resetView = () => {
-    setZoom(1);
-    setOffset({ x: 0, y: 0 });
+    if (width > 0 && height > 0) {
+      const initialZoom = Math.min(width / logicalWidth, height / logicalHeight) * 0.9;
+      setZoom(initialZoom);
+      setOffset({
+        x: (width - logicalWidth * initialZoom) / 2,
+        y: (height - logicalHeight * initialZoom) / 2,
+      });
+    }
   };
   
   return (
     <div className="relative w-full h-full bg-background overflow-hidden cursor-grab active:cursor-grabbing">
-        {/* Render SVG offscreen to load data */}
-        <PortugalMapSvg onMapDataLoaded={handleMapDataLoaded} className="hidden" />
+        <div style={{ display: 'none' }}>
+            <PortugalMapSvg onMapDataLoaded={handleMapDataLoaded} />
+        </div>
 
       <ErrorBoundary FallbackComponent={ErrorFallback}>
         {isLoading ? (
@@ -277,7 +301,6 @@ export default function PixelGrid() {
               onMouseLeave={() => setIsDragging(false)}
             />
 
-            {/* UI Controls */}
             <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
               <TooltipProvider>
                 <Tooltip>
