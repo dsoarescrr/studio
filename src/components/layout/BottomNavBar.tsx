@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -27,6 +28,7 @@ import {
   PixelWallet,
   ThemeCustomizer
 } from '@/components/features';
+import { SoundEffect, SOUND_EFFECTS } from '../ui/sound-effect';
 
 const navLinks = [
   { href: "/", label: "Universo", icon: Home, color: "text-blue-500", description: "Explorar o mapa" },
