@@ -22,11 +22,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import PixelWallet from '@/components/features/PixelWallet';
-import PixelAuctionSystem from '@/components/features/PixelAuctionSystem';
-import PixelAnalytics from '@/components/features/PixelAnalytics';
-import PixelCollaborationSystem from '@/components/features/PixelCollaborationSystem';
-import ThemeCustomizer from '@/components/features/ThemeCustomizer';
 import {
   Sheet,
   SheetContent,
@@ -34,6 +29,9 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { PixelWallet } from "../features";
+
+// NOTE: Feature components that open modals are handled in BottomNavBar to avoid circular dependencies.
 
 export default function UserProfileHeader() {
   const user = {
@@ -156,30 +154,25 @@ export default function UserProfileHeader() {
                     <Settings className="h-4 w-4 mr-2" />
                     Definições
                   </Button>
-                  <PixelWallet>
+                   <PixelWallet>
                     <Button variant="outline" className="w-full justify-start" size="sm">
                       <CreditCard className="h-4 w-4 mr-2" />
                       Carteira
                     </Button>
                   </PixelWallet>
-                  <PixelAuctionSystem>
-                    <Button variant="outline" className="w-full justify-start" size="sm">
-                      <Gavel className="h-4 w-4 mr-2" />
-                      Leilões
-                    </Button>
-                  </PixelAuctionSystem>
-                  <PixelAnalytics>
-                    <Button variant="outline" className="w-full justify-start" size="sm">
-                      <BarChart3 className="h-4 w-4 mr-2" />
-                      Analytics
-                    </Button>
-                  </PixelAnalytics>
-                  <PixelCollaborationSystem>
-                    <Button variant="outline" className="w-full justify-start" size="sm">
-                      <Users2 className="h-4 w-4 mr-2" />
-                      Colaboração
-                    </Button>
-                  </PixelCollaborationSystem>
+                   {/* These are placeholders now, triggers are in BottomNavBar */}
+                   <Button variant="outline" className="w-full justify-start" size="sm" disabled>
+                    <Gavel className="h-4 w-4 mr-2" />
+                    Leilões
+                  </Button>
+                   <Button variant="outline" className="w-full justify-start" size="sm" disabled>
+                    <BarChart3 className="h-4 w-4 mr-2" />
+                    Analytics
+                  </Button>
+                   <Button variant="outline" className="w-full justify-start" size="sm" disabled>
+                    <Users2 className="h-4 w-4 mr-2" />
+                    Colaboração
+                  </Button>
                 </div>
               </div>
             </SheetContent>
@@ -239,7 +232,7 @@ export default function UserProfileHeader() {
               <CreditCard className="h-3 w-3 sm:h-4 sm:w-4 mr-1 text-primary" />
               {formattedCredits !== null ? (
                 <span className="font-code text-xs sm:text-sm text-primary font-bold">
-                  {window.innerWidth < 640 ? `${Math.floor(user.credits / 1000)}K` : formattedCredits}
+                  {typeof window !== 'undefined' && window.innerWidth < 640 ? `${Math.floor(user.credits / 1000)}K` : formattedCredits}
                 </span>
               ) : (
                 <span className="font-code text-xs loading-dots">...</span>
@@ -295,13 +288,11 @@ export default function UserProfileHeader() {
                 <span>Conquistas</span>
                 <Badge className="ml-auto bg-red-500 text-white text-xs">2</Badge>
               </DropdownMenuItem>
-              <PixelWallet>
-                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                  <CreditCard className="mr-2 h-4 w-4" />
-                  <span>Carteira</span>
-                  <span className="ml-auto text-xs text-muted-foreground">12.500</span>
-                </DropdownMenuItem>
-              </PixelWallet>
+               <DropdownMenuItem>
+                <CreditCard className="mr-2 h-4 w-4" />
+                <span>Carteira</span>
+                <span className="ml-auto text-xs text-muted-foreground">12.500</span>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem>
                 <HelpCircle className="mr-2 h-4 w-4" />

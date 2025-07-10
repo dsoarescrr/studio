@@ -20,13 +20,6 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   MapPin, CreditCard, Gift, Palette, ImageIcon, Link as LinkIcon, 
   ShoppingCart, Zap, Star, Crown, Shield, AlertTriangle, CheckCircle2,
   Eye, Heart, Share2, Clock, TrendingUp, Users, Sparkles, Gem,
@@ -153,13 +146,11 @@ export default function PixelPurchaseModal({
   useEffect(() => {
     if (pixelData) {
       setCustomizations(prev => ({
+        ...prev,
         color: pixelData.color || '#D4A757',
         description: pixelData.description || `Pixel adquirido na região de ${pixelData.region}`,
         title: `Meu Pixel (${pixelData.x}, ${pixelData.y})`,
         tags: pixelData.tags || [],
-        linkUrl: '',
-        isPublic: true,
-        allowComments: true
       }));
     }
   }, [pixelData]);
@@ -170,7 +161,7 @@ export default function PixelPurchaseModal({
   const finalPrice = Math.round(pixelData.price * rarity.multiplier);
   const canAffordCredits = userCredits >= finalPrice;
   const canAffordSpecialCredits = userSpecialCredits >= Math.round(finalPrice * 0.1);
-  const realMoneyPrice = (finalPrice * 0.01).toFixed(2); // 1 credit = 0.01€
+  const realMoneyPrice = (finalPrice * 0.01).toFixed(2);
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -204,7 +195,6 @@ export default function PixelPurchaseModal({
     setPurchaseProcessing(true);
     setPurchaseProgress(0);
 
-    // Simulate purchase process with progress
     const progressInterval = setInterval(() => {
       setPurchaseProgress(prev => {
         if (prev >= 90) {
@@ -276,14 +266,21 @@ export default function PixelPurchaseModal({
                   <span className="ml-1">{rarity.label}</span>
                 </Badge>
               </DialogTitle>
-              <DialogDescription className="mt-2">
-                Região: {pixelData.region} • {pixelData.views} visualizações • {pixelData.likes} gostos
+              <DialogDescription className="mt-2 flex items-center gap-6 text-base">
+                <span>Região: {pixelData.region}</span>
+                <span>•</span>
+                <span>Views: {pixelData.views}</span>
+                <span>•</span>
+                <span>Likes: {pixelData.likes}</span>
+                <Badge variant="secondary" className="text-sm">
+                  {pixelData.owner ? `Proprietário: ${pixelData.owner}` : 'Disponível'}
+                </Badge>
               </DialogDescription>
             </div>
             <div className="text-right">
-              <div className="text-2xl font-bold text-primary">{finalPrice}€</div>
+              <div className="text-2xl font-bold text-primary">{finalPrice}</div>
               <div className="text-xs text-muted-foreground">
-                Preço base: {pixelData.price}€ × {rarity.multiplier}
+                créditos
               </div>
             </div>
           </div>

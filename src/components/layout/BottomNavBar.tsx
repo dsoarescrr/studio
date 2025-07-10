@@ -2,17 +2,22 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, User, Trophy, BarChartHorizontalBig, Users, Plus, Zap, Coins } from 'lucide-react';
-import { ShoppingCart, Palette, Gift, Bell, Search as SearchIcon } from 'lucide-react';
+import { Home, User, Trophy, BarChartHorizontalBig, Users as UsersIcon, Plus, Zap, Coins, ShoppingCart, Palette, Gift, Bell, Search as SearchIcon, Gavel, Users2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import PixelMarketplace from '@/components/features/PixelMarketplace';
-import ThemeCustomizer from '@/components/features/ThemeCustomizer';
-import PixelWallet from '@/components/features/PixelWallet';
+import {
+  PixelMarketplace,
+  ThemeCustomizer,
+  PixelWallet,
+  PixelAuctionSystem,
+  PixelCollaborationSystem,
+  PixelAnalytics
+} from '@/components/features';
 import NotificationCenter from '@/components/layout/NotificationCenter';
 import SearchSystem from '@/components/layout/SearchSystem';
+import PixelPurchaseModal from '@/components/pixel-grid/PixelPurchaseModal';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,11 +31,10 @@ const navLinks = [
   { href: "/", label: "Universo", icon: Home, color: "text-blue-500" },
   { href: "/achievements", label: "Conquistas", icon: Trophy, color: "text-yellow-500" },
   { href: "/ranking", label: "Ranking", icon: BarChartHorizontalBig, color: "text-green-500" },
-  { href: "/community", label: "Comunidade", icon: Users, color: "text-purple-500" },
+  { href: "/community", label: "Comunidade", icon: UsersIcon, color: "text-purple-500" },
   { href: "/member", label: "Perfil", icon: User, color: "text-pink-500" },
 ];
 
-// Enhanced height for better touch targets on mobile
 const BOTTOM_NAV_HEIGHT = '72px';
 
 export default function BottomNavBar() {
@@ -38,13 +42,14 @@ export default function BottomNavBar() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
+  const [selectedPixelForPurchase, setSelectedPixelForPurchase] = useState<any>(null);
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
 
   useEffect(() => {
     const currentIndex = navLinks.findIndex(link => link.href === pathname);
     setActiveIndex(currentIndex >= 0 ? currentIndex : 0);
   }, [pathname]);
 
-  // Auto-hide on scroll (optional)
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
@@ -62,6 +67,16 @@ export default function BottomNavBar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [lastScrollY]);
 
+  const handleSelectPixel = (pixelData: any) => {
+    setSelectedPixelForPurchase(pixelData);
+    setShowPurchaseModal(true);
+  };
+
+  const handlePurchase = async (pixelData: any, paymentMethod: string, customizations: any) => {
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    return Math.random() > 0.1;
+  };
+
   return (
     <>
       <style jsx global>{`
@@ -74,14 +89,12 @@ export default function BottomNavBar() {
         className={cn(
           "fixed bottom-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out",
           isVisible ? "translate-y-0" : "translate-y-full",
-          "safe-bottom" // Add safe area for notched devices
+          "safe-bottom"
         )}
         style={{ height: BOTTOM_NAV_HEIGHT }}
       >
-        {/* Enhanced background with blur and gradient */}
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/95 to-background/90 backdrop-blur-xl border-t border-border/60 shadow-2xl" />
         
-        {/* Animated top border */}
         <div 
           className="absolute top-0 h-1 bg-gradient-to-r from-primary via-accent to-primary transition-all duration-500 ease-out shadow-lg"
           style={{
@@ -90,7 +103,6 @@ export default function BottomNavBar() {
           }}
         />
         
-        {/* Floating particles effect */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           {Array.from({ length: 8 }).map((_, i) => (
             <div
@@ -122,12 +134,10 @@ export default function BottomNavBar() {
                 )}
                 onClick={() => setActiveIndex(index)}
               >
-                {/* Background glow for active item */}
                 {isActive && (
                   <div className="absolute inset-0 bg-gradient-to-t from-primary/20 via-primary/10 to-transparent rounded-xl animate-pulse" />
                 )}
                 
-                {/* Icon container with enhanced effects */}
                 <div className="relative mb-1">
                   <div className={cn(
                     "p-2 rounded-xl transition-all duration-300 relative z-10",
@@ -143,12 +153,10 @@ export default function BottomNavBar() {
                     )} />
                   </div>
                   
-                  {/* Active indicator dot */}
                   {isActive && (
                     <div className="absolute -top-1 -right-1 w-3 h-3 bg-accent rounded-full animate-ping" />
                   )}
                   
-                  {/* Hover glow effect */}
                   <div className={cn(
                     "absolute inset-0 rounded-xl transition-opacity duration-300 -z-10",
                     isActive 
@@ -157,7 +165,6 @@ export default function BottomNavBar() {
                   )} style={{ transform: 'scale(1.2)' }} />
                 </div>
                 
-                {/* Label with enhanced styling */}
                 <span className={cn(
                   "transition-all duration-300 font-code text-xs leading-tight text-center px-1",
                   isActive && "text-gradient-gold font-bold drop-shadow-sm"
@@ -165,12 +172,10 @@ export default function BottomNavBar() {
                   {link.label}
                 </span>
                 
-                {/* Ripple effect on touch */}
                 <div className="absolute inset-0 rounded-xl overflow-hidden">
                   <div className="absolute inset-0 bg-primary/30 transform scale-0 group-active:scale-100 transition-transform duration-200 rounded-xl" />
                 </div>
 
-                {/* Notification badges for specific pages */}
                 {link.href === '/achievements' && (
                   <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 text-xs bg-red-500 hover:bg-red-500 flex items-center justify-center animate-bounce">
                     2
@@ -181,7 +186,6 @@ export default function BottomNavBar() {
           })}
         </div>
 
-        {/* Quick Action Button (Floating) */}
         <div className="absolute -top-6 left-1/2 transform -translate-x-1/2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -195,12 +199,28 @@ export default function BottomNavBar() {
             <DropdownMenuContent align="center" side="top" className="w-56 mb-2">
               <DropdownMenuLabel>Ações Rápidas</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <PixelMarketplace>
+              
+              <PixelMarketplace onSelectPixel={handleSelectPixel}>
                 <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer">
                   <ShoppingCart className="h-4 w-4 mr-2 text-green-500" />
                   Marketplace
                 </DropdownMenuItem>
               </PixelMarketplace>
+
+              <PixelAuctionSystem>
+                 <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer">
+                  <Gavel className="h-4 w-4 mr-2 text-orange-500" />
+                  Leilões
+                </DropdownMenuItem>
+              </PixelAuctionSystem>
+              
+              <PixelCollaborationSystem>
+                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer">
+                  <Users2 className="h-4 w-4 mr-2" />
+                   Colaboração
+                </DropdownMenuItem>
+              </PixelCollaborationSystem>
+
               <ThemeCustomizer>
                 <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer">
                   <Palette className="h-4 w-4 mr-2 text-purple-500" />
@@ -225,18 +245,19 @@ export default function BottomNavBar() {
                   Pesquisar
                 </DropdownMenuItem>
               </SearchSystem>
-              <DropdownMenuItem>
-                <Zap className="h-4 w-4 mr-2 text-orange-500" />
-                Comprar Créditos
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Gift className="h-4 w-4 mr-2 text-red-500" />
-                Eventos Especiais
-              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </nav>
+      
+      <PixelPurchaseModal
+        isOpen={showPurchaseModal}
+        onClose={() => setShowPurchaseModal(false)}
+        pixelData={selectedPixelForPurchase}
+        userCredits={12500}
+        userSpecialCredits={120}
+        onPurchase={handlePurchase}
+      />
     </>
   );
 }

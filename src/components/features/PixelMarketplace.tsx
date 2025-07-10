@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
   DialogContent,
@@ -32,7 +31,6 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import PixelPurchaseModal from '@/components/pixel-grid/PixelPurchaseModal';
 
 type PixelRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'unique';
 type ListingType = 'fixed' | 'auction' | 'offer';
@@ -258,9 +256,10 @@ const rarityLabels: Record<PixelRarity, string> = {
 
 interface PixelMarketplaceProps {
   children: React.ReactNode;
+  onSelectPixel: (pixelData: any) => void;
 }
 
-export default function PixelMarketplace({ children }: PixelMarketplaceProps) {
+export default function PixelMarketplace({ children, onSelectPixel }: PixelMarketplaceProps) {
   const [listings, setListings] = useState<PixelListing[]>(mockListings);
   const [filteredListings, setFilteredListings] = useState<PixelListing[]>(mockListings);
   const [searchQuery, setSearchQuery] = useState('');
@@ -270,13 +269,10 @@ export default function PixelMarketplace({ children }: PixelMarketplaceProps) {
   const [sortBy, setSortBy] = useState<SortOption>('featured');
   const [priceRange, setPriceRange] = useState<{ min: number; max: number }>({ min: 0, max: 1000 });
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedPixelForPurchase, setSelectedPixelForPurchase] = useState<any>(null);
-  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(false);
   const { toast } = useToast();
 
-  // Filter and sort listings
   useEffect(() => {
     let filtered = listings.filter(listing => {
       const matchesSearch = !searchQuery || 
@@ -293,7 +289,6 @@ export default function PixelMarketplace({ children }: PixelMarketplaceProps) {
       return matchesSearch && matchesRarity && matchesType && matchesRegion && matchesPrice;
     });
 
-    // Sort listings
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'price_asc':
@@ -360,8 +355,7 @@ export default function PixelMarketplace({ children }: PixelMarketplaceProps) {
       tags: result.tags
     };
     
-    setSelectedPixelForPurchase(pixelData);
-    setShowPurchaseModal(true);
+    onSelectPixel(pixelData);
     setIsOpen(false);
   };
 
@@ -384,11 +378,6 @@ export default function PixelMarketplace({ children }: PixelMarketplaceProps) {
         ? { ...listing, likes: listing.likes + 1 }
         : listing
     ));
-  };
-
-  const handlePurchase = async (pixelData: any, paymentMethod: string, customizations: any) => {
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    return Math.random() > 0.1;
   };
 
   const clearFilters = () => {
@@ -590,7 +579,6 @@ export default function PixelMarketplace({ children }: PixelMarketplaceProps) {
                         )}
                         onClick={() => handleResultClick(listing)}
                       >
-                        {/* Sponsored Badge */}
                         {listing.isSponsored && (
                           <div className="absolute -top-2 -right-2 z-10">
                             <Badge className="bg-accent text-accent-foreground text-xs px-2 py-1">
@@ -603,7 +591,6 @@ export default function PixelMarketplace({ children }: PixelMarketplaceProps) {
                         <div className={cn(
                           viewMode === 'list' ? "flex w-full" : ""
                         )}>
-                          {/* Image Section */}
                           {listing.imageUrl && (
                             <div className={cn(
                               "relative overflow-hidden",
@@ -616,7 +603,6 @@ export default function PixelMarketplace({ children }: PixelMarketplaceProps) {
                                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                               />
                               
-                              {/* Overlay with quick actions */}
                               <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-2">
                                 <Button
                                   size="sm"
@@ -643,14 +629,12 @@ export default function PixelMarketplace({ children }: PixelMarketplaceProps) {
                                   variant="secondary"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    // Share functionality
                                   }}
                                 >
                                   <Share2 className="h-4 w-4" />
                                 </Button>
                               </div>
 
-                              {/* Status badges */}
                               <div className="absolute top-2 left-2 flex flex-col gap-1">
                                 {listing.isHot && (
                                   <Badge className="text-xs bg-red-500 hover:bg-red-500">
@@ -671,7 +655,6 @@ export default function PixelMarketplace({ children }: PixelMarketplaceProps) {
                                 )}
                               </div>
 
-                              {/* Auction timer */}
                               {listing.type === 'auction' && listing.bids && (
                                 <div className="absolute bottom-2 right-2">
                                   <Badge variant="destructive" className="text-xs">
@@ -683,12 +666,10 @@ export default function PixelMarketplace({ children }: PixelMarketplaceProps) {
                             </div>
                           )}
 
-                          {/* Content Section */}
                           <div className={cn(
                             "p-4 flex-1",
                             viewMode === 'list' && "flex flex-col justify-between"
                           )}>
-                            {/* Header */}
                             <div className="space-y-2">
                               <div className="flex items-start justify-between">
                                 <div className="flex items-center gap-2">
@@ -715,7 +696,6 @@ export default function PixelMarketplace({ children }: PixelMarketplaceProps) {
                                 </p>
                               )}
                               
-                              {/* Tags */}
                               <div className="flex flex-wrap gap-1">
                                 {listing.tags.slice(0, 3).map((tag) => (
                                   <Badge key={tag} variant="secondary" className="text-xs">
@@ -730,7 +710,6 @@ export default function PixelMarketplace({ children }: PixelMarketplaceProps) {
                               </div>
                             </div>
 
-                            {/* Seller Info */}
                             <div className="flex items-center gap-2 mt-3 mb-3">
                               <Avatar className="h-6 w-6">
                                 <AvatarImage 
@@ -760,7 +739,6 @@ export default function PixelMarketplace({ children }: PixelMarketplaceProps) {
                               </div>
                             </div>
 
-                            {/* Stats */}
                             <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
                               <div className="flex items-center gap-3">
                                 <span className="flex items-center gap-1">
@@ -786,7 +764,6 @@ export default function PixelMarketplace({ children }: PixelMarketplaceProps) {
                             
                             <Separator className="my-3" />
                             
-                            {/* Price and Actions */}
                             <div className="space-y-3">
                               <div className="flex items-center justify-between">
                                 <div>
@@ -886,15 +863,6 @@ export default function PixelMarketplace({ children }: PixelMarketplaceProps) {
           </div>
         </DialogContent>
       </Dialog>
-
-      <PixelPurchaseModal
-        isOpen={showPurchaseModal}
-        onClose={() => setShowPurchaseModal(false)}
-        pixelData={selectedPixelForPurchase}
-        userCredits={12500}
-        userSpecialCredits={120}
-        onPurchase={handlePurchase}
-      />
     </>
   );
 }
