@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -23,18 +23,18 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Eye, Heart, MessageSquare, Star, TrendingUp, Clock, MapPin, Palette, Crown, Gem, Sparkles, Siren as Fire, Trophy, Users, Share2, Bookmark, Filter, Search, SortAsc, Grid3X3, List, BarChart3, Zap, Gift, Coins, Award, Calendar, Globe, Target, Flame, ThumbsUp, Download, ExternalLink, Play, Pause, Volume2, VolumeX, RotateCcw, Maximize2, Settings, ChevronUp, ChevronDown, ArrowUp, ArrowDown, TrendingDown, Plus, RefreshCw, Bell, Flag, Info, HelpCircle, Lightbulb, Megaphone } from "lucide-react";
-import { useUserStore } from '@/lib/store';
+import { Eye, Heart, MessageSquare, Star, TrendingUp, Clock, MapPin, Palette, Crown, Gem, Sparkles, Siren as Fire, Trophy, Users, Share2, Bookmark, Filter, Search, SortAsc, Grid3X3, List, BarChart3, Zap, Gift, Coins, Award, Calendar, Globe, Target, Flame, ThumbsUp, Download, ExternalLink, Play, Pause, Volume2, VolumeX, RotateCcw, Maximize2, Settings, ChevronUp, ChevronDown, ArrowUp, ArrowDown, TrendingDown, Plus, RefreshCw, Bell, Flag, Info, HelpCircle, Lightbulb, Megaphone, Brush, Layers, Compass, Tag } from "lucide-react";
+import { useUserStore, useSettingsStore } from '@/lib/store';
 import { SoundEffect, SOUND_EFFECTS } from '@/components/ui/sound-effect';
+import { Confetti } from '@/components/ui/confetti';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { motion } from 'framer-motion';
 
 type PixelRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'unique';
 type SortOption = 'trending' | 'recent' | 'views' | 'likes' | 'comments' | 'rarity' | 'price' | 'featured';
@@ -296,6 +296,7 @@ const rarityLabels: Record<PixelRarity, string> = {
 export default function PixelsPage() {
   const [pixels, setPixels] = useState<PixelShowcase[]>(mockPixels);
   const { addCredits, removeCredits } = useUserStore();
+  const { soundEffects } = useSettingsStore();
   const [filteredPixels, setFilteredPixels] = useState<PixelShowcase[]>(mockPixels);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('trending');
@@ -303,7 +304,9 @@ export default function PixelsPage() {
   const [selectedPixel, setSelectedPixel] = useState<PixelShowcase | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showPromotionModal, setShowPromotionModal] = useState(false);
+  const [showPixelDetails, setShowPixelDetails] = useState(false);
   const [playPromoteSound, setPlayPromoteSound] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -386,6 +389,7 @@ export default function PixelsPage() {
     
     removeCredits(cost);
     setPlayPromoteSound(true);
+    setShowConfetti(true);
     
     setPixels(prev => prev.map(pixel => 
       pixel.id === pixelId 
@@ -413,7 +417,13 @@ export default function PixelsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5">
-      <SoundEffect src={SOUND_EFFECTS.SUCCESS} play={playPromoteSound} onEnd={() => setPlayPromoteSound(false)} />
+      <SoundEffect 
+        src={SOUND_EFFECTS.SUCCESS} 
+        play={playPromoteSound} 
+        onEnd={() => setPlayPromoteSound(false)} 
+        volume={0.7}
+      />
+      <Confetti active={showConfetti} duration={3000} onComplete={() => setShowConfetti(false)} />
       
       <div className="container mx-auto py-6 px-4 mb-16 space-y-6 max-w-7xl">
         {/* Header */}
@@ -450,7 +460,7 @@ export default function PixelsPage() {
         </Card>
 
         {/* Filters and Search */}
-        <Card className="shadow-lg bg-card/80 backdrop-blur-sm">
+        <Card className="shadow-lg bg-card/80 backdrop-blur-sm border-primary/20">
           <CardContent className="p-4">
             <div className="space-y-4">
               {/* Search Bar */}
@@ -465,7 +475,7 @@ export default function PixelsPage() {
               </div>
 
               {/* Filter Tabs */}
-              <Tabs value={filterCategory} onValueChange={(value) => setFilterCategory(value as FilterCategory)}>
+              <Tabs value={filterCategory} onValueChange={(value) => setFilterCategory(value as FilterCategory)} className="animate-fade-in">
                 <TabsList className="grid w-full grid-cols-3 lg:grid-cols-7 h-12 bg-background/50">
                   <TabsTrigger value="all" className="text-xs">
                     <Globe className="h-4 w-4 mr-1" />
@@ -544,7 +554,7 @@ export default function PixelsPage() {
             : "space-y-4"
         )}>
           {filteredPixels.map((pixel) => (
-            <Card
+            <motion.div
               key={pixel.id}
               className={cn(
                 "transition-all duration-300 hover:shadow-xl cursor-pointer group overflow-hidden",
@@ -552,7 +562,9 @@ export default function PixelsPage() {
                 pixel.boostLevel >= 3 && "ring-2 ring-accent/50",
                 viewMode === 'list' && "flex flex-row"
               )}
-              onClick={() => setSelectedPixel(pixel)}
+              whileHover={{ scale: 1.02, y: -5 }}
+              transition={{ type: "spring", stiffness: 300, damping: 10 }}
+              onClick={() => { setSelectedPixel(pixel); setShowPixelDetails(true); }}
             >
               {/* Boost Level Indicator */}
               {pixel.boostLevel > 0 && (
@@ -569,7 +581,7 @@ export default function PixelsPage() {
                 </div>
               )}
 
-              <div className={cn(
+              <Card className={cn(
                 viewMode === 'list' ? "flex w-full" : ""
               )}>
                 {/* Image */}
@@ -586,7 +598,7 @@ export default function PixelsPage() {
                     />
                   )}
                   
-                  {/* Overlay with quick actions */}
+                  {/* Enhanced Overlay with quick actions */}
                   <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-2">
                     <TooltipProvider>
                       <Tooltip>
@@ -602,7 +614,7 @@ export default function PixelsPage() {
                             <Heart className="h-4 w-4" />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>Curtir</TooltipContent>
+                        <TooltipContent>Curtir Pixel</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                     
@@ -620,7 +632,7 @@ export default function PixelsPage() {
                             <Bookmark className="h-4 w-4" />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>Guardar</TooltipContent>
+                        <TooltipContent>Guardar Pixel</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                     
@@ -640,6 +652,21 @@ export default function PixelsPage() {
                         <TooltipContent>Partilhar</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
+                    
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={(e) => { e.stopPropagation(); setShowPromotionModal(true); }}
+                          >
+                            <Megaphone className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Promover Pixel</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
 
                   {/* Status Badges */}
@@ -647,7 +674,7 @@ export default function PixelsPage() {
                     {pixel.isTrending && (
                       <Badge className="text-xs bg-red-500 hover:bg-red-500">
                         <Fire className="h-3 w-3 mr-1" />
-                        Hot
+                        Trending
                       </Badge>
                     )}
                     {pixel.isAnimated && (
@@ -671,7 +698,7 @@ export default function PixelsPage() {
                   </div>
                 </div>
 
-                {/* Content */}
+                {/* Enhanced Content */}
                 <div className={cn(
                   "p-4 flex-1",
                   viewMode === 'list' && "flex flex-col justify-between"
@@ -679,7 +706,7 @@ export default function PixelsPage() {
                   <div className="space-y-2">
                     {/* Header */}
                     <div className="flex items-start justify-between">
-                      <div>
+                      <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-lg line-clamp-1">{pixel.title}</h3>
                         <div className="flex items-center gap-2 mt-1">
                           <MapPin className="h-3 w-3 text-muted-foreground" />
@@ -690,7 +717,7 @@ export default function PixelsPage() {
                       </div>
                       
                       <Badge 
-                        variant="outline" 
+                        variant="outline"
                         className={cn("text-xs", rarityColors[pixel.rarity])}
                       >
                         {rarityLabels[pixel.rarity]}
@@ -698,7 +725,7 @@ export default function PixelsPage() {
                     </div>
                     
                     {/* Description */}
-                    <p className="text-sm text-muted-foreground line-clamp-2">
+                    <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
                       {pixel.description}
                     </p>
                     
@@ -717,7 +744,7 @@ export default function PixelsPage() {
                     </div>
                   </div>
 
-                  {/* Owner */}
+                  {/* Enhanced Owner Section */}
                   <div className="flex items-center gap-2 mt-3 mb-3">
                     <Avatar className="h-6 w-6">
                       <AvatarImage 
@@ -731,7 +758,7 @@ export default function PixelsPage() {
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1">
-                        <span className="text-xs font-medium truncate">{pixel.owner.name}</span>
+                        <span className="text-xs font-medium truncate hover:text-primary transition-colors">{pixel.owner.name}</span>
                         {pixel.owner.verified && (
                           <Star className="h-3 w-3 text-blue-500 fill-current" />
                         )}
@@ -742,7 +769,7 @@ export default function PixelsPage() {
                     </div>
                   </div>
 
-                  {/* Stats */}
+                  {/* Enhanced Stats */}
                   <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
                     <div className="flex items-center gap-3">
                       <span className="flex items-center gap-1">
@@ -764,6 +791,8 @@ export default function PixelsPage() {
                     </div>
                   </div>
                   
+                  <Separator className="bg-border/50" />
+                  
                   {/* Engagement Bar */}
                   <div className="space-y-1">
                     <div className="flex justify-between text-xs">
@@ -771,14 +800,21 @@ export default function PixelsPage() {
                       <span className="font-medium">{Math.round(getEngagementScore(pixel))}</span>
                     </div>
                     <Progress 
-                      value={Math.min(getEngagementScore(pixel) / 100, 100)} 
-                      className="h-1"
+                      value={Math.min(getEngagementScore(pixel) / 100, 100)}
+                      className="h-2 rounded-full"
                     />
                   </div>
                 </div>
-              </div>
-            </Card>
+              </Card>
+            </motion.div>
           ))}
+          
+          {filteredPixels.length > 0 && (
+            <Button variant="outline" className="w-full mt-4">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Carregar Mais Pixels
+            </Button>
+          )}
         </div>
 
         {/* Promotion Modal */}
@@ -846,6 +882,249 @@ export default function PixelsPage() {
             </Button>
           </Card>
         )}
+        
+        {/* Pixel Details Dialog */}
+        <Dialog open={showPixelDetails} onOpenChange={setShowPixelDetails}>
+          <DialogContent className="max-w-4xl max-h-[90vh] p-0">
+            {selectedPixel && (
+              <>
+                <DialogHeader className="p-6 border-b bg-gradient-to-br from-card via-card/95 to-primary/10 relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 animate-shimmer" 
+                       style={{ backgroundSize: '200% 200%' }} />
+                  <div className="relative">
+                    <DialogTitle className="flex items-center gap-3 font-headline text-2xl text-gradient-gold">
+                      <div className={cn(
+                        "p-2 rounded-xl",
+                        rarityColors[selectedPixel.rarity].replace('text-', 'bg-').replace('/10', '/20')
+                      )}>
+                        <MapPin className={cn("h-6 w-6", rarityColors[selectedPixel.rarity].split(' ')[0])} />
+                      </div>
+                      {selectedPixel.title}
+                    </DialogTitle>
+                    <CardDescription className="mt-2">
+                      {selectedPixel.description}
+                    </CardDescription>
+                  </div>
+                </DialogHeader>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
+                  {/* Left Column - Image and Stats */}
+                  <div className="space-y-4">
+                    <div className="aspect-square relative rounded-lg overflow-hidden border-2 border-primary/30">
+                      {selectedPixel.imageUrl ? (
+                        <img 
+                          src={selectedPixel.imageUrl} 
+                          alt={selectedPixel.title}
+                          className="w-full h-full object-cover"
+                          data-ai-hint={selectedPixel.dataAiHint}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-accent/20">
+                          <div className="text-center text-white drop-shadow-lg">
+                            <div className="text-2xl font-bold">({selectedPixel.coordinates.x}, {selectedPixel.coordinates.y})</div>
+                            <div className="text-sm opacity-80">{selectedPixel.region}</div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Status Badges */}
+                      <div className="absolute top-2 right-2 flex flex-col gap-1">
+                        <Badge className={cn(rarityColors[selectedPixel.rarity])}>
+                          {rarityLabels[selectedPixel.rarity]}
+                        </Badge>
+                        {selectedPixel.isAnimated && (
+                          <Badge className="bg-blue-500">Animado</Badge>
+                        )}
+                        {selectedPixel.isInteractive && (
+                          <Badge className="bg-purple-500">Interativo</Badge>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-3 gap-4">
+                      <Card className="p-3 bg-muted/20 text-center">
+                        <Eye className="h-5 w-5 mx-auto mb-1 text-blue-500" />
+                        <p className="font-bold">{selectedPixel.views.toLocaleString('pt-PT')}</p>
+                        <p className="text-xs text-muted-foreground">Visualizações</p>
+                      </Card>
+                      <Card className="p-3 bg-muted/20 text-center">
+                        <Heart className="h-5 w-5 mx-auto mb-1 text-red-500" />
+                        <p className="font-bold">{selectedPixel.likes.toLocaleString('pt-PT')}</p>
+                        <p className="text-xs text-muted-foreground">Curtidas</p>
+                      </Card>
+                      <Card className="p-3 bg-muted/20 text-center">
+                        <MessageSquare className="h-5 w-5 mx-auto mb-1 text-green-500" />
+                        <p className="font-bold">{selectedPixel.comments.toLocaleString('pt-PT')}</p>
+                        <p className="text-xs text-muted-foreground">Comentários</p>
+                      </Card>
+                    </div>
+                    
+                    <Card className="p-4 bg-muted/20">
+                      <h3 className="font-semibold mb-3 flex items-center">
+                        <Layers className="h-4 w-4 mr-2 text-primary" />
+                        Características Especiais
+                      </h3>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedPixel.effects.map(effect => (
+                          <Badge key={effect} variant="outline" className="text-primary border-primary/50">
+                            {effect}
+                          </Badge>
+                        ))}
+                      </div>
+                    </Card>
+                  </div>
+                  
+                  {/* Right Column - Details and Purchase */}
+                  <div className="space-y-4">
+                    <Card className="p-4 bg-muted/20">
+                      <h3 className="font-semibold mb-3 flex items-center">
+                        <Info className="h-4 w-4 mr-2 text-blue-500" />
+                        Detalhes do Pixel
+                      </h3>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm py-1 border-b border-border/30">
+                          <span className="text-muted-foreground">Coordenadas</span>
+                          <span className="font-medium">({selectedPixel.coordinates.x}, {selectedPixel.coordinates.y})</span>
+                        </div>
+                        <div className="flex justify-between text-sm py-1 border-b border-border/30">
+                          <span className="text-muted-foreground">Região</span>
+                          <span className="font-medium">{selectedPixel.region}</span>
+                        </div>
+                        <div className="flex justify-between text-sm py-1 border-b border-border/30">
+                          <span className="text-muted-foreground">Proprietário</span>
+                          <span className="font-medium flex items-center">
+                            {selectedPixel.owner.name}
+                            {selectedPixel.owner.verified && (
+                              <Star className="h-3 w-3 ml-1 text-blue-500 fill-current" />
+                            )}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm py-1 border-b border-border/30">
+                          <span className="text-muted-foreground">Data de Criação</span>
+                          <span className="font-medium">{selectedPixel.createdAt.toLocaleDateString('pt-PT')}</span>
+                        </div>
+                        <div className="flex justify-between text-sm py-1 border-b border-border/30">
+                          <span className="text-muted-foreground">Última Modificação</span>
+                          <span className="font-medium">{selectedPixel.lastModified.toLocaleDateString('pt-PT')}</span>
+                        </div>
+                      </div>
+                    </Card>
+                    
+                    <Card className="p-4 bg-gradient-to-br from-primary/10 to-accent/10">
+                      <h3 className="font-semibold mb-3 flex items-center">
+                        <Brush className="h-4 w-4 mr-2 text-primary" />
+                        Personalização
+                      </h3>
+                      <div className="space-y-4">
+                        <Button 
+                          className="w-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90"
+                          onClick={() => {
+                            setShowPixelDetails(false);
+                            toast({
+                              title: "Editor Aberto",
+                              description: "O editor de pixel foi aberto.",
+                            });
+                          }}
+                        >
+                          <Brush className="h-4 w-4 mr-2" />
+                          Editar Pixel
+                        </Button>
+                        
+                        <div className="flex gap-2">
+                          <Button variant="outline" className="flex-1">
+                            <Share2 className="h-4 w-4 mr-2" />
+                            Compartilhar
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            className="flex-1"
+                            onClick={() => {
+                              setShowPixelDetails(false);
+                              setShowPromotionModal(true);
+                            }}
+                          >
+                            <Megaphone className="h-4 w-4 mr-2" />
+                            Promover
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
+                    
+                    <Card className="p-4 bg-muted/20">
+                      <h3 className="font-semibold mb-3 flex items-center">
+                        <Tag className="h-4 w-4 mr-2 text-purple-500" />
+                        Tags
+                      </h3>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedPixel.tags.map(tag => (
+                          <Badge key={tag} variant="outline" className="hover:bg-primary/10 cursor-pointer transition-colors">
+                            #{tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    </Card>
+                  </div>
+                </div>
+                
+                <DialogFooter className="p-4 border-t">
+                  <Button variant="outline" onClick={() => setShowPixelDetails(false)}>
+                    Fechar
+                  </Button>
+                </DialogFooter>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
+        
+        {/* Tips and Tricks Section */}
+        <Card className="bg-gradient-to-br from-primary/10 to-accent/5 border-primary/20 shadow-lg mt-8">
+          <CardHeader>
+            <CardTitle className="flex items-center text-primary">
+              <Lightbulb className="h-5 w-5 mr-2 text-yellow-500" />
+              Dicas para Criadores de Pixel Art
+            </CardTitle>
+            <CardDescription>
+              Estratégias para criar pixels impressionantes e aumentar seu engajamento
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 bg-card/50 rounded-lg shadow-inner">
+                <h3 className="font-semibold flex items-center mb-2">
+                  <Palette className="h-4 w-4 mr-2 text-blue-500" />
+                  Escolha de Cores
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Use paletas de cores limitadas e harmoniosas para criar pixel art mais coesa e visualmente atraente.
+                </p>
+              </div>
+              <div className="p-4 bg-card/50 rounded-lg shadow-inner">
+                <h3 className="font-semibold flex items-center mb-2">
+                  <Zap className="h-4 w-4 mr-2 text-purple-500" />
+                  Animações Simples
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Adicione pequenas animações para dar vida aos seus pixels e aumentar o engajamento dos visitantes.
+                </p>
+              </div>
+              <div className="p-4 bg-card/50 rounded-lg shadow-inner">
+                <h3 className="font-semibold flex items-center mb-2">
+                  <Target className="h-4 w-4 mr-2 text-green-500" />
+                  Localização Estratégica
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Escolha localizações em áreas populares ou com significado histórico para aumentar a visibilidade.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+          <CardFooter className="flex justify-center border-t border-primary/10 pt-4">
+            <Button variant="outline" className="w-full sm:w-auto">
+              <Compass className="h-4 w-4 mr-2" />
+              Explorar Tutoriais de Pixel Art
+            </Button>
+          </CardFooter>
+        </Card>
       </div>
     </div>
   );

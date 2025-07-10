@@ -41,6 +41,9 @@ const navLinks = [
   { href: "/pixels", label: "Galeria", icon: Palette, color: "text-purple-500", badge: 12, description: "Ver píxeis" },
   { href: "/member", label: "Perfil", icon: UsersIcon, color: "text-orange-500", description: "Seu perfil" },
   { href: "/ranking", label: "Ranking", icon: AnalyticsIcon, color: "text-amber-500", badge: 2, description: "Classificações" },
+  { href: "/community", label: "Comunidade", icon: Users2, color: "text-pink-500", badge: 3, description: "Interagir com a comunidade" },
+  { href: "/settings", label: "Ajustes", icon: Settings, color: "text-gray-500", description: "Configurações" },
+  { href: "/achievements", label: "Conquistas", icon: Award, color: "text-yellow-500", description: "Suas conquistas" },
 ];
 
 export default function UserProfileHeader() {

@@ -1,26 +1,29 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useUserStore } from '@/lib/store';
+import { useUserStore, useSettingsStore } from '@/lib/store';
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { SoundEffect, SOUND_EFFECTS } from '@/components/ui/sound-effect';
 import { 
   BarChartHorizontalBig, RefreshCw, Globe, MapPin, Target, Users, Eye, Heart, 
   TrendingUp, ArrowUp, ArrowDown, Map, Clock, Trophy, Medal, Info, Crown,
   Star, Flame, Zap, Activity, Calendar, Filter, Search, SortAsc, Download,
   Share2, Award, Gem, Sparkles, LineChart, PieChart, BarChart3, TrendingDown,
-  ChevronUp, ChevronDown, ExternalLink, Bell, Settings, Gift, Coins, MapPinIcon
+  ChevronUp, ChevronDown, ExternalLink, Bell, Settings, Gift, Coins, MapPinIcon,
+  Lightbulb
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { motion } from 'framer-motion';
 
 interface StatCardData {
   title: string;
@@ -221,11 +224,13 @@ const FormattedNumber: React.FC<{ value: number }> = ({ value }) => {
 export default function StatisticsPage() {
   const [lastUpdated, setLastUpdated] = useState<string>('');
   const { addCredits, addXp } = useUserStore();
+  const { soundEffects } = useSettingsStore();
   const [activeTimeRange, setActiveTimeRange] = useState<'day' | 'week' | 'month' | 'year'>('week');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'rank' | 'pixels' | 'score' | 'level' | 'streak'>('rank');
   const [filterRegion, setFilterRegion] = useState<string>('all');
   const { toast } = useToast();
+  const [playRewardSound, setPlayRewardSound] = useState(false);
 
   useEffect(() => {
     const updateTime = () => {
@@ -246,6 +251,7 @@ export default function StatisticsPage() {
   ];
 
   const handleExportData = () => {
+    setPlayRewardSound(true);
     toast({
       title: "Dados Exportados",
       description: "Os dados estatísticos foram exportados com sucesso. Recebeu 25 créditos como recompensa!",
@@ -257,6 +263,7 @@ export default function StatisticsPage() {
   };
 
   const handleShareStats = () => {
+    setPlayRewardSound(true);
     toast({
       title: "Estatísticas Partilhadas",
       description: "Link das estatísticas copiado para a área de transferência. Recebeu 50 créditos como recompensa!",
@@ -289,6 +296,8 @@ export default function StatisticsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5">
+      <SoundEffect src={SOUND_EFFECTS.SUCCESS} play={playRewardSound} onEnd={() => setPlayRewardSound(false)} />
+      
       <div className="container mx-auto py-6 px-4 space-y-6 mb-20 max-w-7xl"> 
         {/* Enhanced Header */}
         <Card className="shadow-2xl bg-gradient-to-br from-card via-card/95 to-primary/10 border-primary/30 overflow-hidden">
@@ -297,7 +306,7 @@ export default function StatisticsPage() {
           <CardHeader className="relative">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div>
-                <CardTitle className="font-headline text-3xl text-gradient-gold flex items-center">
+                <CardTitle className="font-headline text-3xl text-gradient-gold-animated flex items-center">
                   <BarChartHorizontalBig className="h-8 w-8 mr-3 animate-glow" />
                   Estatísticas do Universo
                 </CardTitle>
@@ -306,7 +315,7 @@ export default function StatisticsPage() {
                 </CardDescription>
               </div>
               
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 animate-fade-in">
                 <div className="flex items-center gap-2 text-sm">
                   <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
                   <span className="text-muted-foreground font-code">
@@ -314,11 +323,11 @@ export default function StatisticsPage() {
                   </span>
                 </div>
                 <Button variant="outline" size="sm" onClick={handleExportData} className="button-hover-lift">
-                  <Download className="h-4 w-4 mr-2" />
+                  <Download className="h-4 w-4 mr-2 text-green-500" />
                   Exportar
                 </Button>
                 <Button variant="outline" size="sm" onClick={handleShareStats} className="button-hover-lift">
-                  <Share2 className="h-4 w-4 mr-2" />
+                  <Share2 className="h-4 w-4 mr-2 text-blue-500" />
                   Partilhar
                 </Button>
                 <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-primary transition-colors button-hover-lift">
@@ -328,7 +337,7 @@ export default function StatisticsPage() {
             </div>
             
             {/* Time Range Selector */}
-            <div className="flex flex-wrap gap-2 mt-4">
+            <div className="flex flex-wrap gap-2 mt-4 animate-fade-in animation-delay-200">
               {timeRanges.map(range => (
                 <Button 
                   key={range.id} 
@@ -336,7 +345,7 @@ export default function StatisticsPage() {
                   size="sm"
                   onClick={() => setActiveTimeRange(range.id)}
                   className={cn(
-                    "font-code text-xs sm:text-sm px-3 py-2 transition-all duration-200",
+                    "font-code text-xs sm:text-sm px-3 py-2 transition-all duration-200 hover:shadow-md",
                     activeTimeRange === range.id ? "shadow-lg scale-105" : "hover:scale-105"
                   )}
                 >
@@ -350,7 +359,7 @@ export default function StatisticsPage() {
 
         {/* Enhanced Tabs */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-12 bg-card/50 backdrop-blur-sm">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-12 bg-card/50 backdrop-blur-sm shadow-md">
             <TabsTrigger value="overview" className="font-headline">
               <Globe className="h-4 w-4 mr-2"/>
               Visão Geral
@@ -372,9 +381,9 @@ export default function StatisticsPage() {
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
             {/* Global Metrics Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <motion.div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" layout>
               {globalStatsData.map(stat => <StatDisplayCard key={stat.title} {...stat} />)}
-            </div>
+            </motion.div>
 
             {/* Quick Insights */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -383,6 +392,7 @@ export default function StatisticsPage() {
                   <CardTitle className="flex items-center text-primary">
                     <TrendingUp className="h-5 w-5 mr-2" />
                     Tendências de Crescimento
+                    <Badge variant="outline" className="ml-2 text-xs">Últimos 7 dias</Badge>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -417,6 +427,7 @@ export default function StatisticsPage() {
                   <CardTitle className="flex items-center text-primary">
                     <Activity className="h-5 w-5 mr-2" />
                     Atividade em Tempo Real
+                    <Badge variant="outline" className="ml-2 text-xs">Ao vivo</Badge>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -594,6 +605,7 @@ export default function StatisticsPage() {
                   <CardTitle className="flex items-center text-primary">
                     <PieChart className="h-5 w-5 mr-2" />
                     Distribuição Regional de Pixels
+                    <Badge variant="outline" className="ml-2 text-xs">Mapa de Portugal</Badge>
                   </CardTitle>
                   <CardDescription>Percentagem de pixels adquiridos por região.</CardDescription>
                 </CardHeader>
@@ -628,6 +640,7 @@ export default function StatisticsPage() {
                   <CardTitle className="flex items-center text-primary">
                     <BarChart3 className="h-5 w-5 mr-2" />
                     Performance Regional
+                    <Badge variant="outline" className="ml-2 text-xs">Análise Detalhada</Badge>
                   </CardTitle>
                   <CardDescription>Métricas detalhadas por região.</CardDescription>
                 </CardHeader>
@@ -685,6 +698,7 @@ export default function StatisticsPage() {
                   <CardTitle className="flex items-center text-primary">
                     <LineChart className="h-5 w-5 mr-2" />
                     Tendências de Mercado
+                    <Badge variant="outline" className="ml-2 text-xs">Análise de Preços</Badge>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="flex items-center justify-center h-64">
@@ -701,6 +715,7 @@ export default function StatisticsPage() {
                   <CardTitle className="flex items-center text-primary">
                     <Activity className="h-5 w-5 mr-2" />
                     Engagement dos Utilizadores
+                    <Badge variant="outline" className="ml-2 text-xs">Métricas de Uso</Badge>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -730,12 +745,13 @@ export default function StatisticsPage() {
                 <CardTitle className="flex items-center text-primary">
                   <BarChart3 className="h-5 w-5 mr-2" />
                   Análise Detalhada
+                  <Badge variant="outline" className="ml-2 text-xs">Insights Avançados</Badge>
                 </CardTitle>
                 <CardDescription>
                   Métricas avançadas e insights do comportamento dos utilizadores.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="flex items-center justify-center h-48">
+              <CardContent className="flex items-center justify-center h-64">
                 <div className="text-center">
                   <BarChart3 className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                   <p className="text-muted-foreground mb-4">
@@ -750,6 +766,56 @@ export default function StatisticsPage() {
             </Card>
           </TabsContent>
         </Tabs>
+        
+        {/* New Section: Data Insights */}
+        <Card className="bg-gradient-to-br from-primary/10 to-accent/5 border-primary/20 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center text-primary">
+              <Lightbulb className="h-5 w-5 mr-2 text-yellow-500" />
+              Insights e Recomendações
+            </CardTitle>
+            <CardDescription>
+              Análises personalizadas baseadas nos dados do Pixel Universe
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 bg-card/50 rounded-lg shadow-inner">
+                <h3 className="font-semibold flex items-center mb-2">
+                  <TrendingUp className="h-4 w-4 mr-2 text-green-500" />
+                  Oportunidades de Investimento
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  A região do Algarve está mostrando um crescimento de 23% no valor dos pixels nas últimas semanas. Considere investir nesta área.
+                </p>
+              </div>
+              <div className="p-4 bg-card/50 rounded-lg shadow-inner">
+                <h3 className="font-semibold flex items-center mb-2">
+                  <Users className="h-4 w-4 mr-2 text-blue-500" />
+                  Tendências de Comunidade
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Projetos colaborativos estão ganhando popularidade, com um aumento de 45% na participação. Considere iniciar ou juntar-se a um.
+                </p>
+              </div>
+              <div className="p-4 bg-card/50 rounded-lg shadow-inner">
+                <h3 className="font-semibold flex items-center mb-2">
+                  <Calendar className="h-4 w-4 mr-2 text-purple-500" />
+                  Eventos Próximos
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Um grande concurso de pixel art está programado para o próximo mês. Prepare-se para participar e aumentar sua visibilidade.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+          <CardFooter className="flex justify-center border-t border-primary/10 pt-4">
+            <Button variant="outline" className="w-full sm:w-auto" onClick={handleExportData}>
+              <Download className="h-4 w-4 mr-2" />
+              Exportar Relatório Completo
+            </Button>
+          </CardFooter>
+        </Card>
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from '@/components/ui/button';
@@ -9,18 +9,22 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { useUserStore } from '@/lib/store';
+import { useUserStore, useSettingsStore } from '@/lib/store';
 import { 
   CheckCircle2, Lock, Award, Edit3, Users, Eye, Map, Compass, Puzzle, Activity, 
   CheckCheck, ShieldCheck, Share2, Trophy, Search, Filter, SortAsc, Star, 
   Flame, Target, Crown, Sparkles, TrendingUp, Calendar, Clock, Gift, Zap,
   BarChart3, PieChart, LineChart, Medal, Gem, Heart, ThumbsUp, MessageSquare,
-  BookImage, Palette, MapPin, Globe, Rocket, Settings, Bell, Download, Coins
+  BookImage, Palette, MapPin, Globe, Rocket, Settings, Bell, Download, Coins,
+  Lightbulb, Megaphone
 } from "lucide-react";
 import { achievementsData, type Achievement, type AchievementCategory, type AchievementRarity } from '@/data/achievements-data';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { SoundEffect, SOUND_EFFECTS } from '@/components/ui/sound-effect';
+import { Confetti } from '@/components/ui/confetti';
+import { motion } from 'framer-motion';
 
 type FilterValue = AchievementCategory | 'all' | 'completed' | 'locked';
 type SortValue = 'name' | 'rarity' | 'progress' | 'recent';
@@ -115,8 +119,12 @@ export default function AchievementsPage() {
   const [sortBy, setSortBy] = useState<SortValue>('name');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
-  const { addCredits, addXp, unlockAchievement } = useUserStore();
+  const { addCredits, addXp, unlockAchievement, achievements } = useUserStore();
+  const { soundEffects } = useSettingsStore();
   const { toast } = useToast();
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [playRewardSound, setPlayRewardSound] = useState(false);
+  const [recentlyClaimedIds, setRecentlyClaimedIds] = useState<string[]>([]);
 
   const handleShareAchievement = (achievementName: string) => {
     toast({
@@ -125,7 +133,20 @@ export default function AchievementsPage() {
     });
   };
 
-  const handleClaimReward = (achievementId: string, tier: number) => {
+  const handleClaimReward = (id: string, tier: number) => {
+    if (recentlyClaimedIds.includes(`${id}-${tier}`)) {
+      toast({
+        title: "Já Reclamado",
+        description: "Esta recompensa já foi reclamada.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setShowConfetti(true);
+    setPlayRewardSound(true);
+    setRecentlyClaimedIds(prev => [...prev, `${id}-${tier}`]);
+    
     toast({
       title: "Conquista Desbloqueada!",
       description: "Você desbloqueou a conquista 'Personalizador de Perfil'!",
@@ -172,7 +193,14 @@ export default function AchievementsPage() {
     });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5 transition-colors duration-300">
+      <SoundEffect 
+        src={SOUND_EFFECTS.ACHIEVEMENT} 
+        play={playRewardSound} 
+        onEnd={() => setPlayRewardSound(false)} 
+      />
+      <Confetti active={showConfetti} duration={3000} onComplete={() => setShowConfetti(false)} />
+      
       <div className="container mx-auto py-6 px-4 mb-16 space-y-6 max-w-6xl">
         {/* Enhanced Header */}
         <Card className="shadow-2xl bg-gradient-to-br from-card via-card/95 to-primary/10 border-primary/30 overflow-hidden">
@@ -181,7 +209,7 @@ export default function AchievementsPage() {
           <CardHeader className="relative">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div>
-                <CardTitle className="font-headline text-3xl text-gradient-gold flex items-center">
+                <CardTitle className="font-headline text-3xl text-gradient-gold flex items-center relative">
                   <Trophy className="h-8 w-8 mr-3 animate-glow" />
                   Quadro de Conquistas
                 </CardTitle>
@@ -190,7 +218,7 @@ export default function AchievementsPage() {
                 </CardDescription>
               </div>
               
-              {/* Progress Overview */}
+              {/* Enhanced Progress Overview */}
               <div className="flex flex-col sm:flex-row gap-4">
                 <Card className="bg-background/50 p-4 text-center min-w-[120px]">
                   <p className="text-2xl font-bold text-primary">{userProgress.unlockedAchievements}</p>
@@ -198,11 +226,11 @@ export default function AchievementsPage() {
                 </Card>
                 <Card className="bg-background/50 p-4 text-center min-w-[120px]">
                   <p className="text-2xl font-bold text-accent">{userProgress.completionPercentage}%</p>
-                  <p className="text-xs text-muted-foreground">Completo</p>
+                  <p className="text-xs text-muted-foreground">Progresso</p>
                 </Card>
                 <Card className="bg-background/50 p-4 text-center min-w-[120px]">
                   <p className="text-2xl font-bold text-green-500">{userProgress.streakDays}</p>
-                  <p className="text-xs text-muted-foreground">Dias Seguidos</p>
+                  <p className="text-xs text-muted-foreground">Sequência</p>
                 </Card>
               </div>
             </div>
@@ -211,7 +239,7 @@ export default function AchievementsPage() {
 
         {/* Enhanced Tabs */}
         <Tabs defaultValue="achievements" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 h-12 bg-card/50 backdrop-blur-sm">
+          <TabsList className="grid w-full grid-cols-3 h-12 bg-card/50 backdrop-blur-sm shadow-md">
             <TabsTrigger value="achievements" className="font-headline">
               <Trophy className="h-4 w-4 mr-2"/>
               Conquistas
@@ -228,7 +256,7 @@ export default function AchievementsPage() {
 
           {/* Achievements Tab */}
           <TabsContent value="achievements" className="space-y-6">
-            {/* Enhanced Filters */}
+            {/* Enhanced Filters with Animation */}
             <Card className="shadow-lg bg-card/80 backdrop-blur-sm">
               <CardContent className="p-4">
                 <div className="space-y-4">
@@ -244,7 +272,7 @@ export default function AchievementsPage() {
                   </div>
 
                   {/* Filter Buttons */}
-                  <div className="flex flex-wrap gap-2">
+                  <motion.div className="flex flex-wrap gap-2" layout>
                     {filterCategories.map(filter => (
                       <Button
                         key={filter.value}
@@ -260,7 +288,7 @@ export default function AchievementsPage() {
                         <span className="ml-2">{filter.label}</span>
                       </Button>
                     ))}
-                  </div>
+                  </motion.div>
 
                   {/* Sort Options */}
                   <div className="flex items-center gap-2 pt-2 border-t border-border/50">
@@ -285,7 +313,7 @@ export default function AchievementsPage() {
             {/* Achievements Grid */}
             <div className="space-y-6">
               {filteredAchievements.length === 0 && (
-                <Card className="text-center p-8 bg-card/50">
+                <Card className="text-center p-8 bg-card/50 animate-fade-in">
                   <Trophy className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                   <CardDescription>Nenhuma conquista encontrada para este filtro.</CardDescription>
                 </Card>
@@ -315,7 +343,7 @@ export default function AchievementsPage() {
                     <CardHeader className="pb-3 relative overflow-hidden">
                       {/* Animated background for legendary achievements */}
                       {ach.rarity === 'legendary' && (
-                        <div className="absolute inset-0 bg-gradient-to-r from-amber-500/10 via-yellow-500/10 to-amber-500/10 animate-shimmer" 
+                        <div className="absolute inset-0 bg-gradient-to-r from-amber-500/20 via-yellow-500/20 to-amber-500/20 animate-shimmer" 
                              style={{ backgroundSize: '200% 100%' }} />
                       )}
                       
@@ -323,7 +351,7 @@ export default function AchievementsPage() {
                         <div className="flex items-center gap-4">
                           <div className={cn(
                             `p-3 rounded-xl transition-all duration-300`,
-                            allTiersUnlocked ? 'bg-green-400/20 text-green-400 animate-glow' : `${currentRarityStyle.bgClass} ${currentRarityStyle.textClass}`,
+                            allTiersUnlocked ? 'bg-green-400/30 text-green-400 animate-glow' : `${currentRarityStyle.bgClass} ${currentRarityStyle.textClass}`,
                             'hover:scale-110'
                           )}>
                             {React.cloneElement(ach.icon as React.ReactElement, { 
@@ -334,7 +362,7 @@ export default function AchievementsPage() {
                             <div className="flex items-center gap-3 mb-2">
                               <CardTitle className={cn(
                                 `text-xl font-headline transition-colors duration-300`, 
-                                allTiersUnlocked ? 'text-green-400' : currentRarityStyle.textClass
+                                allTiersUnlocked ? 'text-green-400 font-bold' : currentRarityStyle.textClass
                               )}>
                                 {ach.name}
                               </CardTitle>
@@ -352,7 +380,7 @@ export default function AchievementsPage() {
                         <div className="flex flex-col items-end space-y-2">
                           {allTiersUnlocked && (
                             <Badge className="bg-gradient-to-r from-green-500 to-green-400 hover:from-green-600 hover:to-green-500 text-xs animate-pulse">
-                              <CheckCircle2 className="h-3 w-3 mr-1" />
+                              <CheckCircle2 className="h-3 w-3 mr-1 animate-pulse" />
                               Completo!
                             </Badge>
                           )}
@@ -361,7 +389,7 @@ export default function AchievementsPage() {
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Button 
-                                    variant="ghost" 
+                                    variant="outline" 
                                     size="icon" 
                                     className="h-8 w-8 text-muted-foreground hover:text-primary transition-all duration-200 hover:scale-110" 
                                     onClick={(e) => {
@@ -381,7 +409,7 @@ export default function AchievementsPage() {
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <Button 
-                                      variant="ghost" 
+                                      variant="outline" 
                                       size="icon" 
                                       className="h-8 w-8 text-muted-foreground hover:text-accent transition-all duration-200 hover:scale-110"
                                       onClick={(e) => {
@@ -409,7 +437,7 @@ export default function AchievementsPage() {
                           <Progress 
                             value={progressPercentage} 
                             className={cn(
-                              `h-3 transition-all duration-500`, 
+                              `h-3 transition-all duration-500 rounded-full`, 
                               allTiersUnlocked ? '[&>div]:bg-gradient-to-r [&>div]:from-green-400 [&>div]:to-green-500' : `[&>div]:bg-gradient-to-r [&>div]:from-primary [&>div]:to-accent`
                             )} 
                           />
@@ -437,7 +465,7 @@ export default function AchievementsPage() {
                                   `font-semibold text-sm`, 
                                   tier.isUnlocked ? 'text-foreground' : 'text-muted-foreground'
                                 )}>
-                                  Escalão {tier.level}
+                                  Nível {tier.level}
                                 </h4>
                                 <p className={cn(
                                   `text-sm mt-1`, 
@@ -455,7 +483,7 @@ export default function AchievementsPage() {
                           </div>
                           
                           {!tier.isUnlocked && nextTier && tier.level === nextTier.level && (
-                            <Badge variant="secondary" className="mt-2 text-xs animate-bounce">
+                            <Badge variant="secondary" className="mt-2 text-xs animate-pulse">
                               Próximo Objetivo
                             </Badge>
                           )}
@@ -463,11 +491,11 @@ export default function AchievementsPage() {
                           <div className="mt-3 pt-2 border-t border-border/30 flex items-center justify-between">
                             <div className="flex items-center gap-4 text-xs">
                               <span className="flex items-center gap-1">
-                                <Zap className="h-3 w-3 text-primary" />
+                                <Zap className="h-3 w-3 text-primary animate-pulse" />
                                 <span className="font-code text-primary">+{tier.xpReward} XP</span>
                               </span>
                               <span className="flex items-center gap-1">
-                                <Coins className="h-3 w-3 text-accent" />
+                                <Coins className="h-3 w-3 text-accent animate-pulse" />
                                 <span className="font-code text-accent">+{tier.creditsReward}</span>
                               </span>
                             </div>
@@ -475,10 +503,10 @@ export default function AchievementsPage() {
                               <Button 
                                 variant="ghost" 
                                 size="sm" 
-                                className="h-6 text-xs hover:bg-primary/10"
+                                className="h-6 text-xs hover:bg-primary/10 hover:scale-105 transition-transform"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleClaimReward(ach.id, tier.level);
+                                  handleClaimReward(`${ach.id}-${tier.level}`, tier.level);
                                 }}
                               >
                                 <Gift className="h-3 w-3 mr-1" />
@@ -489,6 +517,14 @@ export default function AchievementsPage() {
                         </div>
                       ))}
                     </CardContent>
+                    <CardFooter className="pt-0 pb-4 px-6">
+                      {ach.rarity === 'legendary' && (
+                        <Badge variant="outline" className="w-full justify-center py-2 text-amber-400 border-amber-400/50 bg-amber-400/10">
+                          <Sparkles className="h-4 w-4 mr-2 animate-pulse" />
+                          Conquista Lendária - Extremamente Rara!
+                        </Badge>
+                      )}
+                    </CardFooter>
                   </Card>
                 );
               })}
@@ -505,6 +541,9 @@ export default function AchievementsPage() {
                     <PieChart className="h-5 w-5 mr-2" />
                     Progresso Geral
                   </CardTitle>
+                  <CardDescription>
+                    Acompanhe o seu progresso em todas as conquistas disponíveis
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="text-center">
@@ -536,6 +575,9 @@ export default function AchievementsPage() {
                     <Clock className="h-5 w-5 mr-2" />
                     Desbloqueios Recentes
                   </CardTitle>
+                  <CardDescription>
+                    Suas conquistas mais recentes e recompensas obtidas
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ScrollArea className="h-48">
@@ -575,6 +617,9 @@ export default function AchievementsPage() {
                   <Target className="h-5 w-5 mr-2" />
                   Próximo Marco
                 </CardTitle>
+                <CardDescription>
+                  Objetivos especiais para desbloquear recompensas exclusivas
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -611,19 +656,118 @@ export default function AchievementsPage() {
                   Veja como se compara com outros exploradores de pixels!
                 </CardDescription>
               </CardHeader>
-              <CardContent className="flex flex-col items-center justify-center min-h-[300px]">
-                <Trophy className="h-16 w-16 text-muted-foreground mb-4" />
-                <p className="text-muted-foreground mb-4 text-center">
-                  A classificação global estará disponível em breve.
-                </p>
-                <Button variant="outline" disabled>
-                  <Download className="h-4 w-4 mr-2" />
-                  Ver Classificação Completa
-                </Button>
+              <CardContent className="p-6">
+                <div className="space-y-6">
+                  <div className="flex flex-col items-center justify-center min-h-[200px]">
+                    <Trophy className="h-16 w-16 text-amber-400 mb-4 animate-pulse" />
+                    <p className="text-muted-foreground mb-4 text-center">
+                      A classificação global estará disponível em breve.
+                    </p>
+                    <Button variant="outline">
+                      <Download className="h-4 w-4 mr-2" />
+                      Ver Classificação Completa
+                    </Button>
+                  </div>
+                  
+                  <div className="space-y-4 border-t border-border/50 pt-4">
+                    <h3 className="text-lg font-semibold flex items-center">
+                      <Lightbulb className="h-5 w-5 mr-2 text-yellow-500" />
+                      Dicas para Subir na Classificação
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-3 bg-muted/20 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Zap className="h-4 w-4 text-primary" />
+                          <span className="font-medium">Seja Ativo Diariamente</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Mantenha uma sequência de logins diários para ganhar bônus de XP.
+                        </p>
+                      </div>
+                      <div className="p-3 bg-muted/20 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Compass className="h-4 w-4 text-blue-500" />
+                          <span className="font-medium">Explore Novas Regiões</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Visite e interaja com diferentes regiões do mapa.
+                        </p>
+                      </div>
+                      <div className="p-3 bg-muted/20 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Users className="h-4 w-4 text-green-500" />
+                          <span className="font-medium">Participe da Comunidade</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Interaja com outros usuários e participe de eventos.
+                        </p>
+                      </div>
+                      <div className="p-3 bg-muted/20 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Target className="h-4 w-4 text-red-500" />
+                          <span className="font-medium">Foque nas Conquistas Raras</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Conquistas de maior raridade dão mais pontos na classificação.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
+        
+        {/* Achievement Tips Section */}
+        <Card className="bg-gradient-to-br from-primary/10 to-accent/5 border-primary/20 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center text-primary">
+              <Lightbulb className="h-5 w-5 mr-2 text-yellow-500" />
+              Dicas para Conquistadores
+            </CardTitle>
+            <CardDescription>
+              Estratégias para desbloquear mais conquistas e maximizar suas recompensas
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 bg-card/50 rounded-lg shadow-inner">
+                <h3 className="font-semibold flex items-center mb-2">
+                  <Compass className="h-4 w-4 mr-2 text-blue-500" />
+                  Exploração Estratégica
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Visite diferentes regiões do mapa diariamente e interaja com pixels variados para desbloquear conquistas de exploração.
+                </p>
+              </div>
+              <div className="p-4 bg-card/50 rounded-lg shadow-inner">
+                <h3 className="font-semibold flex items-center mb-2">
+                  <Palette className="h-4 w-4 mr-2 text-purple-500" />
+                  Diversidade de Cores
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Experimente usar uma ampla variedade de cores em seus pixels para desbloquear conquistas relacionadas à criatividade.
+                </p>
+              </div>
+              <div className="p-4 bg-card/50 rounded-lg shadow-inner">
+                <h3 className="font-semibold flex items-center mb-2">
+                  <Users className="h-4 w-4 mr-2 text-green-500" />
+                  Engajamento Social
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Participe ativamente da comunidade, comente em publicações e participe de eventos para desbloquear conquistas sociais.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+          <CardFooter className="flex justify-center border-t border-primary/10 pt-4">
+            <Button variant="outline" className="w-full sm:w-auto">
+              <Megaphone className="h-4 w-4 mr-2" />
+              Compartilhar Minhas Conquistas
+            </Button>
+          </CardFooter>
+        </Card>
       </div>
     </div>
   );
