@@ -1,3 +1,4 @@
+'use client';
 
 import PixelGrid from '@/components/pixel-grid/PixelGrid';
 import { SidebarProvider } from '@/components/ui/sidebar';
