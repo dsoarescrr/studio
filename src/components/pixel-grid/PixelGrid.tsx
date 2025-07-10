@@ -85,9 +85,13 @@ export default function PixelGrid() {
   
     // Draw Portugal Map
     if (mapPaths.length > 0) {
+      const computedStyle = getComputedStyle(canvas);
+      const accentColor = `hsl(${computedStyle.getPropertyValue('--accent').trim()})`;
+      const primaryColor = `hsl(${computedStyle.getPropertyValue('--primary').trim()})`;
+      
       const gradient = ctx.createLinearGradient(0, 0, 0, logicalHeight);
-      gradient.addColorStop(0, "hsl(var(--accent))");
-      gradient.addColorStop(1, "hsl(var(--primary))");
+      gradient.addColorStop(0, accentColor);
+      gradient.addColorStop(1, primaryColor);
       
       ctx.fillStyle = gradient;
       ctx.strokeStyle = 'hsl(var(--border))';
