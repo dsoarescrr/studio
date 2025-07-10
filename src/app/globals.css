@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --background: 220 15% 10%; /* Very dark, slightly desaturated blue */
+    --background: 0 0% 0%; /* Black */
     --foreground: 0 0% 95%; /* Light Gray/White for text */
 
     --card: 220 15% 15%; /* Slightly lighter than background */
@@ -105,11 +105,6 @@
   }
 
   html {
-    background-image: url('/Fundo.png');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
     background-color: hsl(var(--background));
   }
 
@@ -894,3 +889,5 @@
     @apply hover:scale-105 active:scale-95;
   }
 }
+
+    
