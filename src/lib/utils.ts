@@ -1,7 +1,20 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { format, formatDistanceToNow } from 'date-fns';
-import { pt } from 'date-fns/locale';
+import { pt, enUS, es } from 'date-fns/locale';
+
+// Map of supported locales
+const locales = {
+  'pt-PT': pt,
+  'en-US': enUS,
+  'es-ES': es
+};
+
+// Get current locale from localStorage or default to Portuguese
+export function getCurrentLocale(): 'pt-PT' | 'en-US' | 'es-ES' {
+  if (typeof window === 'undefined') return 'pt-PT';
+  return (localStorage.getItem('pixel-universe-locale') as 'pt-PT' | 'en-US' | 'es-ES') || 'pt-PT';
+}
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -13,9 +26,10 @@ export function cn(...inputs: ClassValue[]) {
  * @param formatStr The format string to use
  * @returns The formatted date string
  */
-export function formatDate(date: Date | string, formatStr: string = 'PPP'): string {
+export function formatDate(date: Date | string, formatStr: string = 'PPP', locale?: 'pt-PT' | 'en-US' | 'es-ES'): string {
   const dateObj = typeof date === 'string' ? new Date(date) : date;
-  return format(dateObj, formatStr, { locale: pt });
+  const selectedLocale = locale || getCurrentLocale();
+  return format(dateObj, formatStr, { locale: locales[selectedLocale] });
 }
 
 /**
@@ -23,9 +37,10 @@ export function formatDate(date: Date | string, formatStr: string = 'PPP'): stri
  * @param date The date to calculate the time from
  * @returns A string like "2 minutos atrás", "3 horas atrás", etc.
  */
-export function timeAgo(date: Date | string): string {
+export function timeAgo(date: Date | string, locale?: 'pt-PT' | 'en-US' | 'es-ES'): string {
   const dateObj = typeof date === 'string' ? new Date(date) : date;
-  return formatDistanceToNow(dateObj, { addSuffix: true, locale: pt });
+  const selectedLocale = locale || getCurrentLocale();
+  return formatDistanceToNow(dateObj, { addSuffix: true, locale: locales[selectedLocale] });
 }
 
 /**
@@ -180,14 +195,76 @@ export function debounce<T extends (...args: any[]) => any>(func: T, wait: numbe
  */
 export function throttle<T extends (...args: any[]) => any>(func: T, limit: number): (...args: Parameters<T>) => void {
   let inThrottle = false;
+  let lastFunc: ReturnType<typeof setTimeout>;
+  let lastRan: number;
   
   return function(...args: Parameters<T>): void {
+    const context = this;
+    
     if (!inThrottle) {
       func(...args);
       inThrottle = true;
+      lastRan = Date.now();
       setTimeout(() => {
         inThrottle = false;
+        if (Date.now() - lastRan >= limit) {
+          func.apply(context, args);
+          lastRan = Date.now();
+        }
       }, limit);
+    } else {
+      clearTimeout(lastFunc);
+      lastFunc = setTimeout(() => {
+        if (Date.now() - lastRan >= limit) {
+          func.apply(context, args);
+          lastRan = Date.now();
+        }
+      }, limit - (Date.now() - lastRan));
     }
   };
+}
+
+/**
+ * Checks if the device is a mobile device
+ * @returns true if the device is mobile, false otherwise
+ */
+export function isMobileDevice(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
+/**
+ * Checks if the device has low performance capabilities
+ * @returns true if the device has low performance, false otherwise
+ */
+export function isLowPerformanceDevice(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return (
+    navigator.hardwareConcurrency <= 4 || 
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+    (navigator as any).deviceMemory < 4
+  );
+}
+
+/**
+ * Generates a unique ID
+ * @returns A unique string ID
+ */
+export function generateUniqueId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).substring(2);
+}
+
+/**
+ * Safely parses JSON with error handling
+ * @param json The JSON string to parse
+ * @param fallback The fallback value if parsing fails
+ * @returns The parsed JSON or the fallback value
+ */
+export function safeJsonParse<T>(json: string, fallback: T): T {
+  try {
+    return JSON.parse(json) as T;
+  } catch (error) {
+    console.error('Error parsing JSON:', error);
+    return fallback;
+  }
 }

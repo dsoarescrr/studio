@@ -17,6 +17,8 @@ import {
 import { Bell, X, Check, Star, MessageSquare, ShoppingCart, Trophy, Users, MapPin, Palette, Gift, AlertTriangle, Info, Heart, Share2, Crown, Zap, Clock, Filter, SquaresUnite as MarkAsUnread, Settings, Archive } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { VirtualizedList } from '@/components/ui/virtualized-list';
+import { useTranslation } from 'react-i18next';
 
 type NotificationType = 
   | 'achievement' 
@@ -127,6 +129,7 @@ interface NotificationCenterProps {
 
 export default function NotificationCenter({ children }: NotificationCenterProps) {
   const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+  const { t } = useTranslation();
   const [filter, setFilter] = useState<'all' | 'unread' | 'important'>('all');
   const [isOpen, setIsOpen] = useState(false);
   const { toast } = useToast();
@@ -225,10 +228,10 @@ export default function NotificationCenter({ children }: NotificationCenterProps
           <div className="flex items-center justify-between">
             <SheetTitle className="flex items-center gap-2">
               <Bell className="h-5 w-5 text-primary" />
-              Notificações
+              {t('notifications.title')}
               {unreadCount > 0 && (
                 <Badge variant="secondary" className="text-xs">
-                  {unreadCount} novas
+                  {unreadCount} {t('notifications.new')}
                 </Badge>
               )}
             </SheetTitle>
@@ -241,7 +244,7 @@ export default function NotificationCenter({ children }: NotificationCenterProps
                 className="text-xs"
               >
                 <Check className="h-4 w-4 mr-1" />
-                Marcar Todas
+                {t('notifications.markAll')}
               </Button>
             </div>
           </div>
@@ -249,9 +252,9 @@ export default function NotificationCenter({ children }: NotificationCenterProps
           {/* Filter Tabs */}
           <div className="flex gap-1 mt-3">
             {[
-              { key: 'all', label: 'Todas', count: notifications.length },
-              { key: 'unread', label: 'Não Lidas', count: unreadCount },
-              { key: 'important', label: 'Importantes', count: importantCount }
+              { key: 'all', label: t('notifications.all'), count: notifications.length },
+              { key: 'unread', label: t('notifications.unread'), count: unreadCount },
+              { key: 'important', label: t('notifications.important'), count: importantCount }
             ].map(({ key, label, count }) => (
               <Button
                 key={key}
@@ -277,88 +280,95 @@ export default function NotificationCenter({ children }: NotificationCenterProps
               <Card className="m-2 p-8 text-center">
                 <Bell className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
                 <p className="text-muted-foreground">
-                  {filter === 'all' ? 'Nenhuma notificação' : 
-                   filter === 'unread' ? 'Nenhuma notificação não lida' : 
-                   'Nenhuma notificação importante'}
+                  {filter === 'all' ? t('notifications.empty.all') : 
+                   filter === 'unread' ? t('notifications.empty.unread') : 
+                   t('notifications.empty.important')}
                 </p>
               </Card>
             ) : (
-              <div className="space-y-2">
-                {filteredNotifications.map((notification) => (
-                  <Card
-                    key={notification.id}
-                    className={cn(
-                      "transition-all duration-200 hover:shadow-md cursor-pointer",
-                      !notification.isRead && "border-primary/50 bg-primary/5",
-                      notification.isImportant && "border-orange-500/50 bg-orange-500/5"
-                    )}
-                    onClick={() => markAsRead(notification.id)}
-                  >
-                    <CardContent className="p-3">
-                      <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0">
-                          {notification.avatar ? (
-                            <Avatar className="h-8 w-8">
-                              <AvatarImage 
-                                src={notification.avatar} 
-                                alt="Notification" 
-                                data-ai-hint={notification.dataAiHint}
-                              />
-                              <AvatarFallback>
+              <VirtualizedList
+                items={filteredNotifications}
+                itemSize={120}
+                height={Math.min(filteredNotifications.length * 120, 500)}
+                width="100%"
+                className="pr-2"
+                renderItem={(notification) => (
+                  <div className="py-1">
+                    <Card
+                      key={notification.id}
+                      className={cn(
+                        "transition-all duration-200 hover:shadow-md cursor-pointer",
+                        !notification.isRead && "border-primary/50 bg-primary/5",
+                        notification.isImportant && "border-orange-500/50 bg-orange-500/5"
+                      )}
+                      onClick={() => markAsRead(notification.id)}
+                    >
+                      <CardContent className="p-3">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0">
+                            {notification.avatar ? (
+                              <Avatar className="h-8 w-8">
+                                <AvatarImage 
+                                  src={notification.avatar} 
+                                  alt="Notification" 
+                                  data-ai-hint={notification.dataAiHint}
+                                />
+                                <AvatarFallback>
+                                  {notificationIcons[notification.type]}
+                                </AvatarFallback>
+                              </Avatar>
+                            ) : (
+                              <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
                                 {notificationIcons[notification.type]}
-                              </AvatarFallback>
-                            </Avatar>
-                          ) : (
-                            <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                              {notificationIcons[notification.type]}
-                            </div>
-                          )}
-                        </div>
-                        
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1">
-                              <h4 className={cn(
-                                "text-sm font-medium leading-tight",
-                                !notification.isRead && "font-semibold"
-                              )}>
-                                {notification.title}
-                                {notification.isImportant && (
-                                  <Star className="inline h-3 w-3 ml-1 text-orange-500 fill-current" />
-                                )}
-                              </h4>
-                              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                                {notification.message}
-                              </p>
-                              <div className="flex items-center justify-between mt-2">
-                                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  {getTimeAgo(notification.timestamp)}
-                                </span>
-                                {!notification.isRead && (
-                                  <div className="w-2 h-2 bg-primary rounded-full" />
-                                )}
                               </div>
+                            )}
+                          </div>
+                          
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1">
+                                <h4 className={cn(
+                                  "text-sm font-medium leading-tight",
+                                  !notification.isRead && "font-semibold"
+                                )}>
+                                  {notification.title}
+                                  {notification.isImportant && (
+                                    <Star className="inline h-3 w-3 ml-1 text-orange-500 fill-current" />
+                                  )}
+                                </h4>
+                                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                                  {notification.message}
+                                </p>
+                                <div className="flex items-center justify-between mt-2">
+                                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    {getTimeAgo(notification.timestamp)}
+                                  </span>
+                                  {!notification.isRead && (
+                                    <div className="w-2 h-2 bg-primary rounded-full" />
+                                  )}
+                                </div>
+                              </div>
+                              
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteNotification(notification.id);
+                                }}
+                                className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
                             </div>
-                            
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deleteNotification(notification.id);
-                              }}
-                              className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
                           </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+              />
             )}
           </div>
         </ScrollArea>

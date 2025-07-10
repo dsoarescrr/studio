@@ -129,12 +129,14 @@ export const usePixelStore = create<PixelState>()(
 interface SettingsState {
   theme: 'dark' | 'light' | 'system';
   language: 'pt-PT' | 'en-US' | 'es-ES';
+  performanceMode: boolean;
   animations: boolean;
   notifications: boolean;
   soundEffects: boolean;
   highQualityRendering: boolean;
   setTheme: (theme: 'dark' | 'light' | 'system') => void;
   setLanguage: (language: 'pt-PT' | 'en-US' | 'es-ES') => void;
+  togglePerformanceMode: () => void;
   toggleAnimations: () => void;
   toggleNotifications: () => void;
   toggleSoundEffects: () => void;
@@ -146,12 +148,25 @@ export const useSettingsStore = create<SettingsState>()(
     (set) => ({
       theme: 'dark',
       language: 'pt-PT',
+      performanceMode: false,
       animations: true,
       notifications: true,
       soundEffects: true,
       highQualityRendering: true,
       setTheme: (theme) => set({ theme }),
       setLanguage: (language) => set({ language }),
+      togglePerformanceMode: () => set((state) => {
+        const newMode = !state.performanceMode;
+        // If enabling performance mode, also disable some visual effects
+        if (newMode) {
+          return { 
+            performanceMode: true, 
+            animations: false, 
+            highQualityRendering: false 
+          };
+        }
+        return { performanceMode: false };
+      }),
       toggleAnimations: () => set((state) => ({ animations: !state.animations })),
       toggleNotifications: () => set((state) => ({ notifications: !state.notifications })),
       toggleSoundEffects: () => set((state) => ({ soundEffects: !state.soundEffects })),

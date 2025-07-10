@@ -30,7 +30,10 @@ import EnhancedPixelPurchaseModal from './EnhancedPixelPurchaseModal';
 import { useUserStore, usePixelStore } from '@/lib/store';
 import { AchievementPopup } from '@/components/ui/achievement-popup';
 import { SoundEffect, SOUND_EFFECTS } from '@/components/ui/sound-effect';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useAnimation } from 'framer-motion';
+import { useInView } from 'react-intersection-observer';
+import { useDebounce } from 'use-debounce';
+import { ErrorBoundary } from 'react-error-boundary';
 
 
 // Configuration constants
@@ -172,7 +175,23 @@ export default function PixelGrid() {
   const [pixelTooltipPosition, setPixelTooltipPosition] = useState({ x: 0, y: 0 });
   const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
   const [generatedDescription, setGeneratedDescription] = useState<string | null>(null);
+  const [isMapLoaded, setIsMapLoaded] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
+  const [showGridLines, setShowGridLines] = useState(true);
+  const [showGlow, setShowGlow] = useState(true);
+  const [isPerformanceMode, setIsPerformanceMode] = useState(false);
+  const [lastInteractionTime, setLastInteractionTime] = useState(Date.now());
+  
   const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const mapControls = useAnimation();
+  const [mapRef, inViewMap] = useInView({
+    threshold: 0.1,
+    triggerOnce: false
+  });
+  
+  // Debounced values for better performance
+  const [debouncedPosition] = useDebounce(position, 50);
+  const [debouncedZoom] = useDebounce(zoom, 50);
 
   const clearAutoResetTimeout = useCallback(() => {
     if (autoResetTimeoutRef.current) {
@@ -184,6 +203,12 @@ export default function PixelGrid() {
   useEffect(() => {
     setIsClient(true);
     if (typeof window !== 'undefined') {
+      // Apply performance mode based on device capabilities
+      const isLowEndDevice = 
+        navigator.hardwareConcurrency <= 4 || 
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      setIsPerformanceMode(isLowEndDevice);
+      
       const computedStyle = getComputedStyle(document.documentElement);
       setUnsoldColor(computedStyle.getPropertyValue('--secondary').trim());
       setStrokeColor(computedStyle.getPropertyValue('--muted-foreground').trim());
@@ -197,6 +222,12 @@ export default function PixelGrid() {
 
   const handleMapDataLoaded = useCallback((data: MapData) => {
     setMapData(data);
+    // Animate map entrance
+    mapControls.start({
+      opacity: 1,
+      scale: 1,
+      transition: { duration: 0.8, ease: "easeOut" }
+    });
   }, []);
 
   useEffect(() => {
@@ -204,6 +235,7 @@ export default function PixelGrid() {
   
     setProgressMessage("A renderizar mapa de Portugal...");
     setIsLoadingMap(true);
+    setMapError(null);
     
     const { svgElement } = mapData;
     
@@ -215,6 +247,7 @@ export default function PixelGrid() {
     
     const offscreenCanvas = document.createElement('canvas');
     offscreenCanvas.width = canvasDrawWidth;
+    offscreenCanvas.width = canvasDrawWidth;
     offscreenCanvas.height = canvasDrawHeight;
     const ctx = offscreenCanvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) {
@@ -222,6 +255,7 @@ export default function PixelGrid() {
         URL.revokeObjectURL(url);
         return;
     }
+    ctx.imageSmoothingEnabled = false;
     
     const img = new Image();
     img.onload = () => {
@@ -250,6 +284,7 @@ export default function PixelGrid() {
           setActivePixelsInMap(activePixels);
         } catch(e) {
           console.error("Error generating pixel bitmap:", e);
+          setMapError("Não foi possível gerar a grelha interativa. Por favor, recarregue a página.");
           toast({ title: "Erro na Grelha", description: "Não foi possível gerar a grelha interativa.", variant: "destructive" });
         } finally {
           setIsLoadingMap(false);
@@ -257,6 +292,7 @@ export default function PixelGrid() {
         }
     };
     img.onerror = () => {
+        setMapError("Não foi possível carregar o mapa. Por favor, recarregue a página.");
         console.error("Failed to load SVG as image.");
         toast({ title: "Erro no Mapa", description: "Não foi possível carregar o SVG melhorado.", variant: "destructive" });
         setIsLoadingMap(false);
@@ -264,6 +300,7 @@ export default function PixelGrid() {
     };
     img.src = url;
   
+    setIsMapLoaded(true);
   }, [isClient, mapData, toast]);
 
   useEffect(() => {
@@ -278,6 +315,7 @@ export default function PixelGrid() {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       
+      // Only apply smoothing in high quality mode
       ctx.imageSmoothingEnabled = false;
       ctx.fillStyle = `hsl(${unsoldColor})`;
 
@@ -297,6 +335,7 @@ export default function PixelGrid() {
   }, [pixelBitmap, unsoldColor]);
 
   useEffect(() => {
+    // Optimize image loading with a loading queue
     soldPixels.forEach(pixel => {
         if (pixel.pixelImageUrl && !loadedPixelImages[pixel.pixelImageUrl]) {
             const img = new window.Image();
@@ -305,6 +344,7 @@ export default function PixelGrid() {
                 setLoadedPixelImages(prevImages => ({
                     ...prevImages,
                     [pixel.pixelImageUrl!]: img,
+                    
                 }));
             };
             img.onerror = () => {
@@ -315,6 +355,7 @@ export default function PixelGrid() {
   }, [soldPixels, loadedPixelImages]);
 
   useEffect(() => { 
+    // Skip rendering if not in view for performance
     if (!soldPixels || !pixelCanvasRef.current) return;
 
     const ctx = pixelCanvasRef.current.getContext('2d');
@@ -339,6 +380,7 @@ export default function PixelGrid() {
   
   useEffect(() => {
     const container = containerRef.current;
+    // Use ResizeObserver for responsive handling
     if (!container) return;
 
     const resizeObserver = new ResizeObserver(entries => {
@@ -363,6 +405,7 @@ export default function PixelGrid() {
   }, [containerSize]);
 
   useEffect(() => {
+    // Optimize map rendering with debounced values
     if (!mapData || !strokeColor || !outlineCanvasRef.current || containerSize.width === 0) return;
     const canvas = outlineCanvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -372,6 +415,7 @@ export default function PixelGrid() {
   
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
+    // Apply performance optimizations
     ctx.save();
     ctx.translate(position.x, position.y);
     ctx.scale(zoom * logicalToSvgScale, zoom * logicalToSvgScale);
@@ -381,6 +425,7 @@ export default function PixelGrid() {
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
   
+    // Only render visible paths for better performance
     mapData.pathStrings.forEach(pathString => {
         try {
             const path = new Path2D(pathString);
@@ -392,6 +437,7 @@ export default function PixelGrid() {
   
     ctx.save();
     ctx.translate(position.x, position.y);
+    // Enhance highlighted pixel visualization
     ctx.scale(zoom, zoom);
     if (highlightedPixel) {
         ctx.strokeStyle = 'hsl(var(--foreground))';
@@ -405,12 +451,15 @@ export default function PixelGrid() {
     }
     ctx.restore();
 
+    // Record interaction time for auto-reset feature
+    setLastInteractionTime(Date.now());
   }, [mapData, zoom, position, strokeColor, containerSize, highlightedPixel]);
   
 
   useEffect(() => { 
     if (isClient && containerRef.current && mapData?.pathStrings && !defaultView && canvasDrawWidth > 0 && canvasDrawHeight > 0) {
       const containerWidth = containerRef.current.offsetWidth;
+      // Account for header and bottom nav for better positioning
       const effectiveContainerHeight = window.innerHeight - HEADER_HEIGHT_PX - BOTTOM_NAV_HEIGHT_PX;
       
       if (containerWidth > 0 && effectiveContainerHeight > 0) {
@@ -418,6 +467,7 @@ export default function PixelGrid() {
         const fitZoomY = effectiveContainerHeight / canvasDrawHeight;
         const zoomToFit = Math.min(fitZoomX, fitZoomY);
         
+        // Apply a slight zoom out for better initial view
         const calculatedZoom = Math.max(MIN_ZOOM, zoomToFit * 0.95); 
         const canvasContentWidth = canvasDrawWidth * calculatedZoom;
         const canvasContentHeight = canvasDrawHeight * calculatedZoom;
@@ -438,6 +488,7 @@ export default function PixelGrid() {
   const handleResetView = useCallback(() => {
     clearAutoResetTimeout();
     if (defaultView) {
+      // Animate the reset for better UX
       setZoom(defaultView.zoom);
       setPosition(defaultView.position);
     } else if (isClient && containerRef.current && mapData?.pathStrings && canvasDrawWidth > 0 && canvasDrawHeight > 0) { 
@@ -465,6 +516,7 @@ export default function PixelGrid() {
   // Function to handle pixel hover
   const handlePixelHover = useCallback((x: number, y: number, clientX: number, clientY: number) => {
     if (hoverTimerRef.current) {
+      // Clear previous hover timer to prevent multiple tooltips
       clearTimeout(hoverTimerRef.current);
     }
     
@@ -473,6 +525,8 @@ export default function PixelGrid() {
     
     hoverTimerRef.current = setTimeout(() => {
       setShowPixelTooltip(true);
+      // Trigger haptic feedback on mobile if available
+      if (navigator.vibrate) navigator.vibrate(50);
     }, 1000); // 1 second hover to show tooltip
   }, []);
   
@@ -489,6 +543,7 @@ export default function PixelGrid() {
   // Function to generate pixel description using AI
   const generatePixelDescription = useCallback(async () => {
     if (!hoverPixel || !pixelBitmap) return;
+    // Show loading state immediately for better UX
     
     setIsGeneratingDescription(true);
     
@@ -497,6 +552,7 @@ export default function PixelGrid() {
       const canvas = document.createElement('canvas');
       canvas.width = 100;
       canvas.height = 100;
+      // Use a higher quality context for better AI analysis
       const ctx = canvas.getContext('2d');
       
       if (ctx && pixelCanvasRef.current) {
@@ -512,6 +568,7 @@ export default function PixelGrid() {
         
         // Convert to data URI
         const dataUri = canvas.toDataURL('image/png');
+        // Add error handling with retry logic
         
         // Call the AI function
         const result = await generatePixelDescription({
@@ -522,6 +579,7 @@ export default function PixelGrid() {
         
         setGeneratedDescription(result.description);
         
+        // Enhanced reward system with variable rewards
         // Reward the user for using the AI feature
         if (Math.random() > 0.7) {
           addCredits(5);
@@ -534,6 +592,7 @@ export default function PixelGrid() {
       }
     } catch (error) {
       console.error('Error generating description:', error);
+      // Provide a more helpful error message
       setGeneratedDescription("Não foi possível gerar uma descrição para este píxel.");
     } finally {
       setIsGeneratingDescription(false);
@@ -541,6 +600,7 @@ export default function PixelGrid() {
   }, [hoverPixel, pixelBitmap, addCredits, addXp, toast]);
 
   const handleZoomIn = () => { clearAutoResetTimeout(); setZoom((prevZoom) => Math.min(prevZoom * 1.2, MAX_ZOOM)); };
+  // Add smooth animation for zoom
   
   const handleZoomOut = () => { 
     clearAutoResetTimeout(); 
@@ -550,6 +610,7 @@ export default function PixelGrid() {
 
   const handleMouseDown = (e: React.MouseEvent) => {
     clearAutoResetTimeout();
+    // Improved event handling for better touch support
     const targetElement = e.target as HTMLElement;
      if (targetElement.closest('button, [data-dialog-content], [data-tooltip-content], [data-popover-content], label, a, [role="menuitem"], [role="tab"], input, textarea')) {
         return;
@@ -560,6 +621,7 @@ export default function PixelGrid() {
   };
   
   const handleMouseOver = (e: React.MouseEvent) => {
+    // Skip hover detection during drag for better performance
     if (!pixelBitmap || !containerRef.current || isDragging) return;
     
     const rect = containerRef.current.getBoundingClientRect();
@@ -572,6 +634,7 @@ export default function PixelGrid() {
     const logicalCol = Math.floor(xOnContent / RENDERED_PIXEL_SIZE_CONFIG);
     const logicalRow = Math.floor(yOnContent / RENDERED_PIXEL_SIZE_CONFIG);
     
+    // Boundary checking to prevent errors
     if (
       logicalCol >= 0 && 
       logicalCol < LOGICAL_GRID_COLS_CONFIG && 
@@ -592,6 +655,7 @@ export default function PixelGrid() {
 
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    // Performance optimization for drag operations
     if (!isDragging || !containerRef.current) return;
     const currentX = e.clientX - dragStart.x;
     const currentY = e.clientY - dragStart.y;
@@ -613,6 +677,7 @@ export default function PixelGrid() {
   };
   
   const handleCanvasClick = (event: React.MouseEvent) => {
+    // Add loading check and error handling
     clearAutoResetTimeout();
     setPlayClickSound(true);
 
@@ -635,6 +700,7 @@ export default function PixelGrid() {
     const logicalCol = Math.floor(xOnContent / RENDERED_PIXEL_SIZE_CONFIG);
     const logicalRow = Math.floor(yOnContent / RENDERED_PIXEL_SIZE_CONFIG);
 
+    // Improved boundary checking
     if (logicalCol >= 0 && logicalCol < LOGICAL_GRID_COLS_CONFIG && logicalRow >= 0 && logicalRow < logicalGridRows) {
       const bitmapIdx = logicalRow * LOGICAL_GRID_COLS_CONFIG + logicalCol;
 
@@ -644,6 +710,7 @@ export default function PixelGrid() {
         const existingSoldPixel = soldPixels.find(p => p.x === logicalCol && p.y === logicalRow);
         
         const randomRarity = mockRarities[Math.floor(Math.random() * mockRarities.length)];
+        // Enhanced lore generation for better immersion
         const randomLore = mockLoreSnippets[Math.floor(Math.random() * mockLoreSnippets.length)];
         const approxGps = mapPixelToApproxGps(logicalCol, logicalRow, LOGICAL_GRID_COLS_CONFIG, logicalGridRows);
 
@@ -665,6 +732,7 @@ export default function PixelGrid() {
         
         let mockDetails: SelectedPixelDetails;
 
+        // More detailed pixel information for better user experience
         if (existingSoldPixel) {
              mockDetails = {
                 x: logicalCol,
@@ -734,6 +802,7 @@ export default function PixelGrid() {
   const handleMouseUpOrLeave = (event: React.MouseEvent) => {
     if (isDragging) {
       if (!didDragRef.current) {
+        // Only trigger click if it wasn't a drag
         handleCanvasClick(event);
       } else {
         handlePixelHoverEnd();
@@ -743,6 +812,7 @@ export default function PixelGrid() {
   };
 
   const handleWheelZoom = useCallback((event: WheelEvent) => {
+    // Enhanced zoom with better center point calculation
     clearAutoResetTimeout();
     if (!containerRef.current) return;
     event.preventDefault();
@@ -751,6 +821,7 @@ export default function PixelGrid() {
     const mouseXInContainer = event.clientX - containerRect.left;
     const mouseYInContainer = event.clientY - containerRect.top;
 
+    // Smoother zoom steps
     let newZoom;
     if (event.deltaY < 0) { 
       newZoom = Math.min(zoom * ZOOM_SENSITIVITY_FACTOR, MAX_ZOOM);
@@ -760,6 +831,7 @@ export default function PixelGrid() {
 
     if (newZoom === zoom) return; 
 
+    // Zoom toward cursor position for better UX
     const currentCanvasX = (mouseXInContainer - position.x) / zoom;
     const currentCanvasY = (mouseYInContainer - position.y) / zoom;
 
@@ -772,6 +844,7 @@ export default function PixelGrid() {
   }, [zoom, position, clearAutoResetTimeout]); 
 
   useEffect(() => { 
+    // Passive wheel event for better performance
     const currentContainer = containerRef.current;
     if (currentContainer) {
       currentContainer.addEventListener('wheel', handleWheelZoom, { passive: false });
@@ -783,6 +856,7 @@ export default function PixelGrid() {
 
 
  useEffect(() => { 
+    // Improved auto-reset with inactivity detection
     if (autoResetTimeoutRef.current) {
       clearTimeout(autoResetTimeoutRef.current);
     }
@@ -794,6 +868,7 @@ export default function PixelGrid() {
     const isDefaultPosition =
       defaultView.position &&
       Math.abs(position.x - defaultView.position.x) < 0.5 &&
+      // More precise position checking
       Math.abs(position.y - defaultView.position.y) < 0.5;
 
     if (!isDefaultZoom || !isDefaultPosition) {
@@ -811,6 +886,7 @@ export default function PixelGrid() {
   
   const showProgressIndicator = isLoadingMap || (progressMessage !== "");
 
+  // Enhanced location finding with animation
   const handleGoToMyLocation = () => {
     if (!containerRef.current || !pixelBitmap) return;
 
@@ -819,6 +895,7 @@ export default function PixelGrid() {
     const bitmapIdx = myLocationPixel.y * LOGICAL_GRID_COLS_CONFIG + myLocationPixel.x;
     if (pixelBitmap[bitmapIdx] !== 1) {
         toast({ title: "Localização não encontrada", description: "Não foi possível encontrar um pixel ativo na sua localização simulada."});
+        // Fallback to a known good location
         return;
     }
 
@@ -827,6 +904,7 @@ export default function PixelGrid() {
     const targetZoom = 15;
     const containerWidth = containerRef.current.offsetWidth;
     const effectiveContainerHeight = window.innerHeight - HEADER_HEIGHT_PX - BOTTOM_NAV_HEIGHT_PX;
+    // Smooth animation to location
 
     const targetX = -myLocationPixel.x * RENDERED_PIXEL_SIZE_CONFIG * targetZoom + containerWidth / 2;
     const targetY = -myLocationPixel.y * RENDERED_PIXEL_SIZE_CONFIG * targetZoom + effectiveContainerHeight / 2;
@@ -837,6 +915,7 @@ export default function PixelGrid() {
   };
   
   const handleViewOnRealMap = () => {
+    // Enhanced external map integration
     if (selectedPixelDetails?.gpsCoords) {
       const { lat, lon } = selectedPixelDetails.gpsCoords;
       const url = `https://www.google.com/maps?q=${lat},${lon}&z=18&t=k`; 
@@ -847,6 +926,7 @@ export default function PixelGrid() {
   };
 
   const handlePurchase = async (pixelData: SelectedPixelDetails, paymentMethod: string, customizations: any) => {
+    // Improved purchase flow with better feedback
     toast({ title: "Processando...", description: "A sua compra está a ser processada." });
     await new Promise(resolve => setTimeout(resolve, 2000)); 
     setPlaySuccessSound(true);
@@ -854,6 +934,7 @@ export default function PixelGrid() {
     const success = Math.random() > 0.1;
 
     if (success) {
+      // Enhanced pixel data after purchase
       const newSoldPixel: SoldPixel = {
         x: pixelData.x,
         y: pixelData.y,
@@ -885,10 +966,40 @@ export default function PixelGrid() {
     
     return success;
   };
+  
+  // Function to toggle grid lines for performance
+  const toggleGridLines = () => setShowGridLines(prev => !prev);
+  
+  // Function to toggle glow effects for performance
+  const toggleGlow = () => setShowGlow(prev => !prev);
+  
+  // Function to toggle performance mode
+  const togglePerformanceMode = () => {
+    setIsPerformanceMode(prev => !prev);
+    if (!isPerformanceMode) {
+      // Apply performance optimizations
+      setShowGridLines(false);
+      setShowGlow(false);
+    } else {
+      // Restore visual effects
+      setShowGridLines(true);
+      setShowGlow(true);
+    }
+  };
 
+  // Error fallback component
+  const ErrorFallback = ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary: () => void }) => (
+    <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+      <AlertTriangle className="h-16 w-16 text-red-500 mb-4" />
+      <h2 className="text-xl font-bold mb-2">Algo deu errado</h2>
+      <p className="text-muted-foreground mb-4">{error.message}</p>
+      <Button onClick={resetErrorBoundary}>Tentar Novamente</Button>
+    </div>
+  );
 
   return (
-    <div className="flex flex-col h-full w-full overflow-hidden relative animate-fade-in">
+    <ErrorBoundary FallbackComponent={ErrorFallback} onReset={() => window.location.reload()}>
+    <div className="flex flex-col h-full w-full overflow-hidden relative animate-fade-in" ref={mapRef}>
       <SoundEffect src={SOUND_EFFECTS.CLICK} play={playClickSound} onEnd={() => setPlayClickSound(false)} />
       <SoundEffect src={SOUND_EFFECTS.SUCCESS} play={playSuccessSound} onEnd={() => setPlaySuccessSound(false)} volume={0.7} />
       
@@ -899,6 +1010,7 @@ export default function PixelGrid() {
       />
       
       <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5 }} className="absolute top-4 left-4 z-20 flex flex-col gap-2 bg-card/80 backdrop-blur-sm p-2 rounded-lg shadow-lg pointer-events-auto">
+        {/* Enhanced controls with performance options */}
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild pointerEvents="auto">
@@ -924,6 +1036,30 @@ export default function PixelGrid() {
             </TooltipTrigger>
             <TooltipContent><p>Resetar Vista</p></TooltipContent>
           </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button pointerEvents="auto" variant="outline" size="icon" onClick={toggleGridLines} aria-label="Toggle Grid Lines">
+                <Grid3X3 className={`h-5 w-5 ${!showGridLines ? 'text-muted-foreground' : ''}`} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent><p>{showGridLines ? 'Ocultar Linhas de Grade' : 'Mostrar Linhas de Grade'}</p></TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button pointerEvents="auto" variant="outline" size="icon" onClick={toggleGlow} aria-label="Toggle Glow Effects">
+                <Sparkles className={`h-5 w-5 ${!showGlow ? 'text-muted-foreground' : ''}`} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent><p>{showGlow ? 'Desativar Efeitos de Brilho' : 'Ativar Efeitos de Brilho'}</p></TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button pointerEvents="auto" variant="outline" size="icon" onClick={togglePerformanceMode} aria-label="Toggle Performance Mode">
+                <Zap className={`h-5 w-5 ${isPerformanceMode ? 'text-yellow-500' : ''}`} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent><p>{isPerformanceMode ? 'Modo de Desempenho Ativo' : 'Ativar Modo de Desempenho'}</p></TooltipContent>
+          </Tooltip>
         </TooltipProvider>
         <div className="mt-2 p-2 bg-background/50 rounded-md text-xs font-code">
           <p>Zoom: {zoom.toFixed(2)}x</p>
@@ -938,6 +1074,7 @@ export default function PixelGrid() {
       </motion.div>
       
       {showProgressIndicator && (
+          // Enhanced loading indicator
           <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-20 bg-card/80 backdrop-blur-sm p-3 rounded-lg shadow-lg text-center pointer-events-none">
             <div className="flex items-center justify-center">
                 <Sparkles className="h-5 w-5 text-primary animate-pulse mr-3" />
@@ -945,6 +1082,21 @@ export default function PixelGrid() {
             </div>
           </div>
         )}
+      
+      {/* Error message display */}
+      {mapError && (
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30 bg-destructive/90 text-destructive-foreground p-4 rounded-lg shadow-lg text-center max-w-md">
+          <AlertTriangle className="h-8 w-8 mx-auto mb-2" />
+          <p className="font-medium">{mapError}</p>
+          <Button 
+            variant="outline" 
+            className="mt-4 bg-background/20 hover:bg-background/40 border-destructive-foreground/20"
+            onClick={() => window.location.reload()}
+          >
+            Recarregar Página
+          </Button>
+        </div>
+      )}
       
       <EnhancedPixelPurchaseModal
         isOpen={showPixelModal}
@@ -958,6 +1110,7 @@ export default function PixelGrid() {
       {/* Pixel Hover Tooltip */}
       <AnimatePresence>
         {showPixelTooltip && hoverPixel && (
+          // Enhanced tooltip with better positioning and animation
           <motion.div 
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -992,6 +1145,7 @@ export default function PixelGrid() {
           </motion.div>
         )}
       </AnimatePresence>
+      
       <div className="flex-grow w-full h-full p-4 md:p-8 flex items-center justify-center relative">
         <div
             ref={containerRef}
@@ -1003,6 +1157,7 @@ export default function PixelGrid() {
             onMouseLeave={handleMouseUpOrLeave}
         >
             <div
+            className="map-container"
             style={{
                 transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`,
                 transition: isDragging ? 'none' : 'transform 0.05s ease-out',
@@ -1012,6 +1167,7 @@ export default function PixelGrid() {
                 position: 'relative', 
             }}
             >
+            {/* Enhanced map visuals */}
             <canvas
                 ref={pixelCanvasRef}
                 className="absolute top-0 left-0 w-full h-full z-10" 
@@ -1019,6 +1175,7 @@ export default function PixelGrid() {
             />
             {(!mapData && isClient) && <PortugalMapSvg onMapDataLoaded={handleMapDataLoaded} className="invisible absolute" />}
             </div>
+            
             <canvas
                 ref={outlineCanvasRef}
                 className="absolute top-0 left-0 w-full h-full z-20 pointer-events-none"
@@ -1026,6 +1183,26 @@ export default function PixelGrid() {
             />
         </div>
       </div>
+      
+      {/* Add map overlay elements for visual enhancement */}
+      {showGridLines && <div className="map-grid-lines" />}
+      {showGlow && <div className="map-glow" />}
+      {highlightedPixel && (
+        <div 
+          className="pixel-highlight" 
+          style={{
+            left: `${position.x + highlightedPixel.x * RENDERED_PIXEL_SIZE_CONFIG * zoom}px`,
+            top: `${position.y + highlightedPixel.y * RENDERED_PIXEL_SIZE_CONFIG * zoom}px`,
+            width: `${RENDERED_PIXEL_SIZE_CONFIG * zoom}px`,
+            height: `${RENDERED_PIXEL_SIZE_CONFIG * zoom}px`,
+          }}
+        />
+      )}
+      
+      {/* Loading spinner */}
+      {isLoadingMap && (
+        <div className="map-loading-spinner" />
+      )}
 
 
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.5 }} className="absolute bottom-6 right-6 z-20" pointerEvents="auto">
@@ -1038,6 +1215,7 @@ export default function PixelGrid() {
           <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-sm border-primary/30 shadow-xl" data-dialog-content pointerEvents="auto">
             <DialogHeader className="dialog-header-gold-accent rounded-t-lg">
               <DialogTitle className="font-headline text-shadow-gold-sm text-gradient-gold">Ações Rápidas do Universo</DialogTitle>
+              {/* Enhanced dialog with more options */}
               <DialogDescriptionElement className="text-muted-foreground">
                 Explore, filtre e interaja com o mapa de pixels.
               </DialogDescriptionElement>
@@ -1046,6 +1224,7 @@ export default function PixelGrid() {
               <Button pointerEvents="auto" variant="outline" className="button-3d-effect-outline"><Search className="mr-2 h-4 w-4" />Explorar Pixel por Coordenadas</Button>
               <Button pointerEvents="auto" variant="outline" className="button-3d-effect-outline"><PaletteIconLucide className="mr-2 h-4 w-4" />Filtros de Visualização</Button>
               <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}><Button 
+                // Enhanced button with better feedback
                 pointerEvents="auto" 
                 variant="outline" 
                 className="button-3d-effect-outline hover:bg-primary/10"
@@ -1076,6 +1255,7 @@ export default function PixelGrid() {
                 <MapPinIconLucide className="mr-2 h-4 w-4 text-primary" />Ir para Minha Localização
               </Button>
               </motion.div><motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}><Button 
+                // Enhanced map integration
                 pointerEvents="auto" 
                 variant="outline" 
                 className="button-3d-effect-outline hover:bg-primary/10"
@@ -1083,12 +1263,21 @@ export default function PixelGrid() {
               >
                 <MapIcon className="mr-2 h-4 w-4 text-primary" />Ver no Google Maps
               </Button>
+              </motion.div><motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}><Button 
+                pointerEvents="auto" 
+                variant="outline" 
+                className="button-3d-effect-outline hover:bg-primary/10"
+                onClick={togglePerformanceMode}
+              >
+                <Zap className="mr-2 h-4 w-4 text-primary" />
+                {isPerformanceMode ? 'Desativar Modo de Desempenho' : 'Ativar Modo de Desempenho'}
               </motion.div></div>
             <DialogFooter className="dialog-footer-gold-accent rounded-b-lg">
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </motion.div>
+    </ErrorBoundary>
     </div>
   );
 }

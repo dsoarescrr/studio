@@ -29,6 +29,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { SoundEffect, SOUND_EFFECTS } from '@/components/ui/sound-effect';
+import { VirtualizedList } from '@/components/ui/virtualized-list';
+import { useTranslation } from 'react-i18next';
 
 // Types and data from ActivityFeedPanel
 type ActivityItem = {
@@ -107,6 +109,7 @@ const FormattedStatValue: React.FC<{ value: number | string }> = ({ value }) => 
 
 export default function MapSidebar() {
   const [activities, setActivities] = useState<ActivityItem[]>(initialActivities);
+  const { t } = useTranslation();
   const [stats, setStats] = useState<StatItem[]>(initialStats);
   const [playHoverSound, setPlayHoverSound] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -178,12 +181,12 @@ export default function MapSidebar() {
           <div className="space-y-1">
             <h3 className="text-xs font-medium text-muted-foreground px-2 mb-1 group-data-[collapsible=icon]:hidden flex items-center">
               <TrendingUp className="h-3 w-3 mr-1 text-primary" />
-              Estatísticas
+              {t('stats.title')}
             </h3>
             <div className="group-data-[collapsible=icon]:hidden text-xs text-muted-foreground px-2 mb-2">
               <span className="flex items-center">
                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse mr-1.5"></div>
-                Atualizado em tempo real
+                {t('stats.realtime')}
               </span>
             </div>
             {stats.map((stat) => (
@@ -243,44 +246,52 @@ export default function MapSidebar() {
           <div className="space-y-1">
             <h3 className="text-xs font-medium text-muted-foreground px-2 mb-2 group-data-[collapsible=icon]:hidden flex items-center">
               <Activity className="h-3 w-3 mr-1 text-primary animate-pulse" />
-              Atividade Global
+              {t('activity.global')}
             </h3>
-            {activities.map((activity) => (
-              <TooltipProvider key={activity.id} delayDuration={0}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex items-center h-10 rounded-md hover:bg-muted/60 cursor-default px-2 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center transition-all duration-200 hover:scale-105 card-hover-glow animate-fade-in">
-                        <div 
-                          className="relative"
-                          onMouseEnter={() => setPlayHoverSound(true)}
-                        >
-                          <Avatar className="h-8 w-8 border-2 border-border animate-glow">
-                            <AvatarImage src={activity.user.avatarUrl || `https://placehold.co/40x40.png?text=${activity.user.name.substring(0,1)}`} alt={activity.user.name} data-ai-hint={activity.user.dataAiHint || "avatar user"}/>
-                            <AvatarFallback>{activity.user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-                          </Avatar>
-                          <span className="absolute -bottom-1 -right-1 p-0.5 bg-background rounded-full animate-bounce-slow">
-                            {activityIcons[activity.type]}
-                          </span>
+            <div className="h-[calc(100vh-300px)]">
+              <VirtualizedList
+                items={activities}
+                itemSize={50}
+                height={Math.min(activities.length * 50, 400)}
+                width="100%"
+                renderItem={(activity) => (
+                  <TooltipProvider key={activity.id} delayDuration={0}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center h-10 rounded-md hover:bg-muted/60 cursor-default px-2 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center transition-all duration-200 hover:scale-105 card-hover-glow animate-fade-in">
+                            <div 
+                              className="relative"
+                              onMouseEnter={() => setPlayHoverSound(true)}
+                            >
+                              <Avatar className="h-8 w-8 border-2 border-border animate-glow">
+                                <AvatarImage src={activity.user.avatarUrl || `https://placehold.co/40x40.png?text=${activity.user.name.substring(0,1)}`} alt={activity.user.name} data-ai-hint={activity.user.dataAiHint || "avatar user"}/>
+                                <AvatarFallback>{activity.user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                              </Avatar>
+                              <span className="absolute -bottom-1 -right-1 p-0.5 bg-background rounded-full animate-bounce-slow">
+                                {activityIcons[activity.type]}
+                              </span>
+                            </div>
+                            <div className="ml-3 flex-1 overflow-hidden group-data-[collapsible=icon]:hidden">
+                              <p className="text-sm leading-tight truncate">
+                                <span className="font-semibold text-primary text-glow">{activity.user.name}</span>
+                              </p>
+                              <p className="text-xs text-muted-foreground font-code truncate">
+                                {activityLabels[activity.type]}
+                              </p>
+                            </div>
                         </div>
-                        <div className="ml-3 flex-1 overflow-hidden group-data-[collapsible=icon]:hidden">
-                          <p className="text-sm leading-tight truncate">
-                            <span className="font-semibold text-primary text-glow">{activity.user.name}</span>
-                          </p>
-                          <p className="text-xs text-muted-foreground font-code truncate">
-                            {activityLabels[activity.type]}
-                          </p>
-                        </div>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" align="center">
-                      <div className="card-glass">
-                        <p><span className="font-semibold text-primary">{activity.user.name}</span> {activityLabels[activity.type].toLowerCase()}.</p>
-                      </div>
-                      {activity.details && <p className="text-xs text-muted-foreground">{activity.details}</p>}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            ))}
+                      </TooltipTrigger>
+                      <TooltipContent side="right" align="center">
+                          <div className="card-glass">
+                            <p><span className="font-semibold text-primary">{activity.user.name}</span> {activityLabels[activity.type].toLowerCase()}.</p>
+                          </div>
+                          {activity.details && <p className="text-xs text-muted-foreground">{activity.details}</p>}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              />
+            </div>
           </div>
         </ScrollArea>
       </SidebarContent>

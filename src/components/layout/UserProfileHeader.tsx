@@ -32,6 +32,8 @@ import {
 } from "@/components/ui/sheet";
 import Link from "next/link";
 import { usePathname } from 'next/navigation';
+import { LanguageSwitcher } from '@/components/ui/language-switcher';
+import { useTranslation } from 'react-i18next';
 
 const navLinks = [
   { href: "/", label: "Universo", icon: Home, color: "text-blue-500", description: "Explorar o mapa" },
@@ -57,6 +59,7 @@ export default function UserProfileHeader() {
   } = useUserStore();
   
   const pathname = usePathname();
+  const { t } = useTranslation();
 
   const [formattedCredits, setFormattedCredits] = useState<string | null>(null);
   const [formattedSpecialCredits, setFormattedSpecialCredits] = useState<string | null>(null);
@@ -280,6 +283,9 @@ export default function UserProfileHeader() {
             </Button>
           </SearchSystem>
 
+          {/* Language Switcher */}
+          <LanguageSwitcher variant="ghost" size="icon" showText={false} />
+
           {/* Quick Add */}
           <Button 
             variant="ghost" 
@@ -401,7 +407,7 @@ export default function UserProfileHeader() {
               <Link href="/achievements">
                 <DropdownMenuItem className="cursor-pointer hover:bg-primary/10 transition-colors">
                   <Award className="mr-2 h-4 w-4 text-yellow-500 animate-pulse" style={{ animationDuration: '3s' }} />
-                  <span>Conquistas</span>
+                  <span>{t('user.wallet')}</span>
                   <Badge className="ml-auto bg-red-500 text-white text-xs">{achievements}</Badge>
                 </DropdownMenuItem>
               </Link>

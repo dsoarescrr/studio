@@ -12,7 +12,8 @@ import NotificationCenter from '@/components/layout/NotificationCenter';
 import { useUserStore } from '@/lib/store';
 import SearchSystem from '@/components/layout/SearchSystem';
 import PixelPurchaseModal from '@/components/pixel-grid/PixelPurchaseModal';
-import { useMediaQuery } from '@/hooks/use-media-query'; 
+import { useMediaQuery } from '@/hooks/use-media-query';
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import {
   DropdownMenu,
@@ -43,6 +44,7 @@ const BOTTOM_NAV_HEIGHT = '80px';
 
 export default function BottomNavBar() {
   const pathname = usePathname();
+  const { t } = useTranslation();
   const { notifications, credits, specialCredits, addCredits } = useUserStore();
   const [activeIndex, setActiveIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
@@ -294,8 +296,8 @@ export default function BottomNavBar() {
                       <Palette className="h-4 w-4 text-purple-500" />
                     </div>
                     <div>
-                      <div className="font-medium">Editor de Píxeis</div>
-                      <div className="text-xs text-muted-foreground">Criar e editar píxeis</div>
+                      <div className="font-medium">{t('pixel.editor')}</div>
+                      <div className="text-xs text-muted-foreground">{t('pixel.editor.desc')}</div>
                     </div>
                   </div>
                 </DropdownMenuItem>
