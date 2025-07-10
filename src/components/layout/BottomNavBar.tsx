@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -31,10 +30,10 @@ import {
 
 const navLinks = [
   { href: "/", label: "Universo", icon: Home, color: "text-blue-500" },
-  { href: "/marketplace", label: "Marketplace", icon: ShoppingCart, color: "text-green-500" },
-  { href: "/pixels", label: "Píxeis", icon: Palette, color: "text-purple-500" },
-  { href: "/community", label: "Comunidade", icon: UsersIcon, color: "text-orange-500" },
-  { href: "/auctions", label: "Leilões", icon: Gavel, color: "text-amber-500" },
+  { href: "/marketplace", label: "Marketplace", icon: ShoppingCart, color: "text-green-500", badge: 5 },
+  { href: "/pixels", label: "Píxeis", icon: Palette, color: "text-purple-500", badge: 12 },
+  { href: "/community", label: "Comunidade", icon: UsersIcon, color: "text-orange-500", badge: 3 },
+  { href: "/auctions", label: "Leilões", icon: Gavel, color: "text-amber-500", badge: 2 },
 ];
 
 const BOTTOM_NAV_HEIGHT = '72px';
@@ -178,9 +177,9 @@ export default function BottomNavBar() {
                   <div className="absolute inset-0 bg-primary/30 transform scale-0 group-active:scale-100 transition-transform duration-200 rounded-xl" />
                 </div>
 
-                {link.href === '/achievements' && (
+                {link.badge && (
                   <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 text-xs bg-red-500 hover:bg-red-500 flex items-center justify-center animate-bounce">
-                    3
+                    {link.badge}
                   </Badge>
                 )}
               </Link>
