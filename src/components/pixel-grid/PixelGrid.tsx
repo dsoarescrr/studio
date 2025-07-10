@@ -1,30 +1,56 @@
+
+// src/components/pixel-grid/PixelGrid.tsx
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { 
-  ZoomIn, ZoomOut, RotateCcw, MapPin, Eye, Heart, Star, Crown, 
-  Loader2, Grid3X3, Navigation, Home, Maximize2, Info, Sparkles,
-  TrendingUp, Users, Clock, Award, Gem, Shield, Zap, Target,
-  Crosshair, Move, MousePointer, Hand, Search, Filter, Settings
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import {
+  ZoomIn, ZoomOut, Expand, Search, Sparkles, MapPin as MapPinIcon,
+  Map as MapIcon,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
-import { mapPixelToApproxGps } from '@/lib/utils';
+import NextImage from 'next/image';
 import PortugalMapSvg, { type MapData } from './PortugalMapSvg';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { generatePixelDescription, type GeneratePixelDescriptionInput } from '@/ai/flows/generate-pixel-description';
+import { useToast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { mapPixelToApproxGps } from '@/lib/utils';
 import EnhancedPixelPurchaseModal from './EnhancedPixelPurchaseModal';
 
-// Types
-type PixelRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
-type PaymentMethod = 'credits' | 'special_credits' | 'real_money';
-type ViewMode = 'map' | 'grid' | 'hybrid';
-type InteractionMode = 'select' | 'pan' | 'zoom' | 'measure';
+// Configuration constants
+const SVG_VIEWBOX_WIDTH = 12969;
+const SVG_VIEWBOX_HEIGHT = 26674;
+const LOGICAL_GRID_COLS_CONFIG = 1273;
+const RENDERED_PIXEL_SIZE_CONFIG = 1;
 
-interface PixelData {
+// Derived constants
+const canvasDrawWidth = LOGICAL_GRID_COLS_CONFIG * RENDERED_PIXEL_SIZE_CONFIG;
+const canvasDrawHeight = Math.floor(canvasDrawWidth * (SVG_VIEWBOX_HEIGHT / SVG_VIEWBOX_WIDTH));
+const logicalGridRows = Math.floor(canvasDrawHeight / RENDERED_PIXEL_SIZE_CONFIG);
+const totalLogicalPixels = LOGICAL_GRID_COLS_CONFIG * logicalGridRows;
+
+const PLACEHOLDER_IMAGE_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+
+const USER_BOUGHT_PIXEL_COLOR = 'hsl(var(--primary))';
+
+const MOCK_CURRENT_USER_ID = 'currentUserPixelMaster';
+
+interface SoldPixel {
+  x: number;
+  y: number;
+  color: string;
+  ownerId?: string;
+  title?: string;
+  pixelImageUrl?: string;
+}
+
+interface SelectedPixelDetails {
   x: number;
   y: number;
   color: string;
@@ -33,621 +59,739 @@ interface PixelData {
   lastSold?: Date;
   views: number;
   likes: number;
-  rarity: PixelRarity;
+  rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
   region: string;
   isProtected: boolean;
-  history: Array<{
-    owner: string;
-    date: Date | string;
-    price: number;
-    action?: 'purchase' | 'sale' | 'transfer';
-  }>;
+  history: Array<{ owner: string; date: string | Date; price: number, action?: 'purchase' | 'sale' | 'transfer' }>;
   features?: string[];
   description?: string;
   tags?: string[];
+  linkUrl?: string;
+  acquisitionDate?: string;
+  lastModifiedDate?: string;
+  isOwnedByCurrentUser?: boolean;
+  isForSaleBySystem?: boolean;
+  manualDescription?: string;
+  pixelImageUrl?: string;
+  dataAiHint?: string;
+  title?: string;
+  isForSaleByOwner?: boolean;
+  salePrice?: number;
+  isFavorited?: boolean;
+  loreSnippet?: string;
+  gpsCoords?: { lat: number; lon: number; } | null;
 }
 
-interface ViewportState {
-  x: number;
-  y: number;
-  zoom: number;
-  rotation: number;
-}
+const MIN_ZOOM = 0.05;
+const MAX_ZOOM = 50;
+const ZOOM_SENSITIVITY_FACTOR = 1.1;
+const HEADER_HEIGHT_PX = 64;
+const BOTTOM_NAV_HEIGHT_PX = 64;
 
-interface GridMetrics {
-  totalPixels: number;
-  ownedPixels: number;
-  availablePixels: number;
-  averagePrice: number;
-  hotspots: Array<{ x: number; y: number; activity: number }>;
-}
-
-// Constants
-const GRID_SIZE = { width: 1000, height: 800 };
-const MIN_ZOOM = 0.1;
-const MAX_ZOOM = 10;
-const ZOOM_STEP = 0.1;
-const PIXEL_SIZE = 4;
-
-// Mock data generator
-const generateMockPixelData = (x: number, y: number, mapData: MapData | null): PixelData | null => {
-  if (mapData?.svgElement) {
-    // Check if the point is inside the SVG map paths
-    const point = mapData.svgElement.createSVGPoint();
-    point.x = x * PIXEL_SIZE;
-    point.y = y * PIXEL_SIZE;
-    let isInside = false;
-    const paths = mapData.svgElement.querySelectorAll('path');
-    for (const path of paths) {
-      if (path.isPointInFill(point)) {
-        isInside = true;
-        break;
-      }
-    }
-    if (!isInside) return null; // Don't generate pixel if outside map boundaries
-  }
-
-  const rarities: PixelRarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
-  const regions = ['Norte', 'Centro', 'Lisboa', 'Alentejo', 'Algarve', 'Açores', 'Madeira'];
-  
-  const rarity = rarities[Math.floor(Math.random() * rarities.length)];
-  const region = regions[Math.floor(Math.random() * regions.length)];
-  
-  const basePrice = 10 + Math.random() * 100;
-  const rarityMultiplier = {
-    common: 1,
-    uncommon: 1.2,
-    rare: 1.5,
-    epic: 2,
-    legendary: 3
-  }[rarity];
-
-  return {
-    x,
-    y,
-    color: `hsl(${Math.random() * 360}, ${50 + Math.random() * 50}%, ${40 + Math.random() * 40}%)`,
-    owner: Math.random() > 0.7 ? `User${Math.floor(Math.random() * 1000)}` : undefined,
-    price: Math.round(basePrice * rarityMultiplier),
-    lastSold: Math.random() > 0.5 ? new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000) : undefined,
-    views: Math.floor(Math.random() * 1000),
-    likes: Math.floor(Math.random() * 100),
-    rarity,
-    region,
-    isProtected: Math.random() > 0.9,
-    history: Array.from({ length: Math.floor(Math.random() * 5) }, (_, i) => ({
-      owner: `User${Math.floor(Math.random() * 1000)}`,
-      date: new Date(Date.now() - (i + 1) * 7 * 24 * 60 * 60 * 1000),
-      price: Math.round(basePrice * (0.8 + Math.random() * 0.4)),
-      action: ['purchase', 'sale', 'transfer'][Math.floor(Math.random() * 3)] as any,
-    })),
-    features: Math.random() > 0.8 ? ['Vista panorâmica', 'Zona histórica', 'Transporte público'] : undefined,
-    description: Math.random() > 0.6 ? `Pixel único na região de ${region}` : undefined,
-    tags: Math.random() > 0.7 ? ['arte', 'portugal', region.toLowerCase()] : undefined,
-  };
-};
+const mockRarities: SelectedPixelDetails['rarity'][] = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+const mockLoreSnippets: string[] = [
+  "Dizem que este pixel brilha sob a lua cheia.",
+  "Um antigo mapa sugere um tesouro escondido perto daqui.",
+  "Sente-se uma energia estranha emanando deste local.",
+];
 
 export default function PixelGrid() {
-  // State
-  const [viewport, setViewport] = useState<ViewportState>({
-    x: GRID_SIZE.width / 2,
-    y: GRID_SIZE.height / 2,
-    zoom: 1,
-    rotation: 0,
-  });
+  const [isClient, setIsClient] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [defaultView, setDefaultView] = useState<{ zoom: number; position: { x: number; y: number } } | null>(null);
+
+  const didDragRef = useRef(false);
+  const dragThreshold = 5;
+
+  const [highlightedPixel, setHighlightedPixel] = useState<{ x: number; y: number } | null>(null);
+  const [selectedPixelDetails, setSelectedPixelDetails] = useState<SelectedPixelDetails | null>(null);
+
+  const [showPixelModal, setShowPixelModal] = useState(false);
   
-  const [selectedPixel, setSelectedPixel] = useState<PixelData | null>(null);
-  const [hoveredPixel, setHoveredPixel] = useState<{ x: number; y: number } | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>('hybrid');
-  const [interactionMode, setInteractionMode] = useState<InteractionMode>('select');
-  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadingProgress, setLoadingProgress] = useState(0);
-  const [mapData, setMapData] = useState<MapData | null>(null);
-  
-  // Refs
   const containerRef = useRef<HTMLDivElement>(null);
-  const svgRef = useRef<SVGSVGElement>(null);
-  const isDragging = useRef(false);
-  const lastMousePos = useRef({ x: 0, y: 0 });
-  
-  // Hooks
+  const pixelCanvasRef = useRef<HTMLCanvasElement>(null);
+  const outlineCanvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
+
+  const [mapData, setMapData] = useState<MapData | null>(null);
+  const [pixelBitmap, setPixelBitmap] = useState<Uint8Array | null>(null);
+  const [activePixelsInMap, setActivePixelsInMap] = useState(0);
+  const [isLoadingMap, setIsLoadingMap] = useState(true);
+  const [progressMessage, setProgressMessage] = useState("Aguardando cliente...");
+  
+  const [soldPixels, setSoldPixels] = useState<SoldPixel[]>([
+      { x: Math.floor(LOGICAL_GRID_COLS_CONFIG * 0.451), y: Math.floor(logicalGridRows * 0.302), color: 'hsl(var(--accent))', title: 'Pixel especial LIS', ownerId: 'user123' },
+      { x: Math.floor(LOGICAL_GRID_COLS_CONFIG * 0.503), y: Math.floor(logicalGridRows * 0.204), color: 'magenta', title: 'Pixel especial POR', ownerId: MOCK_CURRENT_USER_ID, pixelImageUrl: 'https://placehold.co/1x1.png' },
+      { x: Math.floor(LOGICAL_GRID_COLS_CONFIG * 0.555), y: Math.floor(logicalGridRows * 0.756), color: 'cyan', title: 'Pixel especial FAR', ownerId: 'user456' },
+  ]);
+
+  const autoResetTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const [unsoldColor, setUnsoldColor] = useState('');
+  const [strokeColor, setStrokeColor] = useState('');
+
+  const [loadedPixelImages, setLoadedPixelImages] = useState<Record<string, HTMLImageElement>>({});
+
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+
+  const clearAutoResetTimeout = useCallback(() => {
+    if (autoResetTimeoutRef.current) {
+      clearTimeout(autoResetTimeoutRef.current);
+      autoResetTimeoutRef.current = null;
+    }
+  }, []);
+  
+  useEffect(() => {
+    setIsClient(true);
+     if (typeof window !== 'undefined') {
+      const computedStyle = getComputedStyle(document.documentElement);
+      setUnsoldColor(computedStyle.getPropertyValue('--secondary').trim());
+      setStrokeColor(computedStyle.getPropertyValue('--muted-foreground').trim());
+    }
+  }, []);
 
   const handleMapDataLoaded = useCallback((data: MapData) => {
     setMapData(data);
   }, []);
 
-  // Memoized calculations
-  const visiblePixels = useMemo(() => {
-    if (!mapData) return [];
-    const margin = 100;
-    const startX = Math.max(0, Math.floor(viewport.x - margin / viewport.zoom));
-    const endX = Math.min(GRID_SIZE.width, Math.ceil(viewport.x + margin / viewport.zoom));
-    const startY = Math.max(0, Math.floor(viewport.y - margin / viewport.zoom));
-    const endY = Math.min(GRID_SIZE.height, Math.ceil(viewport.y + margin / viewport.zoom));
-    
-    const pixels: PixelData[] = [];
-    for (let x = startX; x < endX; x += 2) {
-      for (let y = startY; y < endY; y += 2) {
-        const pixel = generateMockPixelData(x, y, mapData);
-        if (pixel) {
-            pixels.push(pixel);
-        }
-      }
-    }
-    return pixels;
-  }, [viewport, mapData]);
-
-  const gridMetrics = useMemo((): GridMetrics => {
-    const totalPixels = GRID_SIZE.width * GRID_SIZE.height;
-    const ownedPixels = Math.floor(totalPixels * 0.15);
-    const availablePixels = totalPixels - ownedPixels;
-    const averagePrice = 45.50;
-    
-    const hotspots = Array.from({ length: 10 }, () => ({
-      x: Math.random() * GRID_SIZE.width,
-      y: Math.random() * GRID_SIZE.height,
-      activity: Math.random() * 100,
-    }));
-
-    return {
-      totalPixels,
-      ownedPixels,
-      availablePixels,
-      averagePrice,
-      hotspots,
-    };
-  }, []);
-
-  // Loading simulation
   useEffect(() => {
-    const loadingTimer = setInterval(() => {
-      setLoadingProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(loadingTimer);
-          setIsLoading(false);
-          return 100;
-        }
-        return prev + Math.random() * 15;
-      });
-    }, 100);
-
-    return () => clearInterval(loadingTimer);
-  }, []);
-
-  // Event handlers
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (interactionMode === 'pan') {
-      isDragging.current = true;
-      lastMousePos.current = { x: e.clientX, y: e.clientY };
-      e.preventDefault();
-    }
-  }, [interactionMode]);
-
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (isDragging.current && interactionMode === 'pan') {
-      const deltaX = e.clientX - lastMousePos.current.x;
-      const deltaY = e.clientY - lastMousePos.current.y;
-      
-      setViewport(prev => ({
-        ...prev,
-        x: prev.x - deltaX / viewport.zoom,
-        y: prev.y - deltaY / viewport.zoom,
-      }));
-      
-      lastMousePos.current = { x: e.clientX, y: e.clientY };
-    }
-  }, [interactionMode, viewport.zoom]);
-
-  const handleMouseUp = useCallback(() => {
-    isDragging.current = false;
-  }, []);
-
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault();
-    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-    const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, viewport.zoom * zoomFactor));
+    if (!isClient || !mapData || !mapData.svgElement) return;
+  
+    setProgressMessage("A renderizar mapa melhorado...");
+    setIsLoadingMap(true);
     
-    setViewport(prev => ({
-      ...prev,
-      zoom: newZoom,
-    }));
-  }, [viewport.zoom]);
+    const { svgElement } = mapData;
+    
+    const serializer = new XMLSerializer();
+    const svgString = serializer.serializeToString(svgElement);
+    
+    const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+    
+    const offscreenCanvas = document.createElement('canvas');
+    offscreenCanvas.width = canvasDrawWidth;
+    offscreenCanvas.height = canvasDrawHeight;
+    const ctx = offscreenCanvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) {
+        setIsLoadingMap(false);
+        URL.revokeObjectURL(url);
+        return;
+    }
+    
+    const img = new Image();
+    img.onload = () => {
+        ctx.drawImage(img, 0, 0, canvasDrawWidth, canvasDrawHeight);
+        URL.revokeObjectURL(url);
 
-  const handlePixelClick = useCallback((pixel: PixelData) => {
-    if (interactionMode === 'select') {
-      setSelectedPixel(pixel);
-      setShowPurchaseModal(true);
+        try {
+          const imageData = ctx.getImageData(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+          const data = imageData.data;
+          const newBitmap = new Uint8Array(LOGICAL_GRID_COLS_CONFIG * logicalGridRows);
+          let activePixels = 0;
       
-      // Update GPS coordinates
-      const gps = mapPixelToApproxGps(pixel.x, pixel.y, GRID_SIZE.width, GRID_SIZE.height);
-      if (gps) {
-        console.log(`Pixel (${pixel.x}, ${pixel.y}) ≈ GPS (${gps.lat}, ${gps.lon})`);
+          for (let row = 0; row < logicalGridRows; row++) {
+            for (let col = 0; col < LOGICAL_GRID_COLS_CONFIG; col++) {
+              const canvasX = Math.floor((col + 0.5) * RENDERED_PIXEL_SIZE_CONFIG);
+              const canvasY = Math.floor((row + 0.5) * RENDERED_PIXEL_SIZE_CONFIG);
+              const index = (canvasY * offscreenCanvas.width + canvasX) * 4;
+              
+              if (data[index + 3] > 0) {
+                newBitmap[row * LOGICAL_GRID_COLS_CONFIG + col] = 1;
+                activePixels++;
+              }
+            }
+          }
+          setPixelBitmap(newBitmap);
+          setActivePixelsInMap(activePixels);
+        } catch(e) {
+          console.error("Error generating pixel bitmap:", e);
+          toast({ title: "Erro na Grelha", description: "Não foi possível gerar a grelha interativa.", variant: "destructive" });
+        } finally {
+          setIsLoadingMap(false);
+          setProgressMessage("");
+        }
+    };
+    img.onerror = () => {
+        console.error("Failed to load SVG as image.");
+        toast({ title: "Erro no Mapa", description: "Não foi possível carregar o SVG melhorado.", variant: "destructive" });
+        setIsLoadingMap(false);
+        URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  
+  }, [isClient, mapData, toast]);
+
+  useEffect(() => {
+      if (!pixelBitmap || !unsoldColor) return;
+      const canvas = pixelCanvasRef.current;
+      if (!canvas) return;
+
+      if (canvas.width !== canvasDrawWidth || canvas.height !== canvasDrawHeight) {
+          canvas.width = canvasDrawWidth;
+          canvas.height = canvasDrawHeight;
+      }
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      
+      ctx.imageSmoothingEnabled = false;
+      ctx.fillStyle = `hsl(${unsoldColor})`;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let row = 0; row < logicalGridRows; row++) {
+          for (let col = 0; col < LOGICAL_GRID_COLS_CONFIG; col++) {
+              if (pixelBitmap[row * LOGICAL_GRID_COLS_CONFIG + col] === 1) {
+                  ctx.fillRect(
+                      col * RENDERED_PIXEL_SIZE_CONFIG,
+                      row * RENDERED_PIXEL_SIZE_CONFIG,
+                      RENDERED_PIXEL_SIZE_CONFIG,
+                      RENDERED_PIXEL_SIZE_CONFIG
+                  );
+              }
+          }
+      }
+  }, [pixelBitmap, unsoldColor]);
+
+  useEffect(() => {
+    soldPixels.forEach(pixel => {
+        if (pixel.pixelImageUrl && !loadedPixelImages[pixel.pixelImageUrl]) {
+            const img = new window.Image();
+            img.src = pixel.pixelImageUrl;
+            img.onload = () => {
+                setLoadedPixelImages(prevImages => ({
+                    ...prevImages,
+                    [pixel.pixelImageUrl!]: img,
+                }));
+            };
+            img.onerror = () => {
+                console.error(`Failed to load pixel image: ${pixel.pixelImageUrl}`);
+            };
+        }
+    });
+  }, [soldPixels, loadedPixelImages]);
+
+  useEffect(() => { 
+    if (!soldPixels || !pixelCanvasRef.current) return;
+
+    const ctx = pixelCanvasRef.current.getContext('2d');
+    if (!ctx) return;
+
+    ctx.imageSmoothingEnabled = false;
+
+    soldPixels.forEach(pixel => {
+      const renderX = pixel.x * RENDERED_PIXEL_SIZE_CONFIG;
+      const renderY = pixel.y * RENDERED_PIXEL_SIZE_CONFIG;
+      
+      if (pixel.pixelImageUrl && loadedPixelImages[pixel.pixelImageUrl]) {
+          const img = loadedPixelImages[pixel.pixelImageUrl];
+          ctx.drawImage(img, renderX, renderY, RENDERED_PIXEL_SIZE_CONFIG, RENDERED_PIXEL_SIZE_CONFIG);
+      } else {
+          ctx.fillStyle = pixel.color;
+          ctx.fillRect(renderX, renderY, RENDERED_PIXEL_SIZE_CONFIG, RENDERED_PIXEL_SIZE_CONFIG);
+      }
+    });
+
+  }, [soldPixels, loadedPixelImages, pixelBitmap]);
+  
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const resizeObserver = new ResizeObserver(entries => {
+      for (let entry of entries) {
+        setContainerSize({
+          width: entry.contentRect.width,
+          height: entry.contentRect.height,
+        });
+      }
+    });
+
+    resizeObserver.observe(container);
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const canvas = outlineCanvasRef.current;
+    if (canvas) {
+      canvas.width = containerSize.width;
+      canvas.height = containerSize.height;
+    }
+  }, [containerSize]);
+
+  useEffect(() => {
+    if (!mapData || !strokeColor || !outlineCanvasRef.current || containerSize.width === 0) return;
+    const canvas = outlineCanvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+  
+    const logicalToSvgScale = canvasDrawWidth / SVG_VIEWBOX_WIDTH;
+  
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw district outlines
+    ctx.save();
+    ctx.translate(position.x, position.y);
+    ctx.scale(zoom * logicalToSvgScale, zoom * logicalToSvgScale);
+    ctx.strokeStyle = `hsl(${strokeColor})`;
+    ctx.lineWidth = 0.5 / (zoom * logicalToSvgScale);
+    ctx.imageSmoothingEnabled = true;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+  
+    mapData.pathStrings.forEach(pathString => {
+        try {
+            const path = new Path2D(pathString);
+            ctx.stroke(path);
+        } catch(e) {
+        }
+    });
+    ctx.restore();
+  
+    // Draw highlighted pixel border
+    ctx.save();
+    ctx.translate(position.x, position.y);
+    ctx.scale(zoom, zoom);
+    if (highlightedPixel) {
+        ctx.strokeStyle = 'hsl(var(--foreground))';
+        ctx.lineWidth = (0.5 / zoom) * RENDERED_PIXEL_SIZE_CONFIG;
+        ctx.strokeRect(
+            highlightedPixel.x * RENDERED_PIXEL_SIZE_CONFIG,
+            highlightedPixel.y * RENDERED_PIXEL_SIZE_CONFIG,
+            RENDERED_PIXEL_SIZE_CONFIG,
+            RENDERED_PIXEL_SIZE_CONFIG
+        );
+    }
+    ctx.restore();
+
+  }, [mapData, zoom, position, strokeColor, containerSize, highlightedPixel]);
+  
+
+  useEffect(() => { 
+    if (isClient && containerRef.current && mapData?.pathStrings && !defaultView && canvasDrawWidth > 0 && canvasDrawHeight > 0) {
+      const containerWidth = containerRef.current.offsetWidth;
+      const effectiveContainerHeight = window.innerHeight - HEADER_HEIGHT_PX - BOTTOM_NAV_HEIGHT_PX;
+      
+      if (containerWidth > 0 && effectiveContainerHeight > 0) {
+        const fitZoomX = containerWidth / canvasDrawWidth;
+        const fitZoomY = effectiveContainerHeight / canvasDrawHeight;
+        const zoomToFit = Math.min(fitZoomX, fitZoomY);
+        
+        const calculatedZoom = Math.max(MIN_ZOOM, zoomToFit * 0.95); 
+        const canvasContentWidth = canvasDrawWidth * calculatedZoom;
+        const canvasContentHeight = canvasDrawHeight * calculatedZoom;
+        
+        const calculatedPosition = {
+          x: (containerWidth - canvasContentWidth) / 2,
+          y: (effectiveContainerHeight - canvasContentHeight) / 2,
+        };
+        
+        setDefaultView({ zoom: calculatedZoom, position: calculatedPosition });
+        setZoom(calculatedZoom);
+        setPosition(calculatedPosition);
       }
     }
-  }, [interactionMode]);
+  }, [isClient, mapData, defaultView, canvasDrawWidth, canvasDrawHeight]);
 
-  const handleZoomIn = useCallback(() => {
-    setViewport(prev => ({
-      ...prev,
-      zoom: Math.min(MAX_ZOOM, prev.zoom * (1 + ZOOM_STEP)),
-    }));
-  }, []);
 
-  const handleZoomOut = useCallback(() => {
-    setViewport(prev => ({
-      ...prev,
-      zoom: Math.max(MIN_ZOOM, prev.zoom * (1 - ZOOM_STEP)),
-    }));
-  }, []);
+ const handleResetView = useCallback(() => {
+    clearAutoResetTimeout();
+    if (defaultView) {
+      setZoom(defaultView.zoom);
+      setPosition(defaultView.position);
+    } else if (isClient && containerRef.current && mapData?.pathStrings && canvasDrawWidth > 0 && canvasDrawHeight > 0) { 
+        const containerWidth = containerRef.current.offsetWidth;
+        const effectiveContainerHeight = window.innerHeight - HEADER_HEIGHT_PX - BOTTOM_NAV_HEIGHT_PX;
+        if (containerWidth > 0 && effectiveContainerHeight > 0) {
+            const fitZoomX = containerWidth / canvasDrawWidth;
+            const fitZoomY = effectiveContainerHeight / canvasDrawHeight;
+            const zoomToFit = Math.min(fitZoomX, fitZoomY);
+            const fallbackZoom = Math.max(MIN_ZOOM, zoomToFit * 0.95);
 
-  const handleResetView = useCallback(() => {
-    setViewport({
-      x: GRID_SIZE.width / 2,
-      y: GRID_SIZE.height / 2,
-      zoom: 1,
-      rotation: 0,
-    });
-  }, []);
+            const canvasContentWidth = canvasDrawWidth * fallbackZoom;
+            const canvasContentHeight = canvasDrawHeight * fallbackZoom;
+            const fallbackPosition = {
+                x: (containerWidth - canvasContentWidth) / 2,
+                y: (effectiveContainerHeight - canvasContentHeight) / 2,
+            };
+            setZoom(fallbackZoom);
+            setPosition(fallbackPosition);
+            setDefaultView({ zoom: fallbackZoom, position: fallbackPosition }); 
+        }
+    }
+  }, [defaultView, mapData, clearAutoResetTimeout, canvasDrawWidth, canvasDrawHeight, isClient]); 
 
-  const handlePurchase = async (pixelData: PixelData, paymentMethod: PaymentMethod, customizations: any) => {
-    // Simulate purchase process
+
+  const handleZoomIn = () => { clearAutoResetTimeout(); setZoom((prevZoom) => Math.min(prevZoom * 1.2, MAX_ZOOM)); };
+  const handleZoomOut = () => { clearAutoResetTimeout(); setZoom((prevZoom) => Math.max(prevZoom / 1.2, MIN_ZOOM)); };
+
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    clearAutoResetTimeout();
+    const targetElement = e.target as HTMLElement;
+     if (targetElement.closest('button, [data-dialog-content], [data-tooltip-content], [data-popover-content], label, a, [role="menuitem"], [role="tab"], input, textarea')) {
+        return;
+    }
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+    didDragRef.current = false;
+  };
+
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !containerRef.current) return;
+    const currentX = e.clientX - dragStart.x;
+    const currentY = e.clientY - dragStart.y;
+
+    if (!didDragRef.current) {
+        const dx = Math.abs(currentX - position.x);
+        const dy = Math.abs(currentY - position.y);
+        if (dx > dragThreshold || dy > dragThreshold) {
+            didDragRef.current = true;
+        }
+    }
+    setPosition({ x: currentX, y: currentY });
+  };
+  
+  const handleCanvasClick = (event: React.MouseEvent) => {
+    clearAutoResetTimeout();
+
+    if (isLoadingMap || !pixelBitmap || !containerRef.current) {
+      toast({
+        title: "Mapa a Carregar",
+        description: "A grelha interativa está a ser processada. Por favor, aguarde.",
+        variant: "default",
+      });
+      return;
+    }
+
+    const rect = containerRef.current.getBoundingClientRect();
+    const clickXInContainer = event.clientX - rect.left;
+    const clickYInContainer = event.clientY - rect.top;
+
+    const xOnContent = (clickXInContainer - position.x) / zoom;
+    const yOnContent = (clickYInContainer - position.y) / zoom;
+
+    const logicalCol = Math.floor(xOnContent / RENDERED_PIXEL_SIZE_CONFIG);
+    const logicalRow = Math.floor(yOnContent / RENDERED_PIXEL_SIZE_CONFIG);
+
+    if (logicalCol >= 0 && logicalCol < LOGICAL_GRID_COLS_CONFIG && logicalRow >= 0 && logicalRow < logicalGridRows) {
+      const bitmapIdx = logicalRow * LOGICAL_GRID_COLS_CONFIG + logicalCol;
+
+      if (pixelBitmap[bitmapIdx] === 1) {
+        setHighlightedPixel({ x: logicalCol, y: logicalRow });
+
+        const existingSoldPixel = soldPixels.find(p => p.x === logicalCol && p.y === logicalRow);
+        const randomRarity = mockRarities[Math.floor(Math.random() * mockRarities.length)];
+        const randomLore = mockLoreSnippets[Math.floor(Math.random() * mockLoreSnippets.length)];
+        const approxGps = mapPixelToApproxGps(logicalCol, logicalRow, LOGICAL_GRID_COLS_CONFIG, logicalGridRows);
+        
+        let mockDetails: SelectedPixelDetails;
+
+        if (existingSoldPixel) {
+             mockDetails = {
+                x: logicalCol,
+                y: logicalRow,
+                owner: existingSoldPixel.ownerId || MOCK_CURRENT_USER_ID,
+                price: Math.floor(Math.random() * 50) + 10,
+                lastSold: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 30),
+                views: Math.floor(Math.random() * 1000),
+                likes: Math.floor(Math.random() * 200),
+                region: "Lisboa",
+                isProtected: false,
+                acquisitionDate: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 30).toLocaleDateString('pt-PT'),
+                lastModifiedDate: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 7).toLocaleDateString('pt-PT'),
+                color: existingSoldPixel.color,
+                history: [{ owner: existingSoldPixel.ownerId || MOCK_CURRENT_USER_ID, date: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 30).toLocaleDateString('pt-PT'), price: Math.floor(Math.random() * 40) + 5 }],
+                isOwnedByCurrentUser: (existingSoldPixel.ownerId || MOCK_CURRENT_USER_ID) === MOCK_CURRENT_USER_ID,
+                isForSaleBySystem: false,
+                manualDescription: 'Este é o meu pixel especial!',
+                pixelImageUrl: existingSoldPixel.pixelImageUrl,
+                dataAiHint: 'pixel image',
+                title: existingSoldPixel.title || `Pixel de ${existingSoldPixel.ownerId || MOCK_CURRENT_USER_ID}`,
+                tags: ['meu', 'favorito'],
+                linkUrl: Math.random() > 0.5 ? 'https://dourado.com' : undefined,
+                isForSaleByOwner: Math.random() > 0.5,
+                salePrice: Math.random() > 0.5 ? Math.floor(Math.random() * 100) + 20 : undefined,
+                isFavorited: Math.random() > 0.5,
+                rarity: randomRarity,
+                loreSnippet: randomLore,
+                gpsCoords: approxGps,
+            };
+        } else { 
+             mockDetails = {
+                x: logicalCol,
+                y: logicalRow,
+                owner: 'Disponível (Sistema)',
+                price: Math.floor(Math.random() * 50) + 10,
+                views: Math.floor(Math.random() * 100),
+                likes: Math.floor(Math.random() * 20),
+                region: "Alentejo",
+                isProtected: true,
+                color: `hsl(${unsoldColor})`,
+                isOwnedByCurrentUser: false,
+                isForSaleBySystem: true,
+                history: [],
+                isFavorited: Math.random() > 0.8,
+                rarity: randomRarity,
+                loreSnippet: randomLore,
+                gpsCoords: approxGps,
+            };
+        }
+
+        setSelectedPixelDetails(mockDetails);
+        setShowPixelModal(true);
+      } else { 
+        setHighlightedPixel(null);
+        setSelectedPixelDetails(null);
+        toast({ title: "Fora da Área Interativa", description: `Clicou fora da área interativa de Portugal. Coords Lógicas: (${logicalCol}, ${logicalRow}).`, variant: "default" });
+      }
+    } else { 
+      setHighlightedPixel(null);
+      setSelectedPixelDetails(null);
+      toast({ title: "Fora dos Limites do Mapa", description: `Clicou fora dos limites do mapa. Coords Lógicas: (${logicalCol}, ${logicalRow}).`, variant: "default" });
+    }
+  };
+
+  const handleMouseUpOrLeave = (event: React.MouseEvent) => {
+    if (isDragging) {
+      if (!didDragRef.current) {
+        handleCanvasClick(event);
+      }
+      setIsDragging(false);
+    }
+  };
+
+  const handleGoToMyLocation = () => {
+    if (!containerRef.current || !pixelBitmap) return;
+
+    // Simulate finding a location in Lisbon
+    const myLocationPixel = { x: 579, y: 1358 };
+
+    // Check if the pixel is valid and on the map
+    const bitmapIdx = myLocationPixel.y * LOGICAL_GRID_COLS_CONFIG + myLocationPixel.x;
+    if (pixelBitmap[bitmapIdx] !== 1) {
+        toast({ title: "Localização não encontrada", description: "Não foi possível encontrar um pixel ativo na sua localização simulada."});
+        return;
+    }
+
+    setHighlightedPixel(myLocationPixel);
+
+    const targetZoom = 15;
+    const containerWidth = containerRef.current.offsetWidth;
+    const effectiveContainerHeight = window.innerHeight - HEADER_HEIGHT_PX - BOTTOM_NAV_HEIGHT_PX;
+
+    const targetX = -myLocationPixel.x * RENDERED_PIXEL_SIZE_CONFIG * targetZoom + containerWidth / 2;
+    const targetY = -myLocationPixel.y * RENDERED_PIXEL_SIZE_CONFIG * targetZoom + effectiveContainerHeight / 2;
+    
+    setPosition({ x: targetX, y: targetY });
+    setZoom(targetZoom);
+    toast({ title: "Localização Encontrada!", description: "Centrado no pixel mais próximo da sua localização." });
+  };
+
+  const handleWheelZoom = useCallback((event: WheelEvent) => {
+    clearAutoResetTimeout();
+    if (!containerRef.current) return;
+    event.preventDefault();
+
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const mouseXInContainer = event.clientX - containerRect.left;
+    const mouseYInContainer = event.clientY - containerRect.top;
+
+    let newZoom;
+    if (event.deltaY < 0) { 
+      newZoom = Math.min(zoom * ZOOM_SENSITIVITY_FACTOR, MAX_ZOOM);
+    } else { 
+      newZoom = Math.max(zoom / ZOOM_SENSITIVITY_FACTOR, MIN_ZOOM);
+    }
+
+    if (newZoom === zoom) return; 
+
+    const currentCanvasX = (mouseXInContainer - position.x) / zoom;
+    const currentCanvasY = (mouseYInContainer - position.y) / zoom;
+
+    const newPosX = mouseXInContainer - currentCanvasX * newZoom;
+    const newPosY = mouseYInContainer - currentCanvasY * newZoom;
+
+    setZoom(newZoom);
+    setPosition({ x: newPosX, y: newPosY });
+
+  }, [zoom, position, clearAutoResetTimeout]); 
+
+  useEffect(() => { 
+    const currentContainer = containerRef.current;
+    if (currentContainer) {
+      currentContainer.addEventListener('wheel', handleWheelZoom, { passive: false });
+      return () => {
+        currentContainer.removeEventListener('wheel', handleWheelZoom);
+      };
+    }
+  }, [handleWheelZoom]); 
+
+
+ useEffect(() => { 
+    if (autoResetTimeoutRef.current) {
+      clearTimeout(autoResetTimeoutRef.current);
+    }
+    if (!defaultView || showPixelModal || isDragging) { 
+      return;
+    } 
+
+    const isDefaultZoom = Math.abs(zoom - defaultView.zoom) < 0.001;
+    const isDefaultPosition =
+      defaultView.position &&
+      Math.abs(position.x - defaultView.position.x) < 0.5 &&
+      Math.abs(position.y - defaultView.position.y) < 0.5;
+
+    if (!isDefaultZoom || !isDefaultPosition) {
+      autoResetTimeoutRef.current = setTimeout(() => {
+        handleResetView();
+      }, 15000); 
+    }
+
+    return () => {
+      if (autoResetTimeoutRef.current) {
+        clearTimeout(autoResetTimeoutRef.current);
+      }
+    };
+  }, [zoom, position, handleResetView, defaultView, showPixelModal, isDragging]);
+  
+  const showProgressIndicator = isLoadingMap || (progressMessage !== "");
+
+  const handlePurchase = async (pixelData: any, paymentMethod: any, customizations: any) => {
+    // Simulate API call
+    console.log("Purchasing pixel:", pixelData, "with", paymentMethod, "and customizations:", customizations);
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    toast({
-      title: "Compra Realizada!",
-      description: `Pixel (${pixelData.x}, ${pixelData.y}) adquirido com sucesso!`,
-    });
-    
-    return Math.random() > 0.1; // 90% success rate
-  };
-
-  const getRarityColor = (rarity: PixelRarity) => {
-    const colors = {
-      common: '#6B7280',
-      uncommon: '#10B981',
-      rare: '#3B82F6',
-      epic: '#8B5CF6',
-      legendary: '#F59E0B',
+    const newSoldPixel: SoldPixel = {
+      x: pixelData.x,
+      y: pixelData.y,
+      color: customizations.color || USER_BOUGHT_PIXEL_COLOR, 
+      ownerId: MOCK_CURRENT_USER_ID, 
+      title: customizations.title || `Meu Pixel (${pixelData.x},${pixelData.y})`,
+      pixelImageUrl: customizations.drawingData, // or from imageFile
     };
-    return colors[rarity];
-  };
+    setSoldPixels(prev => [...prev.filter(p => p.x !== pixelData.x || p.y !== pixelData.y), newSoldPixel]);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full bg-gradient-to-br from-background via-background/95 to-primary/5">
-        <Card className="bg-card/95 backdrop-blur-sm border-primary/20 shadow-xl max-w-md w-full mx-4">
-          <CardContent className="p-8 text-center space-y-6">
-            <div className="relative">
-              <Grid3X3 className="h-16 w-16 text-primary mx-auto animate-pulse" />
-              <div className="absolute inset-0 animate-ping">
-                <Grid3X3 className="h-16 w-16 text-primary/50 mx-auto" />
-              </div>
-            </div>
-            <div className="space-y-3">
-              <h2 className="text-xl font-headline text-primary text-gradient-gold">
-                Carregando Pixel Universe
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                Preparando o mapa interativo de Portugal...
-              </p>
-              <div className="space-y-2">
-                <Progress value={loadingProgress} className="h-2" />
-                <p className="text-xs text-muted-foreground">
-                  {Math.round(loadingProgress)}% completo
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+    return true; // Simulate success
+  };
 
   return (
-    <TooltipProvider>
-      <div className="relative h-full w-full overflow-hidden bg-gradient-to-br from-background via-background/98 to-primary/5">
-        {/* Main Grid Container */}
-        <div
-          ref={containerRef}
-          className="absolute inset-0 cursor-crosshair"
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onWheel={handleWheel}
-          style={{
-            cursor: interactionMode === 'pan' ? (isDragging.current ? 'grabbing' : 'grab') : 
-                   interactionMode === 'zoom' ? 'zoom-in' : 'crosshair'
-          }}
-        >
-          <svg
-            ref={svgRef}
-            className="w-full h-full"
-            viewBox={`${viewport.x - window.innerWidth / (2 * viewport.zoom)} ${viewport.y - window.innerHeight / (2 * viewport.zoom)} ${window.innerWidth / viewport.zoom} ${window.innerHeight / viewport.zoom}`}
-          >
-            {/* Background Grid */}
-            <defs>
-              <pattern
-                id="grid"
-                width={PIXEL_SIZE}
-                height={PIXEL_SIZE}
-                patternUnits="userSpaceOnUse"
-              >
-                <path
-                  d={`M ${PIXEL_SIZE} 0 L 0 0 0 ${PIXEL_SIZE}`}
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="0.1"
-                  className="text-border/20"
-                />
-              </pattern>
-            </defs>
-            
-            {viewMode !== 'map' && (
-              <rect
-                width={GRID_SIZE.width * PIXEL_SIZE}
-                height={GRID_SIZE.height * PIXEL_SIZE}
-                fill="url(#grid)"
-                className="opacity-30"
-              />
-            )}
-
-            {/* Portugal Map Overlay */}
-            {(viewMode === 'map' || viewMode === 'hybrid') && (
-              <g transform={`scale(${PIXEL_SIZE})`}>
-                <PortugalMapSvg 
-                  className="opacity-20 fill-primary/10 stroke-primary/30"
-                  onMapDataLoaded={handleMapDataLoaded}
-                />
-              </g>
-            )}
-
-            {/* Pixels */}
-            {visiblePixels.map((pixel) => (
-              <g key={`${pixel.x}-${pixel.y}`}>
-                <rect
-                  x={pixel.x * PIXEL_SIZE}
-                  y={pixel.y * PIXEL_SIZE}
-                  width={PIXEL_SIZE}
-                  height={PIXEL_SIZE}
-                  fill={pixel.color}
-                  stroke={pixel.owner ? getRarityColor(pixel.rarity) : 'transparent'}
-                  strokeWidth={pixel.owner ? 0.2 : 0}
-                  className={cn(
-                    "transition-all duration-200 cursor-pointer",
-                    hoveredPixel?.x === pixel.x && hoveredPixel?.y === pixel.y && "brightness-110 scale-110",
-                    pixel.isProtected && "drop-shadow-sm"
-                  )}
-                  onClick={() => handlePixelClick(pixel)}
-                  onMouseEnter={() => setHoveredPixel({ x: pixel.x, y: pixel.y })}
-                  onMouseLeave={() => setHoveredPixel(null)}
-                />
-                
-                {/* Rarity indicators */}
-                {pixel.owner && (pixel.rarity === 'epic' || pixel.rarity === 'legendary') && (
-                  <circle
-                    cx={pixel.x * PIXEL_SIZE + PIXEL_SIZE / 2}
-                    cy={pixel.y * PIXEL_SIZE + PIXEL_SIZE / 2}
-                    r={PIXEL_SIZE / 4}
-                    fill={getRarityColor(pixel.rarity)}
-                    className="animate-pulse"
-                  />
-                )}
-              </g>
-            ))}
-
-            {/* Hotspots */}
-            {gridMetrics.hotspots.map((hotspot, index) => (
-              <circle
-                key={index}
-                cx={hotspot.x * PIXEL_SIZE}
-                cy={hotspot.y * PIXEL_SIZE}
-                r={Math.max(2, hotspot.activity / 10)}
-                fill="none"
-                stroke="#FF6B6B"
-                strokeWidth="0.5"
-                className="animate-pulse opacity-60"
-              />
-            ))}
-          </svg>
+    <div className="flex flex-col h-full w-full overflow-hidden relative animate-fade-in">
+      <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 bg-card/80 backdrop-blur-sm p-2 rounded-lg shadow-lg pointer-events-auto animate-slide-in-up animation-delay-200">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button pointerEvents="auto" variant="outline" size="icon" onClick={handleZoomIn} aria-label="Zoom In">
+                <ZoomIn className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent><p>Aumentar Zoom</p></TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button pointerEvents="auto" variant="outline" size="icon" onClick={handleZoomOut} aria-label="Zoom Out">
+                <ZoomOut className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent><p>Diminuir Zoom</p></TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button pointerEvents="auto" variant="outline" size="icon" onClick={handleResetView} aria-label="Reset View">
+                <Expand className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent><p>Resetar Vista</p></TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        <div className="mt-2 p-2 bg-background/50 rounded-md text-xs font-code">
+          <p>Zoom: {zoom.toFixed(2)}x</p>
+          <p>X: {Math.round(position.x)}, Y: {Math.round(position.y)}</p>
+          {highlightedPixel && <p>Pixel: ({highlightedPixel.x}, {highlightedPixel.y})</p>}
+          <p>Píxeis no Mapa: {activePixelsInMap > 0 ? activePixelsInMap.toLocaleString('pt-PT') : '...'}</p>
         </div>
-
-        {/* Controls Panel */}
-        <div className="absolute top-4 left-4 space-y-2">
-          <Card className="bg-card/95 backdrop-blur-sm border-primary/20 shadow-lg">
-            <CardContent className="p-3">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant={interactionMode === 'select' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setInteractionMode('select')}
-                >
-                  <MousePointer className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={interactionMode === 'pan' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setInteractionMode('pan')}
-                >
-                  <Hand className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={interactionMode === 'zoom' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setInteractionMode('zoom')}
-                >
-                  <Search className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-card/95 backdrop-blur-sm border-primary/20 shadow-lg">
-            <CardContent className="p-3">
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={handleZoomIn}>
-                  <ZoomIn className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleZoomOut}>
-                  <ZoomOut className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleResetView}>
-                  <RotateCcw className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-card/95 backdrop-blur-sm border-primary/20 shadow-lg">
-            <CardContent className="p-3">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant={viewMode === 'grid' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setViewMode('grid')}
-                >
-                  <Grid3X3 className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={viewMode === 'map' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setViewMode('map')}
-                >
-                  <MapPin className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={viewMode === 'hybrid' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setViewMode('hybrid')}
-                >
-                  <Maximize2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Info Panel */}
-        <div className="absolute top-4 right-4 space-y-2">
-          <Card className="bg-card/95 backdrop-blur-sm border-primary/20 shadow-lg">
-            <CardContent className="p-3">
-              <div className="text-xs space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Zoom:</span>
-                  <span className="font-mono">{(viewport.zoom * 100).toFixed(0)}%</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Posição:</span>
-                  <span className="font-mono">
-                    {Math.round(viewport.x)}, {Math.round(viewport.y)}
-                  </span>
-                </div>
-                {hoveredPixel && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Pixel:</span>
-                    <span className="font-mono text-primary">
-                      ({hoveredPixel.x}, {hoveredPixel.y})
-                    </span>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-card/95 backdrop-blur-sm border-primary/20 shadow-lg">
-            <CardContent className="p-3">
-              <div className="text-xs space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Total:</span>
-                  <span className="font-mono">{gridMetrics.totalPixels.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Ocupados:</span>
-                  <span className="font-mono text-green-500">{gridMetrics.ownedPixels.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Livres:</span>
-                  <span className="font-mono text-blue-500">{gridMetrics.availablePixels.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Preço médio:</span>
-                  <span className="font-mono text-primary">{gridMetrics.averagePrice}€</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Pixel Tooltip */}
-        {hoveredPixel && (
-          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 pointer-events-none">
-            <Card className="bg-card/95 backdrop-blur-sm border-primary/20 shadow-lg">
-              <CardContent className="p-3">
-                {(() => {
-                  const pixel = visiblePixels.find(p => p.x === hoveredPixel.x && p.y === hoveredPixel.y);
-                  if (!pixel) return null;
-                  
-                  return (
-                    <div className="text-center space-y-2">
-                      <div className="flex items-center gap-2">
-                        <div 
-                          className="w-4 h-4 rounded border"
-                          style={{ backgroundColor: pixel.color }}
-                        />
-                        <span className="font-mono text-sm">
-                          ({pixel.x}, {pixel.y})
-                        </span>
-                        <Badge variant="outline" className="text-xs">
-                          {pixel.region}
-                        </Badge>
-                      </div>
-                      
-                      <div className="flex items-center justify-center gap-4 text-xs">
-                        <span className="flex items-center gap-1">
-                          <DollarSign className="h-3 w-3" />
-                          {pixel.price}€
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Eye className="h-3 w-3" />
-                          {pixel.views}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Heart className="h-3 w-3" />
-                          {pixel.likes}
-                        </span>
-                      </div>
-                      
-                      {pixel.owner && (
-                        <div className="flex items-center justify-center gap-1">
-                          <Crown className="h-3 w-3 text-primary" />
-                          <span className="text-xs text-primary">{pixel.owner}</span>
-                        </div>
-                      )}
-                      
-                      {pixel.isProtected && (
-                        <Badge variant="secondary" className="text-xs">
-                          <Shield className="h-3 w-3 mr-1" />
-                          Protegido
-                        </Badge>
-                      )}
-                    </div>
-                  );
-                })()}
-              </CardContent>
-            </Card>
+      </div>
+      
+      {showProgressIndicator && (
+          <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-20 bg-card/80 backdrop-blur-sm p-3 rounded-lg shadow-lg text-center pointer-events-none">
+            <div className="flex items-center justify-center">
+                <Sparkles className="h-5 w-5 text-primary animate-pulse mr-2" />
+                <p className="text-sm font-headline text-foreground">{progressMessage}</p>
+            </div>
           </div>
         )}
-
-        {/* Purchase Modal */}
+      
+      {selectedPixelDetails && (
         <EnhancedPixelPurchaseModal
-          isOpen={showPurchaseModal}
-          onClose={() => setShowPurchaseModal(false)}
-          pixelData={selectedPixel}
+          isOpen={showPixelModal}
+          onClose={() => setShowPixelModal(false)}
+          pixelData={selectedPixelDetails}
           userCredits={12500}
           userSpecialCredits={120}
           onPurchase={handlePurchase}
         />
+      )}
+
+      <div className="flex-grow w-full h-full p-4 md:p-8 flex items-center justify-center">
+        <div
+            ref={containerRef}
+            className="w-full h-full cursor-grab active:cursor-grabbing overflow-hidden relative rounded-xl"
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUpOrLeave}
+            onMouseLeave={handleMouseUpOrLeave}
+        >
+            <div
+            style={{
+                transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`,
+                transition: isDragging ? 'none' : 'transform 0.05s ease-out',
+                width: `${canvasDrawWidth}px`,
+                height: `${canvasDrawHeight}px`,
+                transformOrigin: 'top left',
+                position: 'relative', 
+            }}
+            >
+            <canvas
+                ref={pixelCanvasRef}
+                className="absolute top-0 left-0 w-full h-full z-10" 
+                style={{ imageRendering: 'pixelated' }} 
+            />
+            {(!mapData && isClient) && <PortugalMapSvg onMapDataLoaded={handleMapDataLoaded} className="invisible absolute" />}
+            </div>
+            <canvas
+                ref={outlineCanvasRef}
+                className="absolute top-0 left-0 w-full h-full z-20 pointer-events-none"
+                style={{ imageRendering: 'auto' }}
+            />
+        </div>
       </div>
-    </TooltipProvider>
+
+
+      <div className="absolute bottom-6 right-6 z-20 animate-scale-in animation-delay-500" pointerEvents="auto">
+        <Dialog>
+          <DialogTrigger asChild>
+             <Button pointerEvents="auto" size="icon" className="rounded-full w-14 h-14 shadow-lg button-gradient-gold button-3d-effect hover:button-gold-glow active:scale-95">
+                <Star className="h-7 w-7" />
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-sm border-primary/30 shadow-xl" data-dialog-content pointerEvents="auto">
+            <DialogHeader className="dialog-header-gold-accent rounded-t-lg">
+              <DialogTitle className="font-headline text-shadow-gold-sm">Ações Rápidas do Universo</DialogTitle>
+              <DialogDescription className="text-muted-foreground">
+                Explore, filtre e interaja com o mapa de pixels.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-3 py-4">
+              <Button pointerEvents="auto" variant="outline" className="button-3d-effect-outline"><Search className="mr-2 h-4 w-4" />Explorar Pixel por Coordenadas</Button>
+              <Button pointerEvents="auto" variant="outline" onClick={handleGoToMyLocation} className="button-3d-effect-outline"><MapPinIcon className="mr-2 h-4 w-4" />Ir para Minha Localização</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </div>
   );
 }
+
+    
