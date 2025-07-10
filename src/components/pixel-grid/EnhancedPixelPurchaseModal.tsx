@@ -293,14 +293,14 @@ export default function EnhancedPixelPurchaseModal({
       <span className="font-semibold text-foreground">{value}</span>
     </div>
   );
-
+  
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <SoundEffect src={SOUND_EFFECTS.PURCHASE} play={playPurchaseSound} onEnd={() => setPlayPurchaseSound(false)} />
       <SoundEffect src={SOUND_EFFECTS.ERROR} play={playErrorSound} onEnd={() => setPlayErrorSound(false)} />
       <Confetti active={showConfetti} duration={3000} onComplete={() => setShowConfetti(false)} />
       
-      <DialogContent className="max-w-7xl max-h-[95vh] flex flex-col p-0 gap-0">
+      <DialogContent className="max-w-4xl max-h-[95vh] flex flex-col p-0 gap-0">
         <DialogHeader className="p-6 border-b bg-gradient-to-br from-card via-card/95 to-primary/10 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 animate-shimmer" 
                style={{ backgroundSize: '200% 200%' }} />
@@ -493,7 +493,7 @@ export default function EnhancedPixelPurchaseModal({
                     </TabsTrigger>
                     <TabsTrigger value="details">Personalizar</TabsTrigger>
                   </TabsList>
-                    <TabsContent value="purchase" className="space-y-4 pt-4">
+                  <TabsContent value="purchase" className="space-y-4 pt-4">
                       {/* Price Display */}
                       <Card className="text-center bg-gradient-to-br from-primary/10 to-accent/10">
                         <CardContent className="p-6">
@@ -617,7 +617,6 @@ export default function EnhancedPixelPurchaseModal({
                         )}
                       </div>
                     </TabsContent>
-
                     <TabsContent value="details" className="space-y-4 pt-4">
                       <div className="space-y-4">
                         <div>
@@ -720,7 +719,6 @@ export default function EnhancedPixelPurchaseModal({
                 </Tabs>
               </div>
             </ScrollArea>
-        </div>
         </div>
       </DialogContent>
     </Dialog>
