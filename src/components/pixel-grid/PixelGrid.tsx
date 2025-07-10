@@ -6,6 +6,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   ZoomIn, ZoomOut, Expand, Search, Sparkles, MapPin as MapPinIcon,
   Map as MapIcon,
+  Star,
 } from 'lucide-react';
 import NextImage from 'next/image';
 import PortugalMapSvg, { type MapData } from './PortugalMapSvg';
@@ -15,6 +16,7 @@ import { generatePixelDescription, type GeneratePixelDescriptionInput } from '@/
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
+  DialogTrigger,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -793,5 +795,3 @@ export default function PixelGrid() {
     </div>
   );
 }
-
-    
