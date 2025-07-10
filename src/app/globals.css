@@ -105,7 +105,7 @@
   }
 
   html {
-    background-image: url('/Fundo.jpg');
+    background-image: url('/Fundo.png');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -576,7 +576,7 @@
   .dark .custom-scrollbar::-webkit-scrollbar-thumb {
     background: hsl(var(--muted-foreground) / 0.7);
   }
-
+  
   /* Gradient borders */
   .gradient-border {
     position: relative;
