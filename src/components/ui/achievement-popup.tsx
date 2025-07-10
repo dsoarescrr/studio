@@ -108,7 +108,7 @@ export function AchievementPopup({ show, achievement, onClose }: AchievementPopu
                     <div className="mb-2">
                       <motion.div animate={{ rotate: [0, 5, -5, 0] }} transition={{ duration: 2, repeat: Infinity }} className="p-3 rounded-full bg-background/20 animate-pulse">
                         {achievement.icon || <Trophy className="h-12 w-12" />}
-                      </div>
+                      </motion.div>
                     </div>
                     
                     <div className="space-y-1">
@@ -135,7 +135,7 @@ export function AchievementPopup({ show, achievement, onClose }: AchievementPopu
                           )} 
                         />
                       ))} 
-                    </div>
+                    </motion.div>
                   </div>
                 </div>
               </CardContent>
