@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -413,9 +414,21 @@ export default function EnhancedPixelPurchaseModal({
                       </div>
                     </div>
                     
-<<<<<<< HEAD
-                    <div className="h-32 bg-muted/20 rounded-lg flex items-center justify-center">
-                      <div className="text-center text-muted-foreground">
+                    <div className="h-32 bg-muted/20 rounded-lg flex items-center justify-center relative overflow-hidden">
+                      {/* Simulated price chart */}
+                      <div className="absolute inset-0 flex items-end px-4 pb-4">
+                        {mockMarketAnalysis.priceHistory.map((point, index) => {
+                          const height = (point.price / 200) * 100; // Scale to percentage
+                          return (
+                            <div 
+                              key={index} 
+                              className="flex-1 mx-px bg-primary/30 hover:bg-primary/60 transition-all rounded-t-sm"
+                              style={{ height: `${height}%` }}
+                            />
+                          );
+                        })}
+                      </div>
+                      <div className="text-center text-muted-foreground z-10">
                         <LineChart className="h-8 w-8 mx-auto mb-2" />
                         <div className="text-sm">Gráfico de Preços (30 dias)</div>
                       </div>
@@ -722,14 +735,3 @@ export default function EnhancedPixelPurchaseModal({
     </Dialog>
   );
 }
-=======
-                    <div className="h-32 bg-muted/20 rounded-lg flex items-center justify-center relative overflow-hidden">
-                      {/* Simulated price chart */}
-                      <div className="absolute inset-0 flex items-end px-4 pb-4">
-                        {mockMarketAnalysis.priceHistory.map((point, index) => {
-                          const height = (point.price / 200) * 100; // Scale to percentage
-                          return (
-                            <div 
-                              key={index} 
-                              className="flex-1 mx
->>>>>>> e14b9ad9fb1f65576c719f62ffd926501c889557
