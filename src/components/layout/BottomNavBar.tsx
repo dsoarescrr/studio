@@ -1,20 +1,13 @@
+
 'use client';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, User, Trophy, BarChartHorizontalBig, Users as UsersIcon, Plus, Zap, Coins, ShoppingCart, Palette, Gift, Bell, Search as SearchIcon, Gavel, Users2 } from 'lucide-react';
+import { Home, User, Trophy, BarChartHorizontalBig, Users as UsersIcon, Plus, Zap, Coins, ShoppingCart, Palette, Gift, Bell, Search as SearchIcon, Gavel, Users2, BarChart3 as AnalyticsIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-  PixelMarketplace,
-  ThemeCustomizer,
-  PixelWallet,
-  PixelAuctionSystem,
-  PixelCollaborationSystem,
-  PixelAnalytics
-} from '@/components/features';
 import NotificationCenter from '@/components/layout/NotificationCenter';
 import SearchSystem from '@/components/layout/SearchSystem';
 import PixelPurchaseModal from '@/components/pixel-grid/PixelPurchaseModal';
@@ -26,6 +19,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  PixelAnalytics,
+  PixelAuctionSystem,
+  PixelCollaborationSystem,
+  PixelMarketplace,
+  PixelWallet,
+  ThemeCustomizer
+} from '@/components/features';
+
 
 const navLinks = [
   { href: "/", label: "Universo", icon: Home, color: "text-blue-500" },
@@ -220,6 +222,13 @@ export default function BottomNavBar() {
                    Colaboração
                 </DropdownMenuItem>
               </PixelCollaborationSystem>
+              
+               <PixelAnalytics>
+                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer">
+                  <AnalyticsIcon className="h-4 w-4 mr-2 text-blue-500" />
+                   Analytics
+                </DropdownMenuItem>
+              </PixelAnalytics>
 
               <ThemeCustomizer>
                 <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer">

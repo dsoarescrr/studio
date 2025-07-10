@@ -9,7 +9,7 @@ import SearchSystem from './SearchSystem';
 import { 
   Award, CreditCard, Sparkles, Gift, Bell, Settings, Menu, 
   User, Search, Plus, Zap, Crown, Star, LogOut, HelpCircle, MessageSquare,
-  Gavel, BarChart3, Users2, Palette
+  Gavel, BarChart3, Users2, Palette, Coins
 } from "lucide-react"; 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
@@ -29,9 +29,8 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { PixelWallet } from "../features";
 
-// NOTE: Feature components that open modals are handled in BottomNavBar to avoid circular dependencies.
+// NOTE: Feature components are now triggered from BottomNavBar to avoid circular dependencies.
 
 export default function UserProfileHeader() {
   const user = {
@@ -123,7 +122,7 @@ export default function UserProfileHeader() {
                 {/* Stats Grid */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-primary/10 p-3 rounded-lg text-center">
-                    <CreditCard className="h-5 w-5 text-primary mx-auto mb-1" />
+                    <Coins className="h-5 w-5 text-primary mx-auto mb-1" />
                     <p className="text-sm font-bold text-primary">{formattedCredits || '...'}</p>
                     <p className="text-xs text-muted-foreground">Créditos</p>
                   </div>
@@ -154,13 +153,10 @@ export default function UserProfileHeader() {
                     <Settings className="h-4 w-4 mr-2" />
                     Definições
                   </Button>
-                   <PixelWallet>
-                    <Button variant="outline" className="w-full justify-start" size="sm">
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      Carteira
-                    </Button>
-                  </PixelWallet>
-                   {/* These are placeholders now, triggers are in BottomNavBar */}
+                   <Button variant="outline" className="w-full justify-start" size="sm" disabled>
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Carteira
+                  </Button>
                    <Button variant="outline" className="w-full justify-start" size="sm" disabled>
                     <Gavel className="h-4 w-4 mr-2" />
                     Leilões
@@ -229,7 +225,7 @@ export default function UserProfileHeader() {
               "flex items-center text-foreground transition-all duration-300 hover:scale-105 cursor-pointer bg-primary/10 rounded-full px-2 py-1",
               isAnimating && "animate-bounce-slow"
             )} title={formattedCredits ? `${formattedCredits} Créditos` : 'Créditos'}>
-              <CreditCard className="h-3 w-3 sm:h-4 sm:w-4 mr-1 text-primary" />
+              <Coins className="h-3 w-3 sm:h-4 sm:w-4 mr-1 text-primary" />
               {formattedCredits !== null ? (
                 <span className="font-code text-xs sm:text-sm text-primary font-bold">
                   {typeof window !== 'undefined' && window.innerWidth < 640 ? `${Math.floor(user.credits / 1000)}K` : formattedCredits}
