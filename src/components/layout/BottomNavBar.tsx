@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, User, Trophy, BarChartHorizontalBig, Users, Plus, Zap, Coins } from 'lucide-react';
-import { ShoppingCart, Palette, Gift } from 'lucide-react';
+import { ShoppingCart, Palette, Gift, Bell, Search as SearchIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import PixelMarketplace from '@/components/features/PixelMarketplace';
 import ThemeCustomizer from '@/components/features/ThemeCustomizer';
 import PixelWallet from '@/components/features/PixelWallet';
+import NotificationCenter from '@/components/layout/NotificationCenter';
+import SearchSystem from '@/components/layout/SearchSystem';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -71,7 +73,8 @@ export default function BottomNavBar() {
       <nav
         className={cn(
           "fixed bottom-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out",
-          isVisible ? "translate-y-0" : "translate-y-full"
+          isVisible ? "translate-y-0" : "translate-y-full",
+          "safe-bottom" // Add safe area for notched devices
         )}
         style={{ height: BOTTOM_NAV_HEIGHT }}
       >
@@ -194,28 +197,40 @@ export default function BottomNavBar() {
               <DropdownMenuSeparator />
               <PixelMarketplace>
                 <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer">
-                  <ShoppingCart className="h-4 w-4 mr-2" />
+                  <ShoppingCart className="h-4 w-4 mr-2 text-green-500" />
                   Marketplace
                 </DropdownMenuItem>
               </PixelMarketplace>
               <ThemeCustomizer>
                 <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer">
-                  <Palette className="h-4 w-4 mr-2" />
+                  <Palette className="h-4 w-4 mr-2 text-purple-500" />
                   Personalizar Tema
                 </DropdownMenuItem>
               </ThemeCustomizer>
               <PixelWallet>
                 <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer">
-                  <Coins className="h-4 w-4 mr-2" />
+                  <Coins className="h-4 w-4 mr-2 text-amber-500" />
                   Carteira
                 </DropdownMenuItem>
               </PixelWallet>
+              <NotificationCenter>
+                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer">
+                  <Bell className="h-4 w-4 mr-2 text-blue-500" />
+                  Notificações
+                </DropdownMenuItem>
+              </NotificationCenter>
+              <SearchSystem>
+                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer">
+                  <SearchIcon className="h-4 w-4 mr-2 text-pink-500" />
+                  Pesquisar
+                </DropdownMenuItem>
+              </SearchSystem>
               <DropdownMenuItem>
-                <Zap className="h-4 w-4 mr-2" />
+                <Zap className="h-4 w-4 mr-2 text-orange-500" />
                 Comprar Créditos
               </DropdownMenuItem>
               <DropdownMenuItem>
-                <Gift className="h-4 w-4 mr-2" />
+                <Gift className="h-4 w-4 mr-2 text-red-500" />
                 Eventos Especiais
               </DropdownMenuItem>
             </DropdownMenuContent>

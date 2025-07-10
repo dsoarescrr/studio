@@ -30,7 +30,8 @@ import {
   MapPin, CreditCard, Gift, Palette, ImageIcon, Link as LinkIcon, 
   ShoppingCart, Zap, Star, Crown, Shield, AlertTriangle, CheckCircle2,
   Eye, Heart, Share2, Clock, TrendingUp, Users, Sparkles, Gem,
-  DollarSign, Coins, Package, Tag, Globe, Lock, Unlock, Info
+  DollarSign, Coins, Package, Tag, Globe, Lock, Unlock, Info,
+  Bookmark, MessageSquare, Flag, Copy, ExternalLink, History, Award
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -52,9 +53,9 @@ interface PixelData {
   isProtected: boolean;
   history: Array<{
     owner: string;
-    date: Date;
+    date: Date | string;
     price: number;
-    action: 'purchase' | 'sale' | 'transfer';
+    action?: 'purchase' | 'sale' | 'transfer';
   }>;
   features?: string[];
   description?: string;
@@ -140,7 +141,7 @@ export default function PixelPurchaseModal({
   const [customizations, setCustomizations] = useState<PurchaseCustomizations>({
     color: '#D4A757',
     description: '',
-    title: '',
+    title: pixelData ? `Meu Pixel (${pixelData.x}, ${pixelData.y})` : '',
     tags: [],
     linkUrl: '',
     isPublic: true,
@@ -152,9 +153,13 @@ export default function PixelPurchaseModal({
   useEffect(() => {
     if (pixelData) {
       setCustomizations(prev => ({
-        ...prev,
+        color: pixelData.color || '#D4A757',
+        description: pixelData.description || `Pixel adquirido na região de ${pixelData.region}`,
         title: `Meu Pixel (${pixelData.x}, ${pixelData.y})`,
-        description: `Pixel adquirido na região de ${pixelData.region}`
+        tags: pixelData.tags || [],
+        linkUrl: '',
+        isPublic: true,
+        allowComments: true
       }));
     }
   }, [pixelData]);
@@ -303,14 +308,16 @@ export default function PixelPurchaseModal({
                     <CardContent className="p-4">
                       <div className="flex items-center gap-4">
                         <div 
-                          className="w-16 h-16 rounded-lg border-2 border-border shadow-inner"
+                          className="w-20 h-20 rounded-lg border-2 border-border shadow-inner"
                           style={{ backgroundColor: pixelData.color }}
                         />
                         <div className="flex-1">
-                          <h3 className="font-semibold">Pré-visualização do Pixel</h3>
-                          <p className="text-sm text-muted-foreground">
-                            Cor atual: {pixelData.color}
-                          </p>
+                          <h3 className="font-semibold text-lg">Pré-visualização do Pixel</h3>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <span>Cor: {pixelData.color}</span>
+                            <span>•</span>
+                            <span>Região: {pixelData.region}</span>
+                          </div>
                           <div className="flex items-center gap-2 mt-2">
                             <Eye className="h-4 w-4 text-muted-foreground" />
                             <span className="text-sm">{pixelData.views}</span>
@@ -393,21 +400,26 @@ export default function PixelPurchaseModal({
                     </CardHeader>
                     <CardContent className="pt-0">
                       {pixelData.history.length > 0 ? (
-                        <div className="space-y-3">
+                        <div className="space-y-4">
                           {pixelData.history.map((entry, index) => (
-                            <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                              <div>
-                                <p className="font-medium text-sm">{entry.owner}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {entry.action === 'purchase' ? 'Comprou' : 
-                                   entry.action === 'sale' ? 'Vendeu' : 'Transferiu'}
-                                </p>
+                            <div key={index} className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg">
+                              <div className="p-2 rounded-full bg-primary/10 text-primary">
+                                <History className="h-4 w-4" />
                               </div>
-                              <div className="text-right">
-                                <p className="font-semibold text-sm">{entry.price}€</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {entry.date.toLocaleDateString('pt-PT')}
-                                </p>
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between">
+                                  <p className="font-medium text-sm">{entry.owner}</p>
+                                  <p className="font-semibold text-sm">{entry.price}€</p>
+                                </div>
+                                <div className="flex items-center justify-between text-xs text-muted-foreground mt-1">
+                                  <p>
+                                    {entry.action === 'purchase' ? 'Comprou' : 
+                                     entry.action === 'sale' ? 'Vendeu' : 'Transação'}
+                                  </p>
+                                  <p>
+                                    {typeof entry.date === 'string' ? entry.date : entry.date.toLocaleDateString('pt-PT')}
+                                  </p>
+                                </div>
                               </div>
                             </div>
                           ))}
@@ -430,19 +442,25 @@ export default function PixelPurchaseModal({
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <span className="text-muted-foreground">Coordenadas:</span>
-                          <p className="font-mono">({pixelData.x}, {pixelData.y})</p>
+                          <p className="font-mono font-medium">({pixelData.x}, {pixelData.y})</p>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Região:</span>
-                          <p className="font-semibold">{pixelData.region}</p>
+                          <p className="font-medium">{pixelData.region}</p>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Raridade:</span>
-                          <p className={cn("font-semibold", rarity.color)}>{rarity.label}</p>
+                          <p className={cn("font-medium flex items-center gap-1", rarity.color)}>
+                            {rarity.icon}
+                            {rarity.label}
+                          </p>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Estado:</span>
-                          <p className="font-semibold">Disponível</p>
+                          <p className="font-medium flex items-center gap-1 text-green-500">
+                            <CheckCircle2 className="h-3 w-3" />
+                            Disponível
+                          </p>
                         </div>
                       </div>
                     </CardContent>
@@ -565,7 +583,10 @@ export default function PixelPurchaseModal({
                   <CardContent className="pt-0 space-y-4">
                     {/* Color Picker */}
                     <div>
-                      <Label className="text-sm">Cor do Pixel</Label>
+                      <Label className="text-sm flex items-center gap-2">
+                        <Palette className="h-4 w-4 text-primary" />
+                        Cor do Pixel
+                      </Label>
                       <div className="flex items-center gap-2 mt-1">
                         <input
                           type="color"
@@ -584,7 +605,10 @@ export default function PixelPurchaseModal({
 
                     {/* Title */}
                     <div>
-                      <Label className="text-sm">Título</Label>
+                      <Label className="text-sm flex items-center gap-2">
+                        <Tag className="h-4 w-4 text-primary" />
+                        Título
+                      </Label>
                       <Input
                         value={customizations.title}
                         onChange={(e) => setCustomizations(prev => ({ ...prev, title: e.target.value }))}
@@ -595,7 +619,10 @@ export default function PixelPurchaseModal({
 
                     {/* Description */}
                     <div>
-                      <Label className="text-sm">Descrição</Label>
+                      <Label className="text-sm flex items-center gap-2">
+                        <MessageSquare className="h-4 w-4 text-primary" />
+                        Descrição
+                      </Label>
                       <Textarea
                         value={customizations.description}
                         onChange={(e) => setCustomizations(prev => ({ ...prev, description: e.target.value }))}
@@ -606,7 +633,10 @@ export default function PixelPurchaseModal({
 
                     {/* Image Upload */}
                     <div>
-                      <Label className="text-sm">Imagem Personalizada</Label>
+                      <Label className="text-sm flex items-center gap-2">
+                        <ImageIcon className="h-4 w-4 text-primary" />
+                        Imagem Personalizada
+                      </Label>
                       <div className="mt-1">
                         <input
                           type="file"
@@ -633,7 +663,10 @@ export default function PixelPurchaseModal({
 
                     {/* Link URL */}
                     <div>
-                      <Label className="text-sm">Link (Opcional)</Label>
+                      <Label className="text-sm flex items-center gap-2">
+                        <LinkIcon className="h-4 w-4 text-primary" />
+                        Link (Opcional)
+                      </Label>
                       <Input
                         value={customizations.linkUrl}
                         onChange={(e) => setCustomizations(prev => ({ ...prev, linkUrl: e.target.value }))}
@@ -644,15 +677,25 @@ export default function PixelPurchaseModal({
 
                     {/* Privacy Settings */}
                     <div className="space-y-3">
+                      <Label className="text-sm flex items-center gap-2">
+                        <Lock className="h-4 w-4 text-primary" />
+                        Configurações de Privacidade
+                      </Label>
                       <div className="flex items-center justify-between">
-                        <Label className="text-sm">Pixel Público</Label>
+                        <Label className="text-sm flex items-center gap-2">
+                          <Globe className="h-3 w-3" />
+                          Pixel Público
+                        </Label>
                         <Switch
                           checked={customizations.isPublic}
                           onCheckedChange={(checked) => setCustomizations(prev => ({ ...prev, isPublic: checked }))}
                         />
                       </div>
                       <div className="flex items-center justify-between">
-                        <Label className="text-sm">Permitir Comentários</Label>
+                        <Label className="text-sm flex items-center gap-2">
+                          <MessageSquare className="h-3 w-3" />
+                          Permitir Comentários
+                        </Label>
                         <Switch
                           checked={customizations.allowComments}
                           onCheckedChange={(checked) => setCustomizations(prev => ({ ...prev, allowComments: checked }))}
@@ -673,8 +716,12 @@ export default function PixelPurchaseModal({
                       <span>{pixelData.price}€</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span>Multiplicador de raridade:</span>
-                      <span>×{rarity.multiplier}</span>
+                      <span>Raridade ({rarity.label}):</span>
+                      <span className={rarity.color}>×{rarity.multiplier}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Taxa de serviço (5%):</span>
+                      <span>{Math.round(finalPrice * 0.05)}€</span>
                     </div>
                     <Separator />
                     <div className="flex justify-between font-semibold">
@@ -684,7 +731,12 @@ export default function PixelPurchaseModal({
                     <div className="flex justify-between text-xs text-muted-foreground">
                       <span>Método:</span>
                       <span className="flex items-center gap-1">
-                        {getPaymentMethodIcon(paymentMethod)}
+                        <span className={cn(
+                          paymentMethod === 'credits' ? "text-primary" : 
+                          paymentMethod === 'special_credits' ? "text-accent" : "text-green-500"
+                        )}>
+                          {getPaymentMethodIcon(paymentMethod)}
+                        </span>
                         {getPaymentMethodLabel(paymentMethod)}
                       </span>
                     </div>
@@ -706,16 +758,16 @@ export default function PixelPurchaseModal({
                   <Button
                     onClick={handlePurchase}
                     disabled={isProcessing || (!canAffordCredits && paymentMethod === 'credits') || (!canAffordSpecialCredits && paymentMethod === 'special_credits')}
-                    className="w-full h-12 text-base font-semibold"
+                    className="w-full h-12 text-base font-semibold bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 button-hover-lift"
                   >
                     {isProcessing ? (
                       <>
-                        <Zap className="h-4 w-4 mr-2 animate-spin" />
+                        <Zap className="h-5 w-5 mr-2 animate-spin" />
                         Processando...
                       </>
                     ) : (
                       <>
-                        <ShoppingCart className="h-4 w-4 mr-2" />
+                        <ShoppingCart className="h-5 w-5 mr-2" />
                         Comprar Pixel por {finalPrice}€
                       </>
                     )}

@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import NotificationCenter from './NotificationCenter';
 import SearchSystem from './SearchSystem';
+import SearchSystem from './SearchSystem';
 import { 
   Award, CreditCard, Sparkles, Gift, Bell, Settings, Menu, 
-  User, Search, Plus, Zap, Crown, Star
+  User, Search, Plus, Zap, Crown, Star, LogOut, HelpCircle, MessageSquare
 } from "lucide-react"; 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
@@ -174,11 +175,11 @@ export default function UserProfileHeader() {
         </div>
 
         {/* Center: Search (Desktop) */}
-        <div className="hidden md:flex flex-1 max-w-md mx-4">
+        <div className="hidden md:flex flex-1 max-w-md mx-4 relative">
           <SearchSystem>
             <div className="relative w-full cursor-pointer">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <div className="w-full h-9 pl-10 pr-4 bg-background/50 border border-border/60 rounded-full text-sm flex items-center text-muted-foreground hover:border-primary/50 transition-all">
+              <div className="w-full h-9 pl-10 pr-4 bg-background/50 border border-border/60 rounded-full text-sm flex items-center text-muted-foreground hover:border-primary/50 transition-all hover:bg-background/80">
                 Pesquisar pixels, utilizadores...
               </div>
             </div>
@@ -269,17 +270,32 @@ export default function UserProfileHeader() {
               <DropdownMenuItem>
                 <Award className="mr-2 h-4 w-4" />
                 <span>Conquistas</span>
+                <Badge className="ml-auto bg-red-500 text-white text-xs">2</Badge>
               </DropdownMenuItem>
               <PixelWallet>
                 <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
                   <CreditCard className="mr-2 h-4 w-4" />
                   <span>Carteira</span>
+                  <span className="ml-auto text-xs text-muted-foreground">12.500</span>
                 </DropdownMenuItem>
               </PixelWallet>
               <DropdownMenuSeparator />
               <DropdownMenuItem>
+                <HelpCircle className="mr-2 h-4 w-4" />
+                <span>Ajuda</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <MessageSquare className="mr-2 h-4 w-4" />
+                <span>Feedback</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem>
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Definições</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-red-500">
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Terminar Sessão</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

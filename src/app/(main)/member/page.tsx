@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
+import { Switch } from '@/components/ui/switch'; 
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
@@ -23,7 +23,7 @@ import {
   Image as ImageIcon, Video, Music, FileText, ExternalLink, Copy, QrCode
 } from "lucide-react";
 import Image from "next/image";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { achievementsData, type Achievement } from '@/data/achievements-data'; 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'; 
 import { cn } from "@/lib/utils";
@@ -101,8 +101,14 @@ export default function MemberPage() {
   const [editForm, setEditForm] = useState({
     bio: enhancedUser.bio,
     location: enhancedUser.location,
-    privacySettings: enhancedUser.privacySettings
+    privacySettings: enhancedUser.privacySettings,
+    socialLinks: enhancedUser.socials.map(social => ({ ...social }))
   });
+  const [newSocialPlatform, setNewSocialPlatform] = useState('');
+  const [newSocialHandle, setNewSocialHandle] = useState('');
+  const [newSocialUrl, setNewSocialUrl] = useState('');
+  const [showAddSocial, setShowAddSocial] = useState(false);
+  const bioTextareaRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
 
   const nextLevelXp = enhancedUser.xpMax - enhancedUser.xp;
@@ -115,6 +121,12 @@ export default function MemberPage() {
   const handleSaveProfile = () => {
     // Simulate API call
     setTimeout(() => {
+      // Auto-resize textarea
+      if (bioTextareaRef.current) {
+        bioTextareaRef.current.style.height = 'auto';
+        bioTextareaRef.current.style.height = `${bioTextareaRef.current.scrollHeight}px`;
+      }
+      
       toast({
         title: "Perfil Atualizado",
         description: "As suas alterações foram guardadas com sucesso.",
@@ -221,13 +233,33 @@ export default function MemberPage() {
 
                 {/* Action Buttons */}
                 <div className="flex justify-center sm:justify-start gap-2 flex-wrap">
-                  <Button 
-                    onClick={() => setIsEditing(!isEditing)}
-                    className="bg-primary hover:bg-primary/90 button-hover-lift"
-                  >
-                    <Edit3 className="h-4 w-4 mr-2" />
-                    {isEditing ? 'Cancelar' : 'Editar Perfil'}
-                  </Button>
+                  {isEditing ? (
+                    <>
+                      <Button 
+                        onClick={handleSaveProfile}
+                        className="bg-primary hover:bg-primary/90 button-hover-lift"
+                      >
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Guardar Alterações
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setIsEditing(false)}
+                        className="button-hover-lift"
+                      >
+                        <X className="h-4 w-4 mr-2" />
+                        Cancelar
+                      </Button>
+                    </>
+                  ) : (
+                    <Button 
+                      onClick={() => setIsEditing(true)}
+                      className="bg-primary hover:bg-primary/90 button-hover-lift"
+                    >
+                      <Edit3 className="h-4 w-4 mr-2" />
+                      Editar Perfil
+                    </Button>
+                  )}
                   <Button variant="outline" onClick={handleShareProfile} className="button-hover-lift">
                     <Share2 className="h-4 w-4 mr-2" />
                     Partilhar
@@ -290,19 +322,23 @@ export default function MemberPage() {
               <CardContent>
                 {isEditing ? (
                   <div className="space-y-4">
-                    <Textarea
-                      value={editForm.bio}
-                      onChange={(e) => setEditForm({...editForm, bio: e.target.value})}
-                      className="min-h-[100px]"
-                      placeholder="Conte-nos sobre si..."
-                    />
-                    <div className="flex gap-2">
-                      <Button onClick={handleSaveProfile} className="bg-primary hover:bg-primary/90">
-                        Guardar
-                      </Button>
-                      <Button variant="outline" onClick={() => setIsEditing(false)}>
-                        Cancelar
-                      </Button>
+                    <div>
+                      <Label className="text-sm mb-2 block">Biografia</Label>
+                      <Textarea
+                        ref={bioTextareaRef}
+                        value={editForm.bio}
+                        onChange={(e) => {
+                          setEditForm({...editForm, bio: e.target.value});
+                          // Auto-resize textarea
+                          e.target.style.height = 'auto';
+                          e.target.style.height = `${e.target.scrollHeight}px`;
+                        }}
+                        className="min-h-[100px] resize-none"
+                        placeholder="Conte-nos sobre si..."
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {editForm.bio.length}/500 caracteres
+                      </p>
                     </div>
                   </div>
                 ) : (
@@ -472,13 +508,21 @@ export default function MemberPage() {
                 <Card key={album.id} className="card-hover-glow group overflow-hidden">
                   <div className="relative">
                     <Image 
-                      src={album.coverPixelUrl} 
-                      alt={album.name} 
-                      width={300} 
-                      height={200} 
-                      className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105" 
-                      data-ai-hint={album.dataAiHint} 
-                    />
+                    <div className="flex gap-2 mt-2">
+                      <Input
+                        id="location-input"
+                        value={editForm.location}
+                        onChange={(e) => setEditForm({...editForm, location: e.target.value})}
+                        placeholder="A sua localização"
+                        className="flex-1"
+                      />
+                      <Button variant="outline" size="icon">
+                        <MapPin className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      A sua localização será visível para outros utilizadores
+                    </p>
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                     <div className="absolute bottom-2 left-2 right-2">
                       <div className="flex items-center justify-between text-white">
@@ -553,41 +597,162 @@ export default function MemberPage() {
           <TabsContent value="social" className="space-y-6">
             <Card className="card-hover-glow">
               <CardHeader>
-                <CardTitle className="flex items-center text-primary">
-                  <LinkIcon className="h-5 w-5 mr-2" />
-                  Redes Sociais
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center text-primary">
+                    <LinkIcon className="h-5 w-5 mr-2" />
+                    Redes Sociais
+                  </CardTitle>
+                  {isEditing && (
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => setShowAddSocial(!showAddSocial)}
+                    >
+                      {showAddSocial ? 'Cancelar' : 'Adicionar Rede'}
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                {enhancedUser.socials.map(social => (
-                  <div key={social.platform} className="flex items-center justify-between p-3 rounded-lg border border-border hover:border-primary/30 transition-colors">
-                    <div className="flex items-center gap-3">
-                      {social.icon}
+                {/* Add Social Form */}
+                {isEditing && showAddSocial && (
+                  <div className="p-4 bg-muted/30 rounded-lg space-y-3 mb-4">
+                    <h4 className="font-medium text-sm">Adicionar Nova Rede Social</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div>
-                        <p className="font-semibold">{social.platform}</p>
-                        <p className="text-sm text-muted-foreground font-code">{social.handle}</p>
+                        <Label className="text-xs">Plataforma</Label>
+                        <Select 
+                          value={newSocialPlatform} 
+                          onValueChange={setNewSocialPlatform}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecionar..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Twitter">Twitter</SelectItem>
+                            <SelectItem value="Instagram">Instagram</SelectItem>
+                            <SelectItem value="Github">Github</SelectItem>
+                            <SelectItem value="LinkedIn">LinkedIn</SelectItem>
+                            <SelectItem value="Facebook">Facebook</SelectItem>
+                            <SelectItem value="YouTube">YouTube</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Nome de Utilizador</Label>
+                        <Input 
+                          value={newSocialHandle} 
+                          onChange={(e) => setNewSocialHandle(e.target.value)}
+                          placeholder="@username"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">URL</Label>
+                        <Input 
+                          value={newSocialUrl} 
+                          onChange={(e) => setNewSocialUrl(e.target.value)}
+                          placeholder="https://..."
+                        />
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {social.verified && (
-                        <Badge variant="outline" className="text-xs">
-                          <CheckCircle2 className="h-3 w-3 mr-1" />
-                          Verificado
-                        </Badge>
-                      )}
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={social.url} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="h-4 w-4" />
-                        </a>
+                    <div className="flex justify-end gap-2 mt-2">
+                      <Button 
+                        size="sm" 
+                        onClick={() => {
+                          // Add new social
+                          if (newSocialPlatform && newSocialHandle && newSocialUrl) {
+                            const newSocial = {
+                              platform: newSocialPlatform,
+                              handle: newSocialHandle,
+                              url: newSocialUrl,
+                              verified: false,
+                              icon: <Twitter className="h-4 w-4" /> // Default icon
+                            };
+                            
+                            setEditForm(prev => ({
+                              ...prev,
+                              socialLinks: [...prev.socialLinks, newSocial]
+                            }));
+                            
+                            // Reset form
+                            setNewSocialPlatform('');
+                            setNewSocialHandle('');
+                            setNewSocialUrl('');
+                            setShowAddSocial(false);
+                            
+                            toast({
+                              title: "Rede Social Adicionada",
+                              description: "A rede social foi adicionada ao seu perfil."
+                            });
+                          }
+                        }}
+                        disabled={!newSocialPlatform || !newSocialHandle || !newSocialUrl}
+                      >
+                        Adicionar
                       </Button>
                     </div>
                   </div>
-                ))}
+                )}
                 
-                <Button variant="outline" className="w-full">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Adicionar Rede Social
-                </Button>
+                {/* Social Links List */}
+                {(isEditing ? editForm.socialLinks : enhancedUser.socials).length > 0 ? (
+                  <div className="space-y-3">
+                    {(isEditing ? editForm.socialLinks : enhancedUser.socials).map((social, index) => (
+                      <div key={social.platform + index} className="flex items-center justify-between p-3 rounded-lg border border-border hover:border-primary/30 transition-colors">
+                        <div className="flex items-center gap-3">
+                          {social.icon}
+                          <div>
+                            <p className="font-semibold">{social.platform}</p>
+                            <p className="text-sm text-muted-foreground font-code">{social.handle}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {social.verified && (
+                            <Badge variant="outline" className="text-xs">
+                              <CheckCircle2 className="h-3 w-3 mr-1" />
+                              Verificado
+                            </Badge>
+                          )}
+                          {isEditing ? (
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              className="text-red-500 hover:text-red-700 hover:bg-red-100/10"
+                              onClick={() => {
+                                setEditForm(prev => ({
+                                  ...prev,
+                                  socialLinks: prev.socialLinks.filter((_, i) => i !== index)
+                                }));
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          ) : (
+                            <Button variant="outline" size="sm" asChild>
+                              <a href={social.url} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="h-4 w-4" />
+                              </a>
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center p-6 bg-muted/20 rounded-lg">
+                    <LinkIcon className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                    <h4 className="font-medium mb-1">Nenhuma rede social adicionada</h4>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Conecte suas redes sociais para aumentar sua visibilidade
+                    </p>
+                    {!isEditing && (
+                      <Button variant="outline" onClick={() => setIsEditing(true)}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Adicionar Rede Social
+                      </Button>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -689,10 +854,28 @@ export default function MemberPage() {
                   />
                 </div>
                 
-                <Button onClick={handleSaveProfile} className="w-full bg-primary hover:bg-primary/90">
-                  <Settings className="h-4 w-4 mr-2" />
-                  Guardar Definições
-                </Button>
+                  <div className="space-y-3">
+                    <h4 className="font-medium text-sm">Tema da Interface</h4>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="border border-primary rounded-lg p-2 flex items-center justify-center flex-col cursor-pointer">
+                        <div className="w-8 h-8 rounded-full bg-primary mb-1"></div>
+                        <span className="text-xs">Dourado</span>
+                      </div>
+                      <div className="border border-border rounded-lg p-2 flex items-center justify-center flex-col cursor-pointer">
+                        <div className="w-8 h-8 rounded-full bg-blue-500 mb-1"></div>
+                        <span className="text-xs">Azul</span>
+                      </div>
+                      <div className="border border-border rounded-lg p-2 flex items-center justify-center flex-col cursor-pointer">
+                        <div className="w-8 h-8 rounded-full bg-green-500 mb-1"></div>
+                        <span className="text-xs">Verde</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <Button onClick={handleSaveProfile} className="w-full bg-primary hover:bg-primary/90">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Guardar Definições
+                  </Button>
               </CardContent>
             </Card>
           </TabsContent>
