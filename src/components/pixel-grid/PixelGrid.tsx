@@ -1,4 +1,3 @@
-
 // src/components/pixel-grid/PixelGrid.tsx
 'use client';
 
@@ -50,6 +49,9 @@ interface SoldPixel {
   ownerId?: string;
   title?: string;
   pixelImageUrl?: string;
+  rarity?: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+  isAnimated?: boolean;
+  lastActivity?: Date;
 }
 
 interface SelectedPixelDetails {
@@ -97,6 +99,125 @@ const mockLoreSnippets: string[] = [
   "Sente-se uma energia estranha emanando deste local.",
 ];
 
+// Enhanced visual effects class
+class VisualEffects {
+  private ctx: CanvasRenderingContext2D;
+  private animationFrame: number = 0;
+  private particles: Array<{x: number, y: number, vx: number, vy: number, life: number, maxLife: number, color: string}> = [];
+  
+  constructor(ctx: CanvasRenderingContext2D) {
+    this.ctx = ctx;
+  }
+
+  // Create a glowing effect around special pixels
+  drawGlowingPixel(x: number, y: number, size: number, color: string, intensity: number = 1) {
+    const ctx = this.ctx;
+    ctx.save();
+    
+    // Create multiple glow layers for depth
+    const glowLayers = [
+      { radius: size * 2, alpha: 0.1 * intensity },
+      { radius: size * 1.5, alpha: 0.2 * intensity },
+      { radius: size * 1.2, alpha: 0.3 * intensity }
+    ];
+    
+    glowLayers.forEach(layer => {
+      ctx.shadowColor = color;
+      ctx.shadowBlur = layer.radius;
+      ctx.globalAlpha = layer.alpha;
+      ctx.fillStyle = color;
+      ctx.fillRect(x, y, size, size);
+    });
+    
+    ctx.restore();
+  }
+
+  // Draw animated border around pixels
+  drawAnimatedBorder(x: number, y: number, size: number, time: number, color: string) {
+    const ctx = this.ctx;
+    ctx.save();
+    
+    const dashOffset = (time * 0.002) % 10;
+    ctx.setLineDash([4, 4]);
+    ctx.lineDashOffset = dashOffset;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 0.5;
+    ctx.strokeRect(x - 1, y - 1, size + 2, size + 2);
+    
+    ctx.restore();
+  }
+
+  // Pulsing effect for rare pixels
+  drawPulsingPixel(x: number, y: number, size: number, color: string, time: number, frequency: number = 0.003) {
+    const pulse = (Math.sin(time * frequency) + 1) * 0.5;
+    const currentSize = size * (0.8 + pulse * 0.4);
+    const offset = (size - currentSize) / 2;
+    
+    this.ctx.save();
+    this.ctx.globalAlpha = 0.7 + pulse * 0.3;
+    this.ctx.fillStyle = color;
+    this.ctx.fillRect(x + offset, y + offset, currentSize, currentSize);
+    this.ctx.restore();
+  }
+
+  // Create shimmer effect for legendary pixels
+  drawShimmerEffect(x: number, y: number, size: number, time: number) {
+    const ctx = this.ctx;
+    ctx.save();
+    
+    const shimmerOffset = (time * 0.001) % (size * 2);
+    const gradient = ctx.createLinearGradient(x - size, y, x + size * 2, y + size);
+    
+    const pos = shimmerOffset / (size * 2);
+    gradient.addColorStop(Math.max(0, pos - 0.1), 'rgba(255, 255, 255, 0)');
+    gradient.addColorStop(pos, 'rgba(255, 255, 255, 0.8)');
+    gradient.addColorStop(Math.min(1, pos + 0.1), 'rgba(255, 255, 255, 0)');
+    
+    ctx.fillStyle = gradient;
+    ctx.fillRect(x, y, size, size);
+    
+    ctx.restore();
+  }
+
+  // Add floating particles around active areas
+  updateParticles(deltaTime: number) {
+    // Update existing particles
+    this.particles = this.particles.filter(particle => {
+      particle.x += particle.vx * deltaTime;
+      particle.y += particle.vy * deltaTime;
+      particle.life -= deltaTime;
+      return particle.life > 0;
+    });
+    
+    // Add new particles occasionally
+    if (Math.random() < 0.02) {
+      this.particles.push({
+        x: Math.random() * canvasDrawWidth,
+        y: Math.random() * canvasDrawHeight,
+        vx: (Math.random() - 0.5) * 0.02,
+        vy: (Math.random() - 0.5) * 0.02,
+        life: 3000 + Math.random() * 2000,
+        maxLife: 5000,
+        color: `hsl(${39 + Math.random() * 20}, 70%, ${50 + Math.random() * 30}%)`
+      });
+    }
+  }
+
+  drawParticles() {
+    const ctx = this.ctx;
+    this.particles.forEach(particle => {
+      const alpha = particle.life / particle.maxLife;
+      ctx.save();
+      ctx.globalAlpha = alpha * 0.3;
+      ctx.fillStyle = particle.color;
+      ctx.beginPath();
+      ctx.arc(particle.x, particle.y, 1 + Math.random(), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    });
+  }
+}
+
 export default function PixelGrid() {
   const [isClient, setIsClient] = useState(false);
   const [zoom, setZoom] = useState(1);
@@ -116,6 +237,7 @@ export default function PixelGrid() {
   const containerRef = useRef<HTMLDivElement>(null);
   const pixelCanvasRef = useRef<HTMLCanvasElement>(null);
   const outlineCanvasRef = useRef<HTMLCanvasElement>(null);
+  const effectsCanvasRef = useRef<HTMLCanvasElement>(null); // New canvas for effects
   const { toast } = useToast();
 
   const [mapData, setMapData] = useState<MapData | null>(null);
@@ -125,12 +247,42 @@ export default function PixelGrid() {
   const [progressMessage, setProgressMessage] = useState("Aguardando cliente...");
   
   const [soldPixels, setSoldPixels] = useState<SoldPixel[]>([
-      { x: Math.floor(LOGICAL_GRID_COLS_CONFIG * 0.451), y: Math.floor(logicalGridRows * 0.302), color: 'hsl(var(--accent))', title: 'Pixel especial LIS', ownerId: 'user123' },
-      { x: Math.floor(LOGICAL_GRID_COLS_CONFIG * 0.503), y: Math.floor(logicalGridRows * 0.204), color: 'magenta', title: 'Pixel especial POR', ownerId: MOCK_CURRENT_USER_ID, pixelImageUrl: 'https://placehold.co/1x1.png' },
-      { x: Math.floor(LOGICAL_GRID_COLS_CONFIG * 0.555), y: Math.floor(logicalGridRows * 0.756), color: 'cyan', title: 'Pixel especial FAR', ownerId: 'user456' },
+      { 
+        x: Math.floor(LOGICAL_GRID_COLS_CONFIG * 0.451), 
+        y: Math.floor(logicalGridRows * 0.302), 
+        color: 'hsl(var(--accent))', 
+        title: 'Pixel especial LIS', 
+        ownerId: 'user123',
+        rarity: 'epic',
+        isAnimated: true,
+        lastActivity: new Date()
+      },
+      { 
+        x: Math.floor(LOGICAL_GRID_COLS_CONFIG * 0.503), 
+        y: Math.floor(logicalGridRows * 0.204), 
+        color: 'magenta', 
+        title: 'Pixel especial POR', 
+        ownerId: MOCK_CURRENT_USER_ID, 
+        pixelImageUrl: 'https://placehold.co/1x1.png',
+        rarity: 'legendary',
+        isAnimated: true,
+        lastActivity: new Date()
+      },
+      { 
+        x: Math.floor(LOGICAL_GRID_COLS_CONFIG * 0.555), 
+        y: Math.floor(logicalGridRows * 0.756), 
+        color: 'cyan', 
+        title: 'Pixel especial FAR', 
+        ownerId: 'user456',
+        rarity: 'rare',
+        lastActivity: new Date(Date.now() - 60000)
+      },
   ]);
 
   const autoResetTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const animationRef = useRef<number>();
+  const lastFrameTime = useRef<number>(0);
+  const visualEffectsRef = useRef<VisualEffects | null>(null);
 
   const [unsoldColor, setUnsoldColor] = useState('');
   const [strokeColor, setStrokeColor] = useState('');
@@ -226,35 +378,132 @@ export default function PixelGrid() {
   
   }, [isClient, mapData, toast]);
 
-  useEffect(() => {
-      if (!pixelBitmap || !unsoldColor) return;
-      const canvas = pixelCanvasRef.current;
-      if (!canvas) return;
-
-      if (canvas.width !== canvasDrawWidth || canvas.height !== canvasDrawHeight) {
-          canvas.width = canvasDrawWidth;
-          canvas.height = canvasDrawHeight;
+  // Enhanced pixel rendering with visual effects
+  const renderPixelsWithEffects = useCallback((currentTime: number) => {
+    const canvas = pixelCanvasRef.current;
+    const effectsCanvas = effectsCanvasRef.current;
+    
+    if (!canvas || !effectsCanvas || !pixelBitmap || !unsoldColor) return;
+    
+    const ctx = canvas.getContext('2d');
+    const effectsCtx = effectsCanvas.getContext('2d');
+    
+    if (!ctx || !effectsCtx) return;
+    
+    // Initialize visual effects if needed
+    if (!visualEffectsRef.current) {
+      visualEffectsRef.current = new VisualEffects(effectsCtx);
+    }
+    
+    const deltaTime = currentTime - lastFrameTime.current;
+    lastFrameTime.current = currentTime;
+    
+    // Clear canvases
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    effectsCtx.clearRect(0, 0, effectsCanvas.width, effectsCanvas.height);
+    
+    // Enable smooth rendering
+    ctx.imageSmoothingEnabled = false;
+    effectsCtx.imageSmoothingEnabled = true;
+    
+    // Create base gradient for unsold pixels
+    const baseGradient = ctx.createLinearGradient(0, 0, canvasDrawWidth, canvasDrawHeight);
+    baseGradient.addColorStop(0, `hsl(${unsoldColor})`);
+    baseGradient.addColorStop(0.5, `hsl(${unsoldColor})`);
+    baseGradient.addColorStop(1, `hsl(${unsoldColor})`);
+    
+    // Render base unsold pixels with subtle gradient
+    for (let row = 0; row < logicalGridRows; row++) {
+      for (let col = 0; col < LOGICAL_GRID_COLS_CONFIG; col++) {
+        if (pixelBitmap[row * LOGICAL_GRID_COLS_CONFIG + col] === 1) {
+          const x = col * RENDERED_PIXEL_SIZE_CONFIG;
+          const y = row * RENDERED_PIXEL_SIZE_CONFIG;
+          
+          // Add subtle shimmer to base pixels
+          const shimmer = Math.sin((x + y + currentTime * 0.001) * 0.01) * 0.1;
+          ctx.globalAlpha = 0.8 + shimmer;
+          ctx.fillStyle = baseGradient;
+          ctx.fillRect(x, y, RENDERED_PIXEL_SIZE_CONFIG, RENDERED_PIXEL_SIZE_CONFIG);
+        }
       }
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
+    }
+    
+    ctx.globalAlpha = 1;
+    
+    // Render sold pixels with enhanced effects
+    soldPixels.forEach(pixel => {
+      const renderX = pixel.x * RENDERED_PIXEL_SIZE_CONFIG;
+      const renderY = pixel.y * RENDERED_PIXEL_SIZE_CONFIG;
       
-      ctx.imageSmoothingEnabled = false;
-      ctx.fillStyle = `hsl(${unsoldColor})`;
-
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      for (let row = 0; row < logicalGridRows; row++) {
-          for (let col = 0; col < LOGICAL_GRID_COLS_CONFIG; col++) {
-              if (pixelBitmap[row * LOGICAL_GRID_COLS_CONFIG + col] === 1) {
-                  ctx.fillRect(
-                      col * RENDERED_PIXEL_SIZE_CONFIG,
-                      row * RENDERED_PIXEL_SIZE_CONFIG,
-                      RENDERED_PIXEL_SIZE_CONFIG,
-                      RENDERED_PIXEL_SIZE_CONFIG
-                  );
-              }
-          }
+      // Enhanced rendering based on rarity
+      if (pixel.rarity === 'legendary') {
+        // Legendary pixels get shimmer effect
+        visualEffectsRef.current?.drawShimmerEffect(renderX, renderY, RENDERED_PIXEL_SIZE_CONFIG, currentTime);
+        visualEffectsRef.current?.drawGlowingPixel(renderX, renderY, RENDERED_PIXEL_SIZE_CONFIG, pixel.color, 1.5);
+      } else if (pixel.rarity === 'epic') {
+        // Epic pixels get pulsing effect
+        visualEffectsRef.current?.drawPulsingPixel(renderX, renderY, RENDERED_PIXEL_SIZE_CONFIG, pixel.color, currentTime);
+        visualEffectsRef.current?.drawGlowingPixel(renderX, renderY, RENDERED_PIXEL_SIZE_CONFIG, pixel.color, 1);
+      } else if (pixel.rarity === 'rare') {
+        // Rare pixels get subtle glow
+        visualEffectsRef.current?.drawGlowingPixel(renderX, renderY, RENDERED_PIXEL_SIZE_CONFIG, pixel.color, 0.7);
       }
-  }, [pixelBitmap, unsoldColor]);
+      
+      // Render the actual pixel with enhanced colors
+      if (pixel.pixelImageUrl && loadedPixelImages[pixel.pixelImageUrl]) {
+        const img = loadedPixelImages[pixel.pixelImageUrl];
+        ctx.drawImage(img, renderX, renderY, RENDERED_PIXEL_SIZE_CONFIG, RENDERED_PIXEL_SIZE_CONFIG);
+      } else {
+        // Enhanced color rendering
+        ctx.save();
+        
+        // Add subtle gradient to sold pixels
+        const pixelGradient = ctx.createRadialGradient(
+          renderX + RENDERED_PIXEL_SIZE_CONFIG / 2, 
+          renderY + RENDERED_PIXEL_SIZE_CONFIG / 2, 
+          0,
+          renderX + RENDERED_PIXEL_SIZE_CONFIG / 2, 
+          renderY + RENDERED_PIXEL_SIZE_CONFIG / 2, 
+          RENDERED_PIXEL_SIZE_CONFIG / 2
+        );
+        
+        pixelGradient.addColorStop(0, pixel.color);
+        pixelGradient.addColorStop(1, pixel.color.replace(/hsl\(([^,]+),([^,]+),/, 'hsl($1,$2,'));
+        
+        ctx.fillStyle = pixelGradient;
+        ctx.fillRect(renderX, renderY, RENDERED_PIXEL_SIZE_CONFIG, RENDERED_PIXEL_SIZE_CONFIG);
+        ctx.restore();
+      }
+      
+      // Animated border for active pixels
+      if (pixel.isAnimated) {
+        visualEffectsRef.current?.drawAnimatedBorder(renderX, renderY, RENDERED_PIXEL_SIZE_CONFIG, currentTime, pixel.color);
+      }
+    });
+    
+    // Update and draw particles
+    visualEffectsRef.current?.updateParticles(deltaTime);
+    visualEffectsRef.current?.drawParticles();
+    
+  }, [pixelBitmap, unsoldColor, soldPixels, loadedPixelImages]);
+
+  // Animation loop
+  useEffect(() => {
+    const animate = (currentTime: number) => {
+      renderPixelsWithEffects(currentTime);
+      animationRef.current = requestAnimationFrame(animate);
+    };
+    
+    if (pixelBitmap && !isLoadingMap) {
+      animationRef.current = requestAnimationFrame(animate);
+    }
+    
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [pixelBitmap, isLoadingMap, renderPixelsWithEffects]);
 
   useEffect(() => {
     soldPixels.forEach(pixel => {
@@ -273,29 +522,6 @@ export default function PixelGrid() {
         }
     });
   }, [soldPixels, loadedPixelImages]);
-
-  useEffect(() => { 
-    if (!soldPixels || !pixelCanvasRef.current) return;
-
-    const ctx = pixelCanvasRef.current.getContext('2d');
-    if (!ctx) return;
-
-    ctx.imageSmoothingEnabled = false;
-
-    soldPixels.forEach(pixel => {
-      const renderX = pixel.x * RENDERED_PIXEL_SIZE_CONFIG;
-      const renderY = pixel.y * RENDERED_PIXEL_SIZE_CONFIG;
-      
-      if (pixel.pixelImageUrl && loadedPixelImages[pixel.pixelImageUrl]) {
-          const img = loadedPixelImages[pixel.pixelImageUrl];
-          ctx.drawImage(img, renderX, renderY, RENDERED_PIXEL_SIZE_CONFIG, RENDERED_PIXEL_SIZE_CONFIG);
-      } else {
-          ctx.fillStyle = pixel.color;
-          ctx.fillRect(renderX, renderY, RENDERED_PIXEL_SIZE_CONFIG, RENDERED_PIXEL_SIZE_CONFIG);
-      }
-    });
-
-  }, [soldPixels, loadedPixelImages, pixelBitmap]);
   
   useEffect(() => {
     const container = containerRef.current;
@@ -316,9 +542,12 @@ export default function PixelGrid() {
 
   useEffect(() => {
     const canvas = outlineCanvasRef.current;
-    if (canvas) {
+    const effectsCanvas = effectsCanvasRef.current;
+    if (canvas && effectsCanvas) {
       canvas.width = containerSize.width;
       canvas.height = containerSize.height;
+      effectsCanvas.width = canvasDrawWidth;
+      effectsCanvas.height = canvasDrawHeight;
     }
   }, [containerSize]);
 
@@ -332,10 +561,15 @@ export default function PixelGrid() {
   
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Draw district outlines
+    // Enhanced district outlines with glow effect
     ctx.save();
     ctx.translate(position.x, position.y);
     ctx.scale(zoom * logicalToSvgScale, zoom * logicalToSvgScale);
+    
+    // Add subtle glow to district borders
+    ctx.shadowColor = `hsl(${strokeColor})`;
+    ctx.shadowBlur = 1 / (zoom * logicalToSvgScale);
+    
     ctx.strokeStyle = `hsl(${strokeColor})`;
     ctx.lineWidth = 0.5 / (zoom * logicalToSvgScale);
     ctx.imageSmoothingEnabled = true;
@@ -351,19 +585,27 @@ export default function PixelGrid() {
     });
     ctx.restore();
   
-    // Draw highlighted pixel border
+    // Enhanced highlighted pixel border with animated glow
     ctx.save();
     ctx.translate(position.x, position.y);
     ctx.scale(zoom, zoom);
     if (highlightedPixel) {
+        const time = Date.now();
+        const glow = Math.sin(time * 0.005) * 0.5 + 0.5;
+        
+        ctx.shadowColor = 'hsl(var(--foreground))';
+        ctx.shadowBlur = (2 + glow * 3) / zoom;
         ctx.strokeStyle = 'hsl(var(--foreground))';
         ctx.lineWidth = (0.5 / zoom) * RENDERED_PIXEL_SIZE_CONFIG;
-        ctx.strokeRect(
-            highlightedPixel.x * RENDERED_PIXEL_SIZE_CONFIG,
-            highlightedPixel.y * RENDERED_PIXEL_SIZE_CONFIG,
-            RENDERED_PIXEL_SIZE_CONFIG,
-            RENDERED_PIXEL_SIZE_CONFIG
-        );
+        
+        const x = highlightedPixel.x * RENDERED_PIXEL_SIZE_CONFIG;
+        const y = highlightedPixel.y * RENDERED_PIXEL_SIZE_CONFIG;
+        
+        // Animated dashed border
+        ctx.setLineDash([4 / zoom, 4 / zoom]);
+        ctx.lineDashOffset = (time * 0.01) % (8 / zoom);
+        
+        ctx.strokeRect(x, y, RENDERED_PIXEL_SIZE_CONFIG, RENDERED_PIXEL_SIZE_CONFIG);
     }
     ctx.restore();
 
@@ -517,7 +759,7 @@ export default function PixelGrid() {
                 isForSaleByOwner: Math.random() > 0.5,
                 salePrice: Math.random() > 0.5 ? Math.floor(Math.random() * 100) + 20 : undefined,
                 isFavorited: Math.random() > 0.5,
-                rarity: randomRarity,
+                rarity: existingSoldPixel.rarity || randomRarity,
                 loreSnippet: randomLore,
                 gpsCoords: approxGps,
             };
@@ -673,6 +915,9 @@ export default function PixelGrid() {
       ownerId: MOCK_CURRENT_USER_ID, 
       title: customizations.title || `Meu Pixel (${pixelData.x},${pixelData.y})`,
       pixelImageUrl: customizations.drawingData, // or from imageFile
+      rarity: 'common',
+      isAnimated: true,
+      lastActivity: new Date()
     };
     setSoldPixels(prev => [...prev.filter(p => p.x !== pixelData.x || p.y !== pixelData.y), newSoldPixel]);
 
@@ -681,11 +926,16 @@ export default function PixelGrid() {
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden relative animate-fade-in">
-      <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 bg-card/80 backdrop-blur-sm p-2 rounded-lg shadow-lg pointer-events-auto animate-slide-in-up animation-delay-200">
+      {/* Enhanced background with gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-background via-background/98 to-primary/5 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-tr from-accent/5 via-transparent to-primary/10 pointer-events-none animate-shimmer" 
+           style={{ backgroundSize: '200% 200%' }} />
+      
+      <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 bg-card/80 backdrop-blur-sm p-2 rounded-lg shadow-lg pointer-events-auto animate-slide-in-up animation-delay-200 border border-primary/20">
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button pointerEvents="auto" variant="outline" size="icon" onClick={handleZoomIn} aria-label="Zoom In">
+              <Button pointerEvents="auto" variant="outline" size="icon" onClick={handleZoomIn} aria-label="Zoom In" className="button-hover-lift">
                 <ZoomIn className="h-5 w-5" />
               </Button>
             </TooltipTrigger>
@@ -693,7 +943,7 @@ export default function PixelGrid() {
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button pointerEvents="auto" variant="outline" size="icon" onClick={handleZoomOut} aria-label="Zoom Out">
+              <Button pointerEvents="auto" variant="outline" size="icon" onClick={handleZoomOut} aria-label="Zoom Out" className="button-hover-lift">
                 <ZoomOut className="h-5 w-5" />
               </Button>
             </TooltipTrigger>
@@ -701,26 +951,29 @@ export default function PixelGrid() {
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button pointerEvents="auto" variant="outline" size="icon" onClick={handleResetView} aria-label="Reset View">
+              <Button pointerEvents="auto" variant="outline" size="icon" onClick={handleResetView} aria-label="Reset View" className="button-hover-lift">
                 <Expand className="h-5 w-5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent><p>Resetar Vista</p></TooltipContent>
           </Tooltip>
         </TooltipProvider>
-        <div className="mt-2 p-2 bg-background/50 rounded-md text-xs font-code">
+        <div className="mt-2 p-2 bg-background/50 rounded-md text-xs font-code border border-border/30">
           <p>Zoom: {zoom.toFixed(2)}x</p>
           <p>X: {Math.round(position.x)}, Y: {Math.round(position.y)}</p>
-          {highlightedPixel && <p>Pixel: ({highlightedPixel.x}, {highlightedPixel.y})</p>}
+          {highlightedPixel && <p className="text-primary font-bold">Pixel: ({highlightedPixel.x}, {highlightedPixel.y})</p>}
           <p>Píxeis no Mapa: {activePixelsInMap > 0 ? activePixelsInMap.toLocaleString('pt-PT') : '...'}</p>
         </div>
       </div>
       
       {showProgressIndicator && (
-          <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-20 bg-card/80 backdrop-blur-sm p-3 rounded-lg shadow-lg text-center pointer-events-none">
+          <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-20 bg-card/90 backdrop-blur-sm p-4 rounded-lg shadow-xl text-center pointer-events-none border border-primary/30">
             <div className="flex items-center justify-center">
-                <Sparkles className="h-5 w-5 text-primary animate-pulse mr-2" />
+                <Sparkles className="h-6 w-6 text-primary animate-pulse mr-3" />
                 <p className="text-sm font-headline text-foreground">{progressMessage}</p>
+            </div>
+            <div className="mt-2 h-1 bg-muted rounded-full overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-primary to-accent animate-shimmer" style={{ width: '100%', backgroundSize: '200% 100%' }} />
             </div>
           </div>
         )}
@@ -736,14 +989,17 @@ export default function PixelGrid() {
         />
       )}
 
-      <div className="flex-grow w-full h-full p-4 md:p-8 flex items-center justify-center">
+      <div className="flex-grow w-full h-full p-4 md:p-8 flex items-center justify-center relative z-10">
         <div
             ref={containerRef}
-            className="w-full h-full cursor-grab active:cursor-grabbing overflow-hidden relative rounded-xl"
+            className="w-full h-full cursor-grab active:cursor-grabbing overflow-hidden relative rounded-xl shadow-2xl border border-primary/20"
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUpOrLeave}
             onMouseLeave={handleMouseUpOrLeave}
+            style={{
+              background: 'linear-gradient(135deg, rgba(0,0,0,0.1) 0%, rgba(212,167,87,0.05) 50%, rgba(0,0,0,0.1) 100%)'
+            }}
         >
             <div
             style={{
@@ -760,6 +1016,11 @@ export default function PixelGrid() {
                 className="absolute top-0 left-0 w-full h-full z-10" 
                 style={{ imageRendering: 'pixelated' }} 
             />
+            <canvas
+                ref={effectsCanvasRef}
+                className="absolute top-0 left-0 w-full h-full z-15 pointer-events-none"
+                style={{ imageRendering: 'auto', mixBlendMode: 'screen' }}
+            />
             {(!mapData && isClient) && <PortugalMapSvg onMapDataLoaded={handleMapDataLoaded} className="invisible absolute" />}
             </div>
             <canvas
@@ -774,8 +1035,8 @@ export default function PixelGrid() {
       <div className="absolute bottom-6 right-6 z-20 animate-scale-in animation-delay-500" pointerEvents="auto">
         <Dialog>
           <DialogTrigger asChild>
-             <Button pointerEvents="auto" size="icon" className="rounded-full w-14 h-14 shadow-lg button-gradient-gold button-3d-effect hover:button-gold-glow active:scale-95">
-                <Star className="h-7 w-7" />
+             <Button pointerEvents="auto" size="icon" className="rounded-full w-14 h-14 shadow-2xl button-gradient-gold button-3d-effect hover:button-gold-glow active:scale-95 border-2 border-background">
+                <Star className="h-7 w-7 animate-glow" />
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-sm border-primary/30 shadow-xl" data-dialog-content pointerEvents="auto">
@@ -786,8 +1047,8 @@ export default function PixelGrid() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-3 py-4">
-              <Button pointerEvents="auto" variant="outline" className="button-3d-effect-outline"><Search className="mr-2 h-4 w-4" />Explorar Pixel por Coordenadas</Button>
-              <Button pointerEvents="auto" variant="outline" onClick={handleGoToMyLocation} className="button-3d-effect-outline"><MapPinIcon className="mr-2 h-4 w-4" />Ir para Minha Localização</Button>
+              <Button pointerEvents="auto" variant="outline" className="button-3d-effect-outline button-hover-lift"><Search className="mr-2 h-4 w-4" />Explorar Pixel por Coordenadas</Button>
+              <Button pointerEvents="auto" variant="outline" onClick={handleGoToMyLocation} className="button-3d-effect-outline button-hover-lift"><MapPinIcon className="mr-2 h-4 w-4" />Ir para Minha Localização</Button>
             </div>
           </DialogContent>
         </Dialog>
