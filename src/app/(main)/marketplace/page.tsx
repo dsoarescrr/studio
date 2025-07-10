@@ -20,6 +20,8 @@ import {
 import {
   Dialog,
   DialogContent,
+import { useUserStore } from '@/lib/store';
+import { SoundEffect, SOUND_EFFECTS } from '@/components/ui/sound-effect';
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -325,6 +327,7 @@ const rarityLabels: Record<PixelRarity, string> = {
 
 export default function MarketplacePage() {
   const [pixels, setPixels] = useState<PixelShowcase[]>(mockPixels);
+  const { addCredits, removeCredits } = useUserStore();
   const [filteredPixels, setFilteredPixels] = useState<PixelShowcase[]>(mockPixels);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('trending');
@@ -333,6 +336,7 @@ export default function MarketplacePage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [playPurchaseSound, setPlayPurchaseSound] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -443,7 +447,9 @@ export default function MarketplacePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5 transition-colors duration-300">
+      <SoundEffect src={SOUND_EFFECTS.PURCHASE} play={playPurchaseSound} onEnd={() => setPlayPurchaseSound(false)} />
+      
       <div className="container mx-auto py-6 px-4 mb-16 space-y-6 max-w-7xl">
         {/* Enhanced Header */}
         <Card className="shadow-2xl bg-gradient-to-br from-card via-card/95 to-primary/10 border-primary/30 overflow-hidden">
@@ -927,8 +933,15 @@ export default function MarketplacePage() {
                         <Button 
                           size="sm" 
                           className="flex-1 bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90"
-                          onClick={(e) => {
+                          onClick={async (e) => {
                             e.stopPropagation();
+                            setPlayPurchaseSound(true);
+                            removeCredits(pixel.price);
+                            await new Promise(resolve => setTimeout(resolve, 500));
+                            toast({
+                              title: "Compra Bem-Sucedida!",
+                              description: `Você comprou o pixel "${pixel.title}" por ${pixel.price} créditos.`,
+                            });
                           }}
                         >
                           <ShoppingCart className="h-4 w-4 mr-1" />

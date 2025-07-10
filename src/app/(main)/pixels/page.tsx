@@ -31,6 +31,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Eye, Heart, MessageSquare, Star, TrendingUp, Clock, MapPin, Palette, Crown, Gem, Sparkles, Siren as Fire, Trophy, Users, Share2, Bookmark, Filter, Search, SortAsc, Grid3X3, List, BarChart3, Zap, Gift, Coins, Award, Calendar, Globe, Target, Flame, ThumbsUp, Download, ExternalLink, Play, Pause, Volume2, VolumeX, RotateCcw, Maximize2, Settings, ChevronUp, ChevronDown, ArrowUp, ArrowDown, TrendingDown, Plus, RefreshCw, Bell, Flag, Info, HelpCircle, Lightbulb, Megaphone } from "lucide-react";
+import { useUserStore } from '@/lib/store';
+import { SoundEffect, SOUND_EFFECTS } from '@/components/ui/sound-effect';
+import { Pixel3D } from '@/components/ui/3d-pixel';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
@@ -292,6 +295,7 @@ const rarityLabels: Record<PixelRarity, string> = {
 
 export default function PixelsPage() {
   const [pixels, setPixels] = useState<PixelShowcase[]>(mockPixels);
+  const { addCredits, removeCredits } = useUserStore();
   const [filteredPixels, setFilteredPixels] = useState<PixelShowcase[]>(mockPixels);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('trending');
@@ -299,6 +303,8 @@ export default function PixelsPage() {
   const [selectedPixel, setSelectedPixel] = useState<PixelShowcase | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showPromotionModal, setShowPromotionModal] = useState(false);
+  const [show3DPreview, setShow3DPreview] = useState<string | null>(null);
+  const [playPromoteSound, setPlayPromoteSound] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -379,6 +385,9 @@ export default function PixelsPage() {
   const handlePromotePixel = (pixelId: string, boostLevel: number) => {
     const cost = boostLevel * 50; // 50 créditos por nível
     
+    removeCredits(cost);
+    setPlayPromoteSound(true);
+    
     setPixels(prev => prev.map(pixel => 
       pixel.id === pixelId 
         ? { ...pixel, boostLevel, isFeatured: boostLevel >= 3 }
@@ -405,6 +414,8 @@ export default function PixelsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5">
+      <SoundEffect src={SOUND_EFFECTS.SUCCESS} play={playPromoteSound} onEnd={() => setPlayPromoteSound(false)} />
+      
       <div className="container mx-auto py-6 px-4 mb-16 space-y-6 max-w-7xl">
         {/* Header */}
         <Card className="shadow-2xl bg-gradient-to-br from-card via-card/95 to-primary/10 border-primary/30 overflow-hidden">
@@ -566,14 +577,31 @@ export default function PixelsPage() {
                 <div className={cn(
                   "relative overflow-hidden",
                   viewMode === 'grid' ? "aspect-square" : "w-32 h-32 flex-shrink-0"
-                )}>
+                )} 
+                  onMouseEnter={() => setShow3DPreview(pixel.id)}
+                  onMouseLeave={() => setShow3DPreview(null)}
+                >
                   {pixel.imageUrl && (
                     <img 
                       src={pixel.imageUrl} 
                       alt={pixel.title}
                       data-ai-hint={pixel.dataAiHint}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                      className={cn(
+                        "w-full h-full object-cover transition-transform duration-300 group-hover:scale-110",
+                        show3DPreview === pixel.id && "opacity-0"
+                      )}
                     />
+                  )}
+                  
+                  {/* 3D Preview */}
+                  {show3DPreview === pixel.id && (
+                    <div className="absolute inset-0 z-10">
+                      <Pixel3D 
+                        color={pixel.color || "#D4A757"} 
+                        autoRotate={true}
+                        className="w-full h-full"
+                      />
+                    </div>
                   )}
                   
                   {/* Overlay with quick actions */}

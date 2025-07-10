@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { useUserStore } from '@/lib/store';
 import { 
   CheckCircle2, Lock, Award, Edit3, Users, Eye, Map, Compass, Puzzle, Activity, 
   CheckCheck, ShieldCheck, Share2, Trophy, Search, Filter, SortAsc, Star, 
@@ -114,6 +115,7 @@ export default function AchievementsPage() {
   const [sortBy, setSortBy] = useState<SortValue>('name');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
+  const { addCredits, addXp, unlockAchievement } = useUserStore();
   const { toast } = useToast();
 
   const handleShareAchievement = (achievementName: string) => {
@@ -125,9 +127,14 @@ export default function AchievementsPage() {
 
   const handleClaimReward = (achievementId: string, tier: number) => {
     toast({
-      title: "Recompensa Reclamada!",
-      description: `Recebeste XP e créditos pela conquista desbloqueada.`,
+      title: "Conquista Desbloqueada!",
+      description: "Você desbloqueou a conquista 'Personalizador de Perfil'!",
     });
+    
+    // Reward the user
+    addCredits(25);
+    addXp(50);
+    unlockAchievement();
   };
 
   // Filter and sort achievements

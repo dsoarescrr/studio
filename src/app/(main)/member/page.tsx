@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { useUserStore } from '@/lib/store';
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -119,6 +120,18 @@ const activityIcons = {
 
 export default function MemberPage() {
   const [isEditing, setIsEditing] = useState(false);
+  const { 
+    credits, 
+    specialCredits, 
+    level, 
+    xp, 
+    xpMax, 
+    pixels, 
+    achievements, 
+    addCredits, 
+    addXp, 
+    unlockAchievement 
+  } = useUserStore();
   const [editedBio, setEditedBio] = useState(mockUserData.bio);
   const [editedLocation, setEditedLocation] = useState(mockUserData.location);
   const [activeTab, setActiveTab] = useState('overview');
@@ -127,9 +140,12 @@ export default function MemberPage() {
   const handleSaveProfile = () => {
     setIsEditing(false);
     toast({
-      title: "Perfil Atualizado",
-      description: "As alterações ao seu perfil foram guardadas com sucesso.",
+      title: "Perfil Atualizado!",
+      description: "Você ganhou 50 XP por personalizar seu perfil!",
     });
+    
+    // Reward the user for updating their profile
+    addXp(50);
   };
 
   const formatTimeAgo = (date: Date) => {
@@ -358,9 +374,7 @@ export default function MemberPage() {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm text-muted-foreground">Créditos</p>
-                          <p className="text-2xl font-bold text-primary">
-                            {mockUserData.credits.toLocaleString('pt-PT')}
-                          </p>
+                          <p className="text-2xl font-bold text-primary">{credits.toLocaleString('pt-PT')}</p>
                         </div>
                         <Coins className="h-8 w-8 text-primary" />
                       </div>
@@ -374,9 +388,7 @@ export default function MemberPage() {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm text-muted-foreground">Especiais</p>
-                          <p className="text-2xl font-bold text-accent">
-                            {mockUserData.specialCredits.toLocaleString('pt-PT')}
-                          </p>
+                          <p className="text-2xl font-bold text-accent">{specialCredits.toLocaleString('pt-PT')}</p>
                         </div>
                         <Gift className="h-8 w-8 text-accent" />
                       </div>
@@ -389,7 +401,16 @@ export default function MemberPage() {
                   
                   <div className="flex gap-2 mt-4">
                     <Button className="flex-1 bg-gradient-to-r from-primary to-primary/80">
-                      <Plus className="h-4 w-4 mr-2" />
+                      <Plus 
+                        className="h-4 w-4 mr-2" 
+                        onClick={() => {
+                          addCredits(100);
+                          toast({
+                            title: "Créditos Adicionados",
+                            description: "100 créditos foram adicionados à sua conta.",
+                          });
+                        }}
+                      />
                       Adicionar Créditos
                     </Button>
                     <Button variant="outline" className="flex-1">
@@ -615,13 +636,13 @@ export default function MemberPage() {
               <CardHeader>
                 <CardTitle className="flex items-center text-primary">
                   <Trophy className="h-5 w-5 mr-2" />
-                  Conquistas Desbloqueadas ({mockUserData.achievementsUnlocked}/{achievementsData.length})
+                  Conquistas Desbloqueadas ({achievements}/{achievementsData.length})
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <Progress 
-                    value={(mockUserData.achievementsUnlocked / achievementsData.length) * 100} 
+                    value={(achievements / achievementsData.length) * 100} 
                     className="h-2 [&>div]:bg-gradient-to-r [&>div]:from-primary [&>div]:to-accent"
                   />
                   

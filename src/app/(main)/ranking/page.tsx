@@ -8,6 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useUserStore } from '@/lib/store';
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
@@ -219,6 +220,7 @@ const FormattedNumber: React.FC<{ value: number }> = ({ value }) => {
 
 export default function StatisticsPage() {
   const [lastUpdated, setLastUpdated] = useState<string>('');
+  const { addCredits, addXp } = useUserStore();
   const [activeTimeRange, setActiveTimeRange] = useState<'day' | 'week' | 'month' | 'year'>('week');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'rank' | 'pixels' | 'score' | 'level' | 'streak'>('rank');
@@ -246,15 +248,23 @@ export default function StatisticsPage() {
   const handleExportData = () => {
     toast({
       title: "Dados Exportados",
-      description: "Os dados estatísticos foram exportados com sucesso.",
+      description: "Os dados estatísticos foram exportados com sucesso. Recebeu 25 créditos como recompensa!",
     });
+    
+    // Reward the user for exporting data
+    addCredits(25);
+    addXp(10);
   };
 
   const handleShareStats = () => {
     toast({
       title: "Estatísticas Partilhadas",
-      description: "Link das estatísticas copiado para a área de transferência.",
+      description: "Link das estatísticas copiado para a área de transferência. Recebeu 50 créditos como recompensa!",
     });
+    
+    // Reward the user for sharing stats
+    addCredits(50);
+    addXp(25);
   };
 
   const filteredRanking = userRankingData
