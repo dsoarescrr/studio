@@ -7,12 +7,10 @@ import { useWindowSize } from 'react-use';
 import { ErrorBoundary } from 'react-error-boundary';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
-import { ZoomIn, ZoomOut, RotateCcw, Locate, Map, Loader2, AlertTriangle, Grid3X3, Palette } from 'lucide-react';
-import { useUserStore, usePixelStore, useSettingsStore } from '@/lib/store';
+import { ZoomIn, ZoomOut, RotateCcw, Loader2, AlertTriangle } from 'lucide-react';
+import { usePixelStore, useSettingsStore, useUserStore } from '@/lib/store';
 import EnhancedPixelPurchaseModal from './EnhancedPixelPurchaseModal';
-import { generatePixelDescription } from '@/ai/flows/generate-pixel-description';
 import { useToast } from '@/hooks/use-toast';
 import { cn, mapPixelToApproxGps } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
@@ -48,23 +46,39 @@ export default function PixelGrid() {
   const [selectedPixel, setSelectedPixel] = useState<{ x: number; y: number } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalPixelData, setModalPixelData] = useState<any>(null);
-  const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
-  const [mapData, setMapData] = useState<MapData | null>(null);
+  const [mapImage, setMapImage] = useState<HTMLImageElement | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { t } = useTranslation();
   const { highQualityRendering } = useSettingsStore();
 
-  const { soldPixels, addSoldPixel, updatePixelColor } = usePixelStore();
-  const { addCredits, addXp, addPixel } = useUserStore();
+  const { soldPixels, addSoldPixel } = usePixelStore();
+  const { removeCredits, addXp, addPixel } = useUserStore();
   const { toast } = useToast();
 
   const GRID_SIZE = highQualityRendering ? 2 : 3;
   const GRID_COLOR = 'rgba(212, 167, 87, 0.1)';
-  const HOVER_COLOR = 'rgba(125, 249, 255, 0.7)';
-  const SELECTED_COLOR = 'rgba(125, 249, 255, 1)';
   
   const logicalWidth = 1000;
   const logicalHeight = 2000;
+
+  const handleMapDataLoaded = useCallback((data: MapData) => {
+    if (data.svgElement) {
+      const svgString = new XMLSerializer().serializeToString(data.svgElement);
+      const svg = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svg);
+      const img = new Image();
+      img.onload = () => {
+        setMapImage(img);
+        setIsLoading(false);
+        URL.revokeObjectURL(url);
+      };
+      img.onerror = () => {
+        console.error("Failed to load map image from SVG blob.");
+        setIsLoading(false);
+      }
+      img.src = url;
+    }
+  }, []);
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -77,37 +91,13 @@ export default function PixelGrid() {
     ctx.translate(offset.x, offset.y);
     ctx.scale(zoom, zoom);
 
-    // Draw Portugal Map SVG as background
-    if (mapData && mapData.svgElement) {
-        try {
-          const svgString = new XMLSerializer().serializeToString(mapData.svgElement);
-          const svg = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-          const url = URL.createObjectURL(svg);
-          const img = new Image();
-          img.onload = () => {
-            ctx.drawImage(img, 0, 0, logicalWidth, logicalHeight);
-            URL.revokeObjectURL(url);
-            drawGrid(ctx);
-            drawPixels(ctx);
-          };
-          img.src = url;
-        } catch (e) {
-            console.error("Failed to render SVG background", e);
-            drawGrid(ctx);
-            drawPixels(ctx);
-        }
-    } else {
-        drawGrid(ctx);
-        drawPixels(ctx);
+    if (mapImage) {
+      ctx.drawImage(mapImage, 0, 0, logicalWidth, logicalHeight);
     }
     
-    ctx.restore();
-  }, [zoom, offset, mapData, highQualityRendering]);
-  
-  const drawGrid = (ctx: CanvasRenderingContext2D) => {
+    // Draw Grid
     ctx.strokeStyle = GRID_COLOR;
     ctx.lineWidth = 1 / zoom;
-
     if (zoom > 5) {
       for (let x = 0; x <= logicalWidth; x += GRID_SIZE) {
         ctx.beginPath();
@@ -122,18 +112,20 @@ export default function PixelGrid() {
         ctx.stroke();
       }
     }
-  };
-
-  const drawPixels = (ctx: CanvasRenderingContext2D) => {
+    
+    // Draw Pixels
     soldPixels.forEach(p => {
         ctx.fillStyle = p.color;
         ctx.fillRect(p.x * GRID_SIZE, p.y * GRID_SIZE, GRID_SIZE, GRID_SIZE);
     });
-  };
+
+    ctx.restore();
+  }, [zoom, offset, mapImage, soldPixels, highQualityRendering]);
+  
 
   useEffect(() => {
     draw();
-  }, [draw, soldPixels]);
+  }, [draw]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -203,7 +195,6 @@ export default function PixelGrid() {
 
     setSelectedPixel({ x: gridX, y: gridY });
     
-    // Find if the pixel is already sold
     const existingPixel = soldPixels.find(p => p.x === gridX && p.y === gridY);
     
     const gpsCoords = mapPixelToApproxGps(gridX, gridY, Math.floor(logicalWidth / GRID_SIZE), Math.floor(logicalHeight / GRID_SIZE));
@@ -213,7 +204,7 @@ export default function PixelGrid() {
       y: gridY,
       color: existingPixel?.color || '#333333',
       owner: existingPixel?.ownerId || 'Sistema',
-      price: 75, // Mock price
+      price: 75,
       lastSold: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
       views: Math.floor(Math.random() * 1000),
       likes: Math.floor(Math.random() * 100),
@@ -248,93 +239,87 @@ export default function PixelGrid() {
     }
   };
   
-  const handleMapDataLoaded = (data: MapData) => {
-    setMapData(data);
-    setIsLoading(false);
-  };
-
   const resetView = () => {
     setZoom(1);
     setOffset({ x: 0, y: 0 });
   };
   
-  if (isLoading) {
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-background">
-        <PortugalMapSvg onMapDataLoaded={handleMapDataLoaded} className="hidden" />
-        <Card className="text-center p-6 bg-card/80 backdrop-blur-sm">
-          <CardContent className="space-y-3">
-            <Loader2 className="h-10 w-10 text-primary mx-auto animate-spin" />
-            <h2 className="text-lg font-semibold">{t('map.loading')}</h2>
-            <p className="text-sm text-muted-foreground">A renderizar mapa de Portugal...</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className="relative w-full h-full bg-background overflow-hidden cursor-grab active:cursor-grabbing">
+        {/* Render SVG offscreen to load data */}
+        <PortugalMapSvg onMapDataLoaded={handleMapDataLoaded} className="hidden" />
+
       <ErrorBoundary FallbackComponent={ErrorFallback}>
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5 }}
-          className="w-full h-full"
-        >
-          <canvas
-            ref={canvasRef}
-            width={width}
-            height={height}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={() => setIsDragging(false)}
-          />
-
-          {/* UI Controls */}
-          <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="outline" size="icon" onClick={() => handleZoom(0.2)} aria-label="Zoom In">
-                    <ZoomIn />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="left"><p>Zoom In</p></TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="outline" size="icon" onClick={() => handleZoom(-0.2)} aria-label="Zoom Out">
-                    <ZoomOut />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="left"><p>Zoom Out</p></TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="outline" size="icon" onClick={resetView} aria-label="Reset View">
-                    <RotateCcw />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="left"><p>Resetar Vista</p></TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+        {isLoading ? (
+          <div className="w-full h-full flex items-center justify-center bg-background">
+            <Card className="text-center p-6 bg-card/80 backdrop-blur-sm">
+              <CardContent className="space-y-3">
+                <Loader2 className="h-10 w-10 text-primary mx-auto animate-spin" />
+                <h2 className="text-lg font-semibold">{t('map.loading')}</h2>
+                <p className="text-sm text-muted-foreground">A renderizar mapa de Portugal...</p>
+              </CardContent>
+            </Card>
           </div>
-          
-          <PerformanceMonitor />
+        ) : (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+            className="w-full h-full"
+          >
+            <canvas
+              ref={canvasRef}
+              width={width}
+              height={height}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={() => setIsDragging(false)}
+            />
 
-          <EnhancedPixelPurchaseModal
-            isOpen={isModalOpen}
-            onClose={() => setIsModalOpen(false)}
-            pixelData={modalPixelData}
-            userCredits={12500}
-            userSpecialCredits={120}
-            onPurchase={handlePurchase}
-          />
-        </motion.div>
+            {/* UI Controls */}
+            <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="icon" onClick={() => handleZoom(0.2)} aria-label="Zoom In">
+                      <ZoomIn />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="left"><p>Zoom In</p></TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="icon" onClick={() => handleZoom(-0.2)} aria-label="Zoom Out">
+                      <ZoomOut />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="left"><p>Zoom Out</p></TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="icon" onClick={resetView} aria-label="Reset View">
+                      <RotateCcw />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="left"><p>Resetar Vista</p></TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            
+            <PerformanceMonitor />
+
+            <EnhancedPixelPurchaseModal
+              isOpen={isModalOpen}
+              onClose={() => setIsModalOpen(false)}
+              pixelData={modalPixelData}
+              userCredits={12500}
+              userSpecialCredits={120}
+              onPurchase={handlePurchase}
+            />
+          </motion.div>
+        )}
       </ErrorBoundary>
     </div>
   );
 }
-
