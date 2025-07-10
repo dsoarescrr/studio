@@ -2,7 +2,6 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import PixelPurchaseModal from './PixelPurchaseModal';
 import {
   ZoomIn, ZoomOut, Expand, Search, Sparkles, Info, User, CalendarDays,
   History as HistoryIcon, DollarSign, ShoppingCart, Edit3, Palette as PaletteIconLucide, FileText, Upload, Save,
@@ -15,7 +14,7 @@ import PortugalMapSvg, { type MapData } from './PortugalMapSvg';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { generatePixelDescription, type GeneratePixelDescriptionInput } from '@/ai/flows/generate-pixel-description';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
   DialogContent,
@@ -30,7 +29,7 @@ import { Card, CardContent, CardHeader, CardTitle as CardTitleElement, CardDescr
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea'; 
+import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '../ui/separator';
@@ -124,12 +123,10 @@ export default function PixelGrid() {
   const [aiModalProgressValue, setAiModalProgressValue] = useState(0);
   const [initialAiProgressTrigger, setInitialAiProgressTrigger] = useState(0);
 
-  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
-  const [purchasePixelData, setPurchasePixelData] = useState<any>(null);
-
   const containerRef = useRef<HTMLDivElement>(null);
-  const pixelCanvasRef = useRef<HTMLCanvasElement>(null); 
+  const pixelCanvasRef = useRef<HTMLCanvasElement>(null);
   const outlineCanvasRef = useRef<HTMLCanvasElement>(null);
+  const { toast } = useToast();
 
   const [mapData, setMapData] = useState<MapData | null>(null);
   const [pixelBitmap, setPixelBitmap] = useState<Uint8Array | null>(null);
@@ -154,7 +151,7 @@ export default function PixelGrid() {
   const [editableIsForSaleByOwner, setEditableIsForSaleByOwner] = useState(false);
   const [editableSalePrice, setEditableSalePrice] = useState<number | string>('');
 
-  const autoResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoResetTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [unsoldColor, setUnsoldColor] = useState('');
   const [strokeColor, setStrokeColor] = useState('');
@@ -251,7 +248,7 @@ export default function PixelGrid() {
     };
     img.src = url;
   
-  }, [isClient, mapData]);
+  }, [isClient, mapData, toast]);
 
   useEffect(() => {
       if (!pixelBitmap || !unsoldColor) return;
@@ -533,8 +530,8 @@ export default function PixelGrid() {
     }
 
     const rect = containerRef.current.getBoundingClientRect();
-    const clickXInContainer = event.clientX - rect.left; 
-    const clickYInContainer = event.clientY - rect.top; 
+    const clickXInContainer = event.clientX - rect.left;
+    const clickYInContainer = event.clientY - rect.top;
 
     const xOnContent = (clickXInContainer - position.x) / zoom;
     const yOnContent = (clickYInContainer - position.y) / zoom;
@@ -553,22 +550,6 @@ export default function PixelGrid() {
         const randomRarity = mockRarities[Math.floor(Math.random() * mockRarities.length)];
         const randomLore = mockLoreSnippets[Math.floor(Math.random() * mockLoreSnippets.length)];
         const approxGps = mapPixelToApproxGps(logicalCol, logicalRow, LOGICAL_GRID_COLS_CONFIG, logicalGridRows);
-
-        // Create mock pixel data for purchase modal 
-        const pixelData = {
-          x: logicalCol,
-          y: logicalRow,
-          color: `#${Math.floor(Math.random()*16777215).toString(16)}`,
-          owner: Math.random() > 0.7 ? 'PixelMaster123' : undefined,
-          price: Math.floor(Math.random() * 500) + 50,
-          lastSold: Math.random() > 0.5 ? new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000) : undefined,
-          views: Math.floor(Math.random() * 1000) + 100,
-          likes: Math.floor(Math.random() * 100) + 10,
-          rarity: ['common', 'uncommon', 'rare', 'epic', 'legendary'][Math.floor(Math.random() * 5)] as any,
-          region: 'Lisboa',
-          isProtected: Math.random() > 0.8,
-          history: []
-        };
 
         if (existingSoldPixel) {
              mockDetails = {
@@ -623,14 +604,7 @@ export default function PixelGrid() {
         setEditableIsForSaleByOwner(mockDetails.isForSaleByOwner || false);
         setEditableSalePrice(mockDetails.salePrice || '');
 
-        // Only show purchase modal for system pixels
-        if (mockDetails.isForSaleBySystem) {
-          setPurchasePixelData(pixelData);
-          setShowPurchaseModal(true);
-        } else {
-          setShowPixelModal(true);
-        }
-        
+        setShowPixelModal(true);
         setPixelDescription(null);
         setEditMode(false);
         setInitialAiProgressTrigger(prev => prev + 1);
@@ -655,14 +629,6 @@ export default function PixelGrid() {
     }
   };
 
-  const handlePurchase = async (pixelData: any, paymentMethod: string, customizations: any) => {
-    // Simulate purchase process
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Mock success/failure
-    return Math.random() > 0.1; // 90% success rate
-  };
-
   const handleGenerateDescription = useCallback(async () => {
     if (!selectedPixelDetails) return;
     setIsGeneratingDesc(true);
@@ -683,7 +649,7 @@ export default function PixelGrid() {
     } finally {
         setIsGeneratingDesc(false);
     }
-  }, [selectedPixelDetails]);
+  }, [selectedPixelDetails, toast]);
 
   const handlePixelImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -965,14 +931,460 @@ export default function PixelGrid() {
           </div>
         )}
       
-      <PixelPurchaseModal
-        isOpen={showPurchaseModal}
-        onClose={() => setShowPurchaseModal(false)}
-        pixelData={purchasePixelData}
-        userCredits={12500}
-        userSpecialCredits={120}
-        onPurchase={handlePurchase}
-      />
+      <Dialog open={showPixelModal} onOpenChange={(isOpen) => {
+          setShowPixelModal(isOpen);
+          if (!isOpen) {
+              setSelectedPixelDetails(null);
+              setHighlightedPixel(null);
+              setPixelDescription(null);
+              setIsGeneratingDesc(false);
+              setAiModalProgressValue(0);
+              setEditMode(false);
+          } else {
+            clearAutoResetTimeout(); 
+          }
+      }}>
+        <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-sm text-card-foreground border-primary/30 shadow-xl" data-dialog-content pointerEvents="auto">
+          {!editMode && selectedPixelDetails && (
+            <>
+              <DialogHeader className={cn(`dialog-header-gold-accent rounded-t-lg`, selectedPixelDetails?.rarity === 'Lendário' ? 'legendary-glow-strong' : selectedPixelDetails?.rarity === 'Épico' ? 'epic-shadow' : '')}>
+                <div className="flex items-start justify-between">
+                    <div>
+                        <DialogTitle className="font-headline flex items-center text-xl text-shadow-gold-sm">
+                            Pixel ({selectedPixelDetails.x}, {selectedPixelDetails.y})
+                        </DialogTitle>
+                        {selectedPixelDetails.title && <CardDescription className="text-base text-primary/90 -mt-1 text-shadow-gold-xs">&quot;{selectedPixelDetails.title}&quot;</CardDescription>}
+                    </div>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" onClick={handleToggleFavorite} className="text-muted-foreground hover:text-destructive-foreground h-8 w-8">
+                                    <Heart className={`h-5 w-5 transition-all duration-200 ${isFavorite ? 'fill-red-500 text-red-500 animate-scale-in' : 'hover:text-red-400'}`} />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent><p>{isFavorite ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos'}</p></TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                </div>
+                <DialogDescriptionElement className="pt-1 text-muted-foreground">
+                  Informações detalhadas e ações disponíveis para este pixel.
+                </DialogDescriptionElement>
+              </DialogHeader>
+              <ScrollArea className="max-h-[calc(100vh-280px)] pr-4 -mr-2">
+              <div className="space-y-3 py-2 px-1">
+                <Card className="card-inset-shadow animate-fade-in animation-delay-100">
+                  <CardHeader className="card-header-accent pb-2 pt-3 px-4">
+                      <CardTitleElement className="text-md font-headline flex items-center text-primary">
+                          <Info className="h-4 w-4 mr-2" /> Informações do Pixel
+                      </CardTitleElement>
+                  </CardHeader>
+                  <CardContent className="text-sm space-y-1.5 px-4 pb-3">
+                    <div className="flex justify-between"><span>Proprietário:</span> <Badge variant={selectedPixelDetails.owner === 'Disponível (Sistema)' ? "secondary" : "outline"} className="font-code">{selectedPixelDetails.owner}</Badge></div>
+
+                    {selectedPixelDetails.isForSaleBySystem && selectedPixelDetails.price && (
+                      <div className="flex justify-between items-center"><span>Preço (Sistema):</span> <span className="font-code flex items-center">{selectedPixelDetails.price} Créditos <DollarSign className="inline h-3.5 w-3.5 ml-1 text-primary" /></span></div>
+                    )}
+                     {selectedPixelDetails.isOwnedByCurrentUser && selectedPixelDetails.isForSaleByOwner && selectedPixelDetails.salePrice && (
+                      <div className="flex justify-between items-center"><span>À Venda por:</span> <Badge variant="destructive" className="font-code">{selectedPixelDetails.salePrice} Créditos</Badge></div>
+                    )}
+
+                    {selectedPixelDetails.acquisitionDate && <div className="flex justify-between"><span>Adquirido em:</span> <span className="font-code">{selectedPixelDetails.acquisitionDate}</span></div>}
+                    {selectedPixelDetails.lastModifiedDate && <div className="flex justify-between"><span>Modificado em:</span> <span className="font-code">{selectedPixelDetails.lastModifiedDate}</span></div>}
+                    <div className="flex justify-between items-center">
+                      <span>Cor Atual:</span>
+                      <div className="flex items-center">
+                        <div style={{ backgroundColor: selectedPixelDetails.color }} className="w-4 h-4 rounded-sm mr-1.5 border border-border"></div>
+                        <span className="font-code">{selectedPixelDetails.color}</span>
+                      </div>
+                    </div>
+                    {selectedPixelDetails.gpsCoords && (
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center">
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                    <span className="font-code flex items-center cursor-help">
+                                        GPS (Aprox.): {selectedPixelDetails.gpsCoords.lat.toFixed(4)}, {selectedPixelDetails.gpsCoords.lon.toFixed(4)}
+                                    </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent align="start"><p>Coordenadas GPS aproximadas. Não para navegação precisa.</p></TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </div>
+                        <Button variant="outline" size="sm" className="h-7 text-xs ml-2" onClick={handleViewOnRealMap}>
+                            <MapIcon className="h-3 w-3 mr-1.5" /> Ver no Mapa
+                        </Button>
+                      </div>
+                    )}
+                    {selectedPixelDetails.manualDescription && (
+                       <div className="pt-1">
+                          <span className="font-semibold">Descrição:</span>
+                          <p className="text-xs text-muted-foreground italic">&quot;{selectedPixelDetails.manualDescription}&quot;</p>
+                       </div>
+                    )}
+                    {selectedPixelDetails.tags && selectedPixelDetails.tags.length > 0 && (
+                        <div className="pt-1">
+                            <span className="font-semibold">Tags:</span>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                                {selectedPixelDetails.tags.map(tag => <Badge key={tag} variant="secondary" className="text-xs font-code">{tag}</Badge>)}
+                            </div>
+                        </div>
+                    )}
+                    {selectedPixelDetails.linkUrl && (
+                        <div className="pt-1">
+                            <span className="font-semibold">Link:</span>
+                            <a href={selectedPixelDetails.linkUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline ml-1 flex items-center font-code">
+                                {selectedPixelDetails.linkUrl.length > 30 ? `${selectedPixelDetails.linkUrl.substring(0,30)}...` : selectedPixelDetails.linkUrl}
+                                <LinkIconLucide className="h-3 w-3 ml-1" />
+                            </a>
+                        </div>
+                    )}
+                    {selectedPixelDetails.pixelImageUrl && (
+                      <div className="pt-1">
+                        <span className="font-semibold">Imagem do Pixel:</span>
+                        <div className="mt-1 relative w-24 h-24 rounded border border-border overflow-hidden shadow-sm animate-scale-in">
+                          <NextImage src={selectedPixelDetails.pixelImageUrl} alt="Imagem do Pixel" layout="fill" objectFit="cover" data-ai-hint={selectedPixelDetails.dataAiHint || 'pixel image'}/>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {selectedPixelDetails.rarity && (
+                  <Card className="card-inset-shadow animate-fade-in animation-delay-200">
+                    <CardHeader className="card-header-accent pb-2 pt-3 px-4">
+                        <CardTitleElement className="text-md font-headline flex items-center text-primary">
+                            <Gem className="h-4 w-4 mr-2" /> Raridade e História
+                        </CardTitleElement>
+                    </CardHeader>
+                    <CardContent className="px-4 pb-3 space-y-1.5">
+                       <div className="flex justify-between items-center text-sm">
+                          <span>Raridade:</span>
+                           <Badge
+                              variant={
+                                  selectedPixelDetails.rarity === 'Lendário' ? "destructive" : 
+                                  selectedPixelDetails.rarity === 'Épico' ? "default" :    
+                                  selectedPixelDetails.rarity === 'Raro' ? "secondary" :
+                                  "outline" 
+                              }
+                              className={`font-code text-xs ${selectedPixelDetails.rarity === 'Marco Histórico' ? 'border-amber-500 text-amber-500' : ''}`}
+                            >
+                            {selectedPixelDetails.rarity}
+                          </Badge>
+                       </div>
+                       {selectedPixelDetails.loreSnippet && (
+                         <div className="pt-1">
+                            <span className="font-semibold text-sm">Fragmento de História (IA):</span>
+                            <p className="text-xs text-muted-foreground italic">&quot;{selectedPixelDetails.loreSnippet}&quot;</p>
+                         </div>
+                       )}
+                    </CardContent>
+                  </Card>
+                )}
+
+
+                {(!pixelDescription && !isGeneratingDesc && (aiModalProgressValue === 0 || aiModalProgressValue === 100) && showPixelModal) && (
+                  <Card className="card-inset-shadow animate-fade-in animation-delay-300">
+                    <CardHeader className="card-header-accent pb-2 pt-3 px-4">
+                        <CardTitleElement className="text-md font-headline flex items-center text-primary">
+                            <Sparkles className="h-4 w-4 mr-2" /> Descrição por IA
+                        </CardTitleElement>
+                    </CardHeader>
+                    <CardContent className="px-4 pb-3">
+                        <Button variant="outline" size="sm" onClick={handleGenerateDescription} disabled={!selectedPixelDetails} className="w-full mt-1 button-gold-glow">
+                            <Sparkles className="mr-1.5 h-3.5 w-3.5"/>
+                            Gerar Descrição Detalhada com IA
+                        </Button>
+                    </CardContent>
+                  </Card>
+                )}
+                {(isGeneratingDesc || pixelDescription || (aiModalProgressValue > 0 && aiModalProgressValue < 100 && !pixelDescription && showPixelModal)) && (
+                  <Card className="card-inset-shadow animate-fade-in animation-delay-300">
+                    <CardHeader className="card-header-accent pb-2 pt-3 px-4">
+                      <CardTitleElement className="text-md font-headline flex items-center text-primary">
+                          <Sparkles className="h-4 w-4 mr-2" /> Descrição por IA
+                      </CardTitleElement>
+                    </CardHeader>
+                    <CardContent className="px-4 pb-3">
+                      {(isGeneratingDesc || (aiModalProgressValue > 0 && aiModalProgressValue < 100 && !pixelDescription && showPixelModal)) && (
+                        <div className="flex flex-col items-center justify-center my-2">
+                          <Sparkles className="h-6 w-6 text-primary animate-pulse mb-1" />
+                          <p className="text-xs font-headline">A IA está a gerar a descrição...</p>
+                          <Progress value={aiModalProgressValue} className="w-full mt-1 h-1.5" />
+                        </div>
+                      )}
+                      {pixelDescription && (aiModalProgressValue === 0 || aiModalProgressValue === 100) && showPixelModal && (
+                        <p className="text-xs text-foreground italic">&quot;{pixelDescription}&quot;</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {selectedPixelDetails.history && selectedPixelDetails.history.length > 0 && (
+                  <Card className="card-inset-shadow animate-fade-in animation-delay-400">
+                    <CardHeader className="card-header-accent pb-2 pt-3 px-4">
+                      <CardTitleElement className="text-md font-headline flex items-center text-primary">
+                          <HistoryIcon className="h-4 w-4 mr-2" /> Histórico de Proprietários
+                      </CardTitleElement>
+                    </CardHeader>
+                    <CardContent className="px-4 pb-3">
+                      <ScrollArea className="h-20">
+                        <ul className="text-xs space-y-1 font-code">
+                          {selectedPixelDetails.history.map((entry, index) => (
+                            <li key={index} className="flex justify-between">
+                              <span>{entry.owner} ({entry.date})</span>
+                              <span>{entry.price ? `${entry.price}c` : ''}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </ScrollArea>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+              </ScrollArea>
+              <DialogFooter className="gap-2 sm:gap-1.5 flex-wrap justify-center pt-3 sm:justify-between dialog-footer-gold-accent rounded-b-lg">
+                 <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={handleReportPixel} className="text-muted-foreground hover:text-destructive h-8 w-8">
+                                <Flag className="h-4 w-4" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top"><p>Reportar Pixel</p></TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+                <div className="flex gap-2 sm:gap-1.5 flex-wrap justify-center sm:justify-end">
+                    {selectedPixelDetails.isForSaleBySystem && !selectedPixelDetails.isOwnedByCurrentUser && selectedPixelDetails.price && (
+                      <Button size="sm" onClick={handleBuyPixelFromSystem} className="button-gradient-orange button-3d-effect">
+                        <ShoppingCart className="mr-1.5 h-3.5 w-3.5" /> Comprar ({selectedPixelDetails.price} Créditos)
+                      </Button>
+                    )}
+                    {selectedPixelDetails.isOwnedByCurrentUser && (
+                      <>
+                        {selectedPixelDetails.isForSaleByOwner ? (
+                          <Button size="sm" variant="outline" onClick={handleToggleForSaleByOwner} className="border-red-500 text-red-500 hover:bg-red-500/10 hover:text-red-500 button-3d-effect-outline">
+                             <BadgePercent className="mr-1.5 h-3.5 w-3.5" /> Retirar da Venda
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="outline" onClick={handleToggleForSaleByOwner} className="border-green-500 text-green-500 hover:bg-green-500/10 hover:text-green-500 button-3d-effect-outline">
+                             <BadgePercent className="mr-1.5 h-3.5 w-3.5" /> Colocar à Venda
+                          </Button>
+                        )}
+                        <Button size="sm" onClick={() => setEditMode(true)} className="button-gradient-gold button-3d-effect">
+                            <Edit3 className="mr-1.5 h-3.5 w-3.5" /> Editar Pixel
+                        </Button>
+                      </>
+                    )}
+                    {!selectedPixelDetails.isForSaleBySystem && !selectedPixelDetails.isOwnedByCurrentUser && (
+                        <Button variant="secondary" size="sm" disabled className="button-3d-effect">Fazer Oferta</Button>
+                    )}
+                </div>
+              </DialogFooter>
+            </>
+          )}
+          {editMode && selectedPixelDetails && (
+            <>
+              <DialogHeader className="dialog-header-gold-accent rounded-t-lg">
+                <DialogTitle className="font-headline flex items-center text-xl text-shadow-gold-sm">
+                    <Edit3 className="h-5 w-5 mr-2 text-accent" /> Editando Pixel ({selectedPixelDetails.x}, {selectedPixelDetails.y})
+                </DialogTitle>
+                <DialogDescriptionElement className="text-muted-foreground">
+                  Modifique as propriedades do seu pixel.
+                </DialogDescriptionElement>
+              </DialogHeader>
+              <ScrollArea className="max-h-[calc(100vh-280px)] pr-4 -mr-2">
+                <div className="space-y-4 py-2 px-1">
+
+                  <Card className="card-inset-shadow">
+                    <CardHeader className="card-header-accent pb-2 pt-3 px-4">
+                      <CardTitleElement className="text-md font-headline flex items-center text-primary">
+                        <PaletteIconLucide className="h-4 w-4 mr-2" /> Aparência
+                      </CardTitleElement>
+                    </CardHeader>
+                    <CardContent className="px-4 pb-3 space-y-3">
+                        <div>
+                            <Label htmlFor="pixelColorEdit" className="text-xs text-muted-foreground">Cor</Label>
+                            <div className="flex items-center gap-2 mt-1">
+                            <Input
+                                id="pixelColorEdit"
+                                type="color"
+                                value={editableColor}
+                                onChange={(e) => setEditableColor(e.target.value)}
+                                className="w-12 h-10 p-1 input-shadow"
+                            />
+                            <Input
+                                type="text"
+                                placeholder="#RRGGBB"
+                                value={editableColor}
+                                onChange={(e) => setEditableColor(e.target.value)}
+                                className="font-code flex-1 h-10 text-sm input-shadow"
+                                aria-label="Código Hex da Cor"
+                            />
+                            </div>
+                        </div>
+                        <div>
+                            <Label htmlFor="pixelTitleEdit" className="text-xs text-muted-foreground">Título do Pixel</Label>
+                            <Input
+                                id="pixelTitleEdit"
+                                type="text"
+                                placeholder="Ex: Meu Pôr do Sol Pixelizado"
+                                value={editableTitle}
+                                onChange={(e) => setEditableTitle(e.target.value)}
+                                className="mt-1 h-10 text-sm input-shadow"
+                            />
+                        </div>
+                         <div>
+                            <Label htmlFor="pixelDescEdit" className="text-xs text-muted-foreground">Descrição Manual</Label>
+                            <Textarea
+                                id="pixelDescEdit"
+                                placeholder="Descreva o seu pixel..."
+                                value={editableManualDescription}
+                                onChange={(e) => setEditableManualDescription(e.target.value)}
+                                rows={3}
+                                className="mt-1 text-sm input-shadow"
+                            />
+                        </div>
+                         <div>
+                            <Label htmlFor="pixelImageUpload" className="text-xs text-muted-foreground">Imagem do Pixel (Upload)</Label>
+                            <div className="flex items-center gap-2 mt-1">
+                                <Input
+                                    id="pixelImageUpload"
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handlePixelImageUpload}
+                                    className="text-xs flex-1 file:text-primary file:font-semibold file:mr-2 file:px-2 file:py-1 file:rounded-sm file:border-0 file:bg-primary/10 hover:file:bg-primary/20"
+                                />
+                                {editablePixelImagePreview && (
+                                    <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-destructive"
+                                            onClick={handleRemovePixelImage}
+                                        >
+                                            <XCircle className="h-4 w-4" />
+                                        </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent><p>Remover Imagem</p></TooltipContent>
+                                    </Tooltip>
+                                    </TooltipProvider>
+                                )}
+                            </div>
+                            {editablePixelImagePreview && (
+                                <div className="mt-2 relative w-24 h-24 rounded border border-border overflow-hidden group shadow-sm animate-scale-in">
+                                <NextImage src={editablePixelImagePreview} alt="Pré-visualização da Imagem" layout="fill" objectFit="cover" data-ai-hint="pixel image preview"/>
+                                </div>
+                            )}
+                            <p className="text-xs text-muted-foreground mt-1">Envie uma imagem para associar a este pixel.</p>
+                        </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="card-inset-shadow">
+                     <CardHeader className="card-header-accent pb-2 pt-3 px-4">
+                        <CardTitleElement className="text-md font-headline flex items-center text-primary">
+                           <PaintBucket className="h-4 w-4 mr-2" /> Desenhar Imagem <Badge variant="outline" className="ml-2 text-xs">Experimental</Badge>
+                        </CardTitleElement>
+                     </CardHeader>
+                     <CardContent className="px-4 pb-3 space-y-2">
+                        <div className="w-full h-32 bg-muted/30 border border-dashed border-border rounded-md flex items-center justify-center">
+                           <p className="text-xs text-muted-foreground">Área de desenho (em breve)</p>
+                        </div>
+                        <div className="flex items-center justify-center gap-2">
+                           <TooltipProvider>
+                              <Tooltip>
+                                 <TooltipTrigger asChild><Button variant="outline" size="icon" disabled className="h-8 w-8"><Pencil className="h-4 w-4"/></Button></TooltipTrigger>
+                                 <TooltipContent><p>Lápis (Em breve)</p></TooltipContent>
+                              </Tooltip>
+                              <Tooltip>
+                                 <TooltipTrigger asChild><Button variant="outline" size="icon" disabled className="h-8 w-8"><Eraser className="h-4 w-4"/></Button></TooltipTrigger>
+                                 <TooltipContent><p>Borracha (Em breve)</p></TooltipContent>
+                              </Tooltip>
+                              <Tooltip>
+                                 <TooltipTrigger asChild><Button variant="outline" size="icon" disabled className="h-8 w-8"><PaintBucket className="h-4 w-4"/></Button></TooltipTrigger>
+                                 <TooltipContent><p>Preencher (Em breve)</p></TooltipContent>
+                              </Tooltip>
+                               <Tooltip>
+                                 <TooltipTrigger asChild><Button variant="outline" size="icon" disabled className="h-8 w-8"><Trash2 className="h-4 w-4"/></Button></TooltipTrigger>
+                                 <TooltipContent><p>Limpar (Em breve)</p></TooltipContent>
+                              </Tooltip>
+                           </TooltipProvider>
+                        </div>
+                     </CardContent>
+                  </Card>
+
+                  <Card className="card-inset-shadow">
+                    <CardHeader className="card-header-accent pb-2 pt-3 px-4">
+                      <CardTitleElement className="text-md font-headline flex items-center text-primary">
+                        <TagsIcon className="h-4 w-4 mr-2" /> Detalhes Adicionais & Venda
+                      </CardTitleElement>
+                    </CardHeader>
+                    <CardContent className="px-4 pb-3 space-y-3">
+                        <div>
+                            <Label htmlFor="pixelTagsEdit" className="text-xs text-muted-foreground">Tags</Label>
+                            <Input
+                                id="pixelTagsEdit"
+                                type="text"
+                                placeholder="Ex: paisagem, lisboa, arte"
+                                value={editableTags}
+                                onChange={(e) => setEditableTags(e.target.value)}
+                                className="mt-1 h-10 text-sm input-shadow"
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">Separadas por vírgula.</p>
+                        </div>
+                        <div>
+                            <Label htmlFor="pixelLinkEdit" className="text-xs text-muted-foreground">Link Associado</Label>
+                            <Input
+                                id="pixelLinkEdit"
+                                type="url"
+                                placeholder="https://exemplo.com"
+                                value={editableLinkUrl}
+                                onChange={(e) => setEditableLinkUrl(e.target.value)}
+                                className="mt-1 h-10 text-sm input-shadow"
+                            />
+                        </div>
+                        <Separator className="bg-border/50"/>
+                        <div className="flex items-center space-x-2 pt-1">
+                            <Switch
+                            id="for-sale-switch"
+                            checked={editableIsForSaleByOwner}
+                            onCheckedChange={setEditableIsForSaleByOwner}
+                            className="data-[state=checked]:bg-accent data-[state=unchecked]:bg-muted"
+                            />
+                            <Label htmlFor="for-sale-switch" className="text-sm cursor-pointer">Colocar pixel à venda</Label>
+                        </div>
+                        {editableIsForSaleByOwner && (
+                            <div>
+                            <Label htmlFor="sale-price" className="text-xs text-muted-foreground">Preço de Venda (Créditos)</Label>
+                            <Input
+                                id="sale-price"
+                                type="number"
+                                placeholder="Ex: 100"
+                                value={editableSalePrice}
+                                onChange={(e) => setEditableSalePrice(e.target.value)}
+                                className="mt-1 h-10 text-sm input-shadow"
+                                min="0"
+                            />
+                            </div>
+                        )}
+                    </CardContent>
+                  </Card>
+
+                </div>
+              </ScrollArea>
+              <DialogFooter className="gap-2 pt-3 dialog-footer-gold-accent rounded-b-lg">
+                 <Button variant="outline" onClick={() => setEditMode(false)} className="button-3d-effect-outline">Cancelar</Button>
+                 <Button onClick={handleSaveChanges} className="button-gradient-green button-3d-effect">
+                    <Save className="mr-1.5 h-3.5 w-3.5" /> Guardar Alterações
+                  </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <div className="flex-grow w-full h-full p-4 md:p-8 flex items-center justify-center">
         <div
