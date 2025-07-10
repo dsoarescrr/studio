@@ -10,13 +10,20 @@ import {
   Map as MapIcon,
 } from 'lucide-react';
 import NextImage from 'next/image';
-import PortugalMapSvg from './PortugalMapSvg';
-import type { MapData } from './PortugalMapSvg';
+import PortugalMapSvg, { type MapData } from './PortugalMapSvg';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { generatePixelDescription, type GeneratePixelDescriptionInput } from '@/ai/flows/generate-pixel-description';
 import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription as DialogDescriptionElement } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription as DialogDescriptionElement,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle as CardTitleElement, CardDescription } from "@/components/ui/card";
 import { Badge } from '@/components/ui/badge';
@@ -60,33 +67,32 @@ interface SoldPixel {
 interface SelectedPixelDetails {
   x: number;
   y: number;
-  color: string;
   owner?: string;
   price: number;
-  lastSold?: Date;
-  views: number;
-  likes: number;
-  rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
-  region: string;
-  isProtected: boolean;
-  history: Array<{ owner: string; date: string | Date; price: number, action?: 'purchase' | 'sale' | 'transfer' }>;
-  features?: string[];
-  description?: string;
-  tags?: string[];
-  linkUrl?: string;
   acquisitionDate?: string;
   lastModifiedDate?: string;
+  color?: string;
+  history: Array<{ owner: string; date: string; price?: number }>;
   isOwnedByCurrentUser?: boolean;
   isForSaleBySystem?: boolean;
   manualDescription?: string;
   pixelImageUrl?: string;
   dataAiHint?: string;
   title?: string;
+  tags?: string[];
+  linkUrl?: string;
   isForSaleByOwner?: boolean;
   salePrice?: number;
   isFavorited?: boolean;
+  rarity: 'Comum' | 'Raro' | 'Épico' | 'Lendário' | 'Marco Histórico';
   loreSnippet?: string;
   gpsCoords?: { lat: number; lon: number; } | null;
+  views: number;
+  likes: number;
+  region: string;
+  isProtected: boolean;
+  features?: string[];
+  description?: string;
 }
 
 const MIN_ZOOM = 0.05;
@@ -95,7 +101,7 @@ const ZOOM_SENSITIVITY_FACTOR = 1.1;
 const HEADER_HEIGHT_PX = 64;
 const BOTTOM_NAV_HEIGHT_PX = 64;
 
-const mockRarities: SelectedPixelDetails['rarity'][] = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+const mockRarities: SelectedPixelDetails['rarity'][] = ['Comum', 'Raro', 'Épico', 'Lendário', 'Marco Histórico'];
 const mockLoreSnippets: string[] = [
   "Dizem que este pixel brilha sob a lua cheia.",
   "Um antigo mapa sugere um tesouro escondido perto daqui.",
@@ -118,7 +124,7 @@ export default function PixelGrid() {
   const [selectedPixelDetails, setSelectedPixelDetails] = useState<SelectedPixelDetails | null>(null);
   
   const [showPixelModal, setShowPixelModal] = useState(false);
-
+  
   const containerRef = useRef<HTMLDivElement>(null);
   const pixelCanvasRef = useRef<HTMLCanvasElement>(null);
   const outlineCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -156,27 +162,31 @@ export default function PixelGrid() {
     setIsClient(true);
      if (typeof window !== 'undefined') {
       const computedStyle = getComputedStyle(document.documentElement);
-      setUnsoldColor(computedStyle.getPropertyValue('--secondary').trim());
-      setStrokeColor(computedStyle.getPropertyValue('--muted-foreground').trim());
+      const primaryColor = `hsl(${computedStyle.getPropertyValue('--primary').trim()})`;
+      const accentColor = `hsl(${computedStyle.getPropertyValue('--accent').trim()})`;
+      
+      setUnsoldColor(primaryColor);
+      setStrokeColor(accentColor);
     }
   }, []);
 
   const handleMapDataLoaded = useCallback((data: MapData) => {
     setMapData(data);
-    setIsLoadingMap(false); 
-    setProgressMessage("");
   }, []);
 
   useEffect(() => {
     if (!isClient || !mapData || !mapData.svgElement) return;
   
     setProgressMessage("A renderizar mapa melhorado...");
+    setIsLoadingMap(true);
     
     const { svgElement } = mapData;
     
+    // Serialize the SVG to a string
     const serializer = new XMLSerializer();
     const svgString = serializer.serializeToString(svgElement);
     
+    // Create a Blob and a URL
     const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(svgBlob);
     
@@ -185,14 +195,16 @@ export default function PixelGrid() {
     offscreenCanvas.height = canvasDrawHeight;
     const ctx = offscreenCanvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) {
+        setIsLoadingMap(false);
         URL.revokeObjectURL(url);
         return;
     }
     
     const img = new Image();
     img.onload = () => {
+        // Draw the SVG image onto the canvas
         ctx.drawImage(img, 0, 0, canvasDrawWidth, canvasDrawHeight);
-        URL.revokeObjectURL(url); 
+        URL.revokeObjectURL(url); // Clean up the blob URL
 
         try {
           const imageData = ctx.getImageData(0, 0, offscreenCanvas.width, offscreenCanvas.height);
@@ -206,7 +218,7 @@ export default function PixelGrid() {
               const canvasY = Math.floor((row + 0.5) * RENDERED_PIXEL_SIZE_CONFIG);
               const index = (canvasY * offscreenCanvas.width + canvasX) * 4;
               
-              if (data[index + 3] > 0) { 
+              if (data[index + 3] > 0) { // Check alpha channel
                 newBitmap[row * LOGICAL_GRID_COLS_CONFIG + col] = 1;
                 activePixels++;
               }
@@ -214,15 +226,19 @@ export default function PixelGrid() {
           }
           setPixelBitmap(newBitmap);
           setActivePixelsInMap(activePixels);
-          setIsLoadingMap(false);
         } catch(e) {
           console.error("Error generating pixel bitmap:", e);
           toast({ title: "Erro na Grelha", description: "Não foi possível gerar a grelha interativa.", variant: "destructive" });
+        } finally {
+          setIsLoadingMap(false);
+          setProgressMessage("");
         }
     };
     img.onerror = () => {
         console.error("Failed to load SVG as image.");
         toast({ title: "Erro no Mapa", description: "Não foi possível carregar o SVG melhorado.", variant: "destructive" });
+        setIsLoadingMap(false);
+        URL.revokeObjectURL(url);
     };
     img.src = url;
   
@@ -241,17 +257,7 @@ export default function PixelGrid() {
       if (!ctx) return;
       
       ctx.imageSmoothingEnabled = false;
-      
-      // Get the computed style for the color
-      const style = getComputedStyle(canvas);
-      const primaryColor = style.getPropertyValue('--primary').trim();
-      const accentColor = style.getPropertyValue('--accent').trim();
-      
-      const gradient = ctx.createLinearGradient(0, 0, 0, canvasDrawHeight);
-      gradient.addColorStop(0, `hsl(${accentColor})`);
-      gradient.addColorStop(1, `hsl(${primaryColor})`);
-      ctx.fillStyle = gradient;
-
+      ctx.fillStyle = unsoldColor;
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       for (let row = 0; row < logicalGridRows; row++) {
@@ -344,14 +350,11 @@ export default function PixelGrid() {
   
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
+    // Draw district outlines
     ctx.save();
     ctx.translate(position.x, position.y);
     ctx.scale(zoom * logicalToSvgScale, zoom * logicalToSvgScale);
-    
-    const style = getComputedStyle(canvas);
-    const computedStrokeColor = style.getPropertyValue('--muted-foreground').trim();
-    ctx.strokeStyle = `hsl(${computedStrokeColor})`;
-
+    ctx.strokeStyle = strokeColor;
     ctx.lineWidth = 0.5 / (zoom * logicalToSvgScale);
     ctx.imageSmoothingEnabled = true;
     ctx.lineJoin = 'round';
@@ -366,13 +369,12 @@ export default function PixelGrid() {
     });
     ctx.restore();
   
+    // Draw highlighted pixel border
     ctx.save();
     ctx.translate(position.x, position.y);
     ctx.scale(zoom, zoom);
     if (highlightedPixel) {
-        const style = getComputedStyle(canvas);
-        const computedHighlightColor = style.getPropertyValue('--foreground').trim();
-        ctx.strokeStyle = `hsl(${computedHighlightColor})`;
+        ctx.strokeStyle = 'hsl(var(--foreground))';
         ctx.lineWidth = (0.5 / zoom) * RENDERED_PIXEL_SIZE_CONFIG;
         ctx.strokeRect(
             highlightedPixel.x * RENDERED_PIXEL_SIZE_CONFIG,
@@ -500,22 +502,21 @@ export default function PixelGrid() {
         setHighlightedPixel({ x: logicalCol, y: logicalRow });
 
         const existingSoldPixel = soldPixels.find(p => p.x === logicalCol && p.y === logicalRow);
-        
+        let mockDetails: SelectedPixelDetails;
         const randomRarity = mockRarities[Math.floor(Math.random() * mockRarities.length)];
         const randomLore = mockLoreSnippets[Math.floor(Math.random() * mockLoreSnippets.length)];
         const approxGps = mapPixelToApproxGps(logicalCol, logicalRow, LOGICAL_GRID_COLS_CONFIG, logicalGridRows);
-        
-        let mockDetails: SelectedPixelDetails;
+        const region = mapData?.districtMapping?.[`${logicalCol},${logicalRow}`] || "Desconhecida";
 
         if (existingSoldPixel) {
              mockDetails = {
                 x: logicalCol,
                 y: logicalRow,
                 owner: existingSoldPixel.ownerId || MOCK_CURRENT_USER_ID,
-                acquisitionDate: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 30).toISOString(),
-                lastModifiedDate: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 7).toISOString(),
+                acquisitionDate: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 30).toLocaleDateString('pt-PT'),
+                lastModifiedDate: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 7).toLocaleDateString('pt-PT'),
                 color: existingSoldPixel.color,
-                history: [{ owner: existingSoldPixel.ownerId || MOCK_CURRENT_USER_ID, date: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 30).toISOString(), price: Math.floor(Math.random() * 40) + 5 }],
+                history: [{ owner: existingSoldPixel.ownerId || MOCK_CURRENT_USER_ID, date: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 30).toLocaleDateString('pt-PT'), price: Math.floor(Math.random() * 40) + 5 }],
                 isOwnedByCurrentUser: (existingSoldPixel.ownerId || MOCK_CURRENT_USER_ID) === MOCK_CURRENT_USER_ID,
                 isForSaleBySystem: false,
                 manualDescription: 'Este é o meu pixel especial!',
@@ -527,16 +528,14 @@ export default function PixelGrid() {
                 isForSaleByOwner: Math.random() > 0.5,
                 salePrice: Math.random() > 0.5 ? Math.floor(Math.random() * 100) + 20 : undefined,
                 isFavorited: Math.random() > 0.5,
-                rarity: 'epic',
+                rarity: randomRarity,
                 loreSnippet: randomLore,
                 gpsCoords: approxGps,
-                price: 0, 
-                lastSold: new Date(), 
-                views: 123, 
-                likes: 45,
-                region: "Lisboa",
-                isProtected: false, 
-                features: ["Destaque"]
+                price: existingSoldPixel.ownerId ? (Math.floor(Math.random() * 100) + 20) : 0,
+                views: Math.floor(Math.random() * 1000),
+                likes: Math.floor(Math.random() * 200),
+                region: region,
+                isProtected: Math.random() > 0.8,
             };
         } else { 
              mockDetails = {
@@ -544,19 +543,19 @@ export default function PixelGrid() {
                 y: logicalRow,
                 owner: 'Disponível (Sistema)',
                 price: Math.floor(Math.random() * 50) + 10, 
-                color: `hsl(${unsoldColor})`,
+                color: unsoldColor,
                 isOwnedByCurrentUser: false,
                 isForSaleBySystem: true,
                 history: [],
                 isFavorited: Math.random() > 0.8,
-                rarity: 'common',
+                rarity: randomRarity,
                 loreSnippet: randomLore,
                 gpsCoords: approxGps,
-                views: Math.floor(Math.random() * 100),
-                likes: Math.floor(Math.random() * 20),
-                region: "Portugal",
+                views: Math.floor(Math.random() * 1000),
+                likes: Math.floor(Math.random() * 200),
+                region: region,
                 isProtected: false,
-             };
+            };
         }
 
         setSelectedPixelDetails(mockDetails);
@@ -580,6 +579,45 @@ export default function PixelGrid() {
       }
       setIsDragging(false);
     }
+  };
+  
+  const handlePurchase = async (pixelData: SelectedPixelDetails, paymentMethod: string, customizations: any) => {
+    // Simulate API call and logic
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    // Check if user has enough credits (simplified)
+    const price = pixelData.salePrice || pixelData.price;
+    if (price > 10000) { // Simulate insufficient funds
+      return false;
+    }
+
+    const newSoldPixel: SoldPixel = {
+      x: pixelData.x,
+      y: pixelData.y,
+      color: customizations.color || USER_BOUGHT_PIXEL_COLOR,
+      ownerId: MOCK_CURRENT_USER_ID,
+      title: customizations.title || `Meu Pixel (${pixelData.x},${pixelData.y})`,
+      pixelImageUrl: customizations.image ? URL.createObjectURL(customizations.image) : undefined,
+    };
+    setSoldPixels(prev => [...prev, newSoldPixel]);
+
+    // Update the details for the modal to reflect ownership
+    setSelectedPixelDetails({
+      ...pixelData,
+      owner: MOCK_CURRENT_USER_ID,
+      isOwnedByCurrentUser: true,
+      isForSaleBySystem: false,
+      isForSaleByOwner: false,
+      price: 0,
+      salePrice: undefined,
+      acquisitionDate: new Date().toLocaleDateString('pt-PT'),
+      lastModifiedDate: new Date().toLocaleDateString('pt-PT'),
+      color: newSoldPixel.color,
+      title: newSoldPixel.title,
+      pixelImageUrl: newSoldPixel.pixelImageUrl,
+    });
+    
+    return true; // Indicate success
   };
 
   const handleWheelZoom = useCallback((event: WheelEvent) => {
@@ -654,8 +692,10 @@ export default function PixelGrid() {
   const handleGoToMyLocation = () => {
     if (!containerRef.current || !pixelBitmap) return;
 
+    // Simulate finding a location in Lisbon
     const myLocationPixel = { x: 579, y: 1358 };
 
+    // Check if the pixel is valid and on the map
     const bitmapIdx = myLocationPixel.y * LOGICAL_GRID_COLS_CONFIG + myLocationPixel.x;
     if (pixelBitmap[bitmapIdx] !== 1) {
         toast({ title: "Localização não encontrada", description: "Não foi possível encontrar um pixel ativo na sua localização simulada."});
@@ -679,50 +719,12 @@ export default function PixelGrid() {
   const handleViewOnRealMap = () => {
     if (selectedPixelDetails?.gpsCoords) {
       const { lat, lon } = selectedPixelDetails.gpsCoords;
-      const url = `https://www.google.com/maps?q=${lat},${lon}&z=18&t=k`; 
+      const url = `https://www.google.com/maps?q=${lat},${lon}&z=18&t=k`; // z=18 for high zoom, t=k for satellite
       window.open(url, '_blank', 'noopener,noreferrer');
     } else {
       toast({ title: "Coordenadas não disponíveis", description: "Não foi possível determinar a localização GPS para este pixel." });
     }
   };
-
-  const handlePurchase = async (pixelData: SelectedPixelDetails, paymentMethod: string, customizations: any) => {
-    toast({ title: "Processando...", description: "A sua compra está a ser processada." });
-    await new Promise(resolve => setTimeout(resolve, 2000)); 
-    
-    const success = Math.random() > 0.1;
-
-    if (success) {
-      const newSoldPixel: SoldPixel = {
-        x: pixelData.x,
-        y: pixelData.y,
-        color: customizations.color || USER_BOUGHT_PIXEL_COLOR,
-        ownerId: MOCK_CURRENT_USER_ID,
-        title: customizations.title || `Meu Pixel (${pixelData.x},${pixelData.y})`
-      };
-      setSoldPixels(prev => [...prev, newSoldPixel]);
-      
-      const updatedDetails: SelectedPixelDetails = {
-          ...pixelData, 
-          owner: MOCK_CURRENT_USER_ID,
-          isOwnedByCurrentUser: true,
-          isForSaleBySystem: false,
-          price: 0, 
-          acquisitionDate: new Date().toISOString(),
-          lastModifiedDate: new Date().toISOString(),
-          color: newSoldPixel.color, 
-          history: [...pixelData.history, { owner: MOCK_CURRENT_USER_ID, date: new Date().toISOString(), price: pixelData.price }],
-          manualDescription: 'Acabei de adquirir este pixel!', 
-          title: newSoldPixel.title,
-          isForSaleByOwner: false, 
-          salePrice: undefined,
-      };
-      setSelectedPixelDetails(updatedDetails);
-    }
-    
-    return success;
-  };
-
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden relative animate-fade-in">
@@ -770,14 +772,14 @@ export default function PixelGrid() {
           </div>
         )}
       
-      <EnhancedPixelPurchaseModal
-        isOpen={showPixelModal}
-        onClose={() => setShowPixelModal(false)}
-        pixelData={selectedPixelDetails}
-        userCredits={12500} // Mock data
-        userSpecialCredits={120} // Mock data
-        onPurchase={handlePurchase}
-      />
+        <EnhancedPixelPurchaseModal
+          isOpen={showPixelModal}
+          onClose={() => setShowPixelModal(false)}
+          pixelData={selectedPixelDetails}
+          userCredits={12500} // Mocked value, ideally from user store
+          userSpecialCredits={120} // Mocked value
+          onPurchase={handlePurchase}
+        />
 
       <div className="flex-grow w-full h-full p-4 md:p-8 flex items-center justify-center">
         <div
