@@ -62,6 +62,24 @@ export default function UserProfileHeader() {
   const [isAnimating, setIsAnimating] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
+  // Combine store data with mock data for a complete user object
+  const user = {
+    name: "PixelMasterPT",
+    avatarUrl: 'https://placehold.co/40x40.png',
+    dataAiHint: 'profile avatar',
+    level,
+    xp,
+    xpMax,
+    credits,
+    specialCredits,
+    pixels,
+    achievements,
+    notifications,
+    isPremium,
+    isVerified,
+  };
+
+
   useEffect(() => {
     setFormattedCredits(credits.toLocaleString('pt-PT'));
     setFormattedSpecialCredits(specialCredits.toLocaleString('pt-PT'));
