@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -21,7 +22,7 @@ import {
   Shield, ExternalLink, Trophy, Flame, Target, Coins, ChevronDown,
   ChevronUp, Play, Pause, Volume2, VolumeX, Maximize2, RotateCcw,
   Download, Upload, Copy, Link as LinkIcon, CheckCircle2, AlertCircle,
-  Info, HelpCircle, Lightbulb, Megaphone, Coffee, Gamepad2
+  Info, HelpCircle, Lightbulb, Megaphone, Coffee, Gamepad2, BarChart3
 } from "lucide-react";
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
