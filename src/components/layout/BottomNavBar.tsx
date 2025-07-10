@@ -192,13 +192,13 @@ export default function BottomNavBar() {
               <DropdownMenuLabel>Ações Rápidas</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <PixelMarketplace>
-                <DropdownMenuItem className="cursor-pointer">
+                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer">
                   <ShoppingCart className="h-4 w-4 mr-2" />
                   Marketplace
                 </DropdownMenuItem>
               </PixelMarketplace>
               <ThemeCustomizer>
-                <DropdownMenuItem className="cursor-pointer">
+                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer">
                   <Palette className="h-4 w-4 mr-2" />
                   Personalizar Tema
                 </DropdownMenuItem>
