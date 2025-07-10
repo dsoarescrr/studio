@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, User, Trophy, BarChartHorizontalBig, Users as UsersIcon, Plus, Zap, Coins, ShoppingCart, Palette, Gift, Bell, Search as SearchIcon, Gavel, Users2, BarChart3 as AnalyticsIcon } from 'lucide-react';
+import { Home, ShoppingCart, Users as UsersIcon, Gavel, Plus, Zap, Coins, Palette, Gift, Bell, Search as SearchIcon, Users2, BarChart3 as AnalyticsIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -31,10 +31,10 @@ import {
 
 const navLinks = [
   { href: "/", label: "Universo", icon: Home, color: "text-blue-500" },
-  { href: "/achievements", label: "Conquistas", icon: Trophy, color: "text-yellow-500" },
-  { href: "/ranking", label: "Ranking", icon: BarChartHorizontalBig, color: "text-green-500" },
-  { href: "/community", label: "Comunidade", icon: UsersIcon, color: "text-purple-500" },
-  { href: "/member", label: "Perfil", icon: User, color: "text-pink-500" },
+  { href: "/marketplace", label: "Marketplace", icon: ShoppingCart, color: "text-green-500" },
+  { href: "/pixels", label: "Píxeis", icon: Palette, color: "text-purple-500" },
+  { href: "/community", label: "Comunidade", icon: UsersIcon, color: "text-orange-500" },
+  { href: "/auctions", label: "Leilões", icon: Gavel, color: "text-amber-500" },
 ];
 
 const BOTTOM_NAV_HEIGHT = '72px';
@@ -180,7 +180,7 @@ export default function BottomNavBar() {
 
                 {link.href === '/achievements' && (
                   <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 text-xs bg-red-500 hover:bg-red-500 flex items-center justify-center animate-bounce">
-                    2
+                    3
                   </Badge>
                 )}
               </Link>
@@ -204,35 +204,35 @@ export default function BottomNavBar() {
               
               <PixelMarketplace onSelectPixel={handleSelectPixel}>
                 <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer">
-                  <ShoppingCart className="h-4 w-4 mr-2 text-green-500" />
-                  Marketplace
+                  <Palette className="h-4 w-4 mr-2 text-purple-500" />
+                  Editor de Píxeis
                 </DropdownMenuItem>
               </PixelMarketplace>
 
               <PixelAuctionSystem>
                  <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer">
-                  <Gavel className="h-4 w-4 mr-2 text-orange-500" />
-                  Leilões
+                  <Gavel className="h-4 w-4 mr-2 text-amber-500" />
+                  Criar Leilão
                 </DropdownMenuItem>
               </PixelAuctionSystem>
               
               <PixelCollaborationSystem>
                 <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer">
                   <Users2 className="h-4 w-4 mr-2" />
-                   Colaboração
+                   Projetos Colaborativos
                 </DropdownMenuItem>
               </PixelCollaborationSystem>
               
                <PixelAnalytics>
                 <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer">
-                  <AnalyticsIcon className="h-4 w-4 mr-2 text-blue-500" />
-                   Analytics
+                  <AnalyticsIcon className="h-4 w-4 mr-2 text-cyan-500" />
+                   Análise de Mercado
                 </DropdownMenuItem>
               </PixelAnalytics>
 
               <ThemeCustomizer>
                 <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer">
-                  <Palette className="h-4 w-4 mr-2 text-purple-500" />
+                  <Palette className="h-4 w-4 mr-2 text-pink-500" />
                   Personalizar Tema
                 </DropdownMenuItem>
               </ThemeCustomizer>
