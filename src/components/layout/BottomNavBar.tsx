@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -43,11 +44,22 @@ export default function BottomNavBar() {
   const [lastScrollY, setLastScrollY] = useState(0);
   const [selectedPixelForPurchase, setSelectedPixelForPurchase] = useState<any>(null);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [scaleX, setScaleX] = useState(0.8);
 
   useEffect(() => {
     const currentIndex = navLinks.findIndex(link => link.href === pathname);
     setActiveIndex(currentIndex >= 0 ? currentIndex : 0);
   }, [pathname]);
+
+  useEffect(() => {
+    let animationFrameId: number;
+    const animate = () => {
+      setScaleX(0.8 + Math.sin(Date.now() / 1000) * 0.1);
+      animationFrameId = requestAnimationFrame(animate);
+    };
+    animate();
+    return () => cancelAnimationFrame(animationFrameId);
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -102,7 +114,7 @@ export default function BottomNavBar() {
           style={{
             left: `${(activeIndex / navLinks.length) * 100}%`,
             width: `${100 / navLinks.length}%`,
-            transform: `scaleX(${0.8 + Math.sin(Date.now() / 1000) * 0.1})`,
+            transform: `scaleX(${scaleX})`,
           }}
         />
         
