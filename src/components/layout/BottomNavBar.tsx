@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, ShoppingCart, Users as UsersIcon, Plus, Zap, Coins, Palette, Bell, Search as SearchIcon, Users2, BarChart3 as AnalyticsIcon } from 'lucide-react';
+import { Home, ShoppingCart, Users as UsersIcon, Plus, Coins, Palette, Bell, Search as SearchIcon, Users2, BarChart3 as AnalyticsIcon, Settings, Award } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import NotificationCenter from '@/components/layout/NotificationCenter';
 import { useUserStore } from '@/lib/store';
 import SearchSystem from '@/components/layout/SearchSystem';
-import PixelPurchaseModal from '@/components/pixel-grid/PixelPurchaseModal';
+import EnhancedPixelPurchaseModal from '@/components/pixel-grid/EnhancedPixelPurchaseModal';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
@@ -32,6 +32,7 @@ import {
 } from '@/components/features';
 import { SoundEffect, SOUND_EFFECTS } from '@/components/ui/sound-effect';
 import '@/lib/i18n';
+import type { Achievement } from '@/data/achievements-data';
 
 const navLinks = [
   { href: "/", label: "Universo", icon: Home, color: "text-blue-500", description: "Explorar o mapa" },
@@ -405,7 +406,7 @@ export default function BottomNavBar() {
         </div>
       </nav>
       
-      <PixelPurchaseModal
+      <EnhancedPixelPurchaseModal
         isOpen={showPurchaseModal}
         onClose={() => setShowPurchaseModal(false)}
         pixelData={selectedPixelForPurchase}
