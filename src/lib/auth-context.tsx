@@ -61,43 +61,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             lastLogin: serverTimestamp()
           });
           
-          // Sync user data with store
-          const userData = userSnap.data();
-          if (userData) {
-            // This would be expanded to sync all relevant user data
-            // For now, we're just syncing a few key properties
-            if (userData.credits) addCredits(userData.credits);
-            if (userData.specialCredits) addSpecialCredits(userData.specialCredits);
-            if (userData.xp) addXp(userData.xp);
-          }
-        } else {
-          // Create new user document
-          await setDoc(userRef, {
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName || 'Pixel User',
-            photoURL: user.photoURL || '',
-            createdAt: serverTimestamp(),
-            lastLogin: serverTimestamp(),
-            credits: 500, // Starting credits for new users
-            specialCredits: 50, // Starting special credits
-            xp: 0,
-            level: 1,
-            pixels: [],
-            achievements: []
-          });
-          
-          // Give new user starting credits
-          addCredits(500);
-          addSpecialCredits(50);
-          
-          // Unlock first achievement
-          unlockAchievement();
-          
-          toast({
-            title: "Bem-vindo ao Pixel Universe!",
-            description: "A sua conta foi criada com sucesso. Recebeu 500 créditos para começar!",
-          });
         }
       }
       
@@ -105,7 +68,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     return () => unsubscribe();
-  }, [addCredits, addSpecialCredits, addXp, unlockAchievement, toast]);
+  }, []);
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -128,30 +91,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signUp = async (email: string, password: string, username: string) => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      
-      // Update profile with username
-      await updateProfile(userCredential.user, {
-        displayName: username
-      });
-      
-      // Create user document in Firestore with initial data
-      await setDoc(doc(db, 'users', userCredential.user.uid), {
-        uid: userCredential.user.uid,
-        email: userCredential.user.email,
+      const user = userCredential.user;
+
+      // Now create the user document in Firestore with all necessary initial data
+      await setDoc(doc(db, "users", user.uid), {
+        uid: user.uid,
         displayName: username,
-        photoURL: '',
-        createdAt: serverTimestamp(),
-        lastLogin: serverTimestamp(),
+        email: user.email,
+        photoURL: user.photoURL || "",
         credits: 500,
         specialCredits: 50,
-        xp: 0,
         level: 1,
-        pixels: [],
+        xp: 0,
+        xpMax: 1000,
         achievements: [],
+        pixels: [],
         isPremium: false,
-        isVerified: false
+        isVerified: user.emailVerified,
+        createdAt: serverTimestamp(),
+        lastLogin: serverTimestamp(),
       });
       
+      // This is less critical and can happen after the user is fully set up in the DB
+      // It updates the auth profile, but our app should rely on Firestore data primarily.
+      await updateProfile(user, { displayName: username });
+
       toast({
         title: "Registo bem-sucedido",
         description: "A sua conta foi criada com sucesso!",
@@ -210,11 +174,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           achievements: [],
           isPremium: false,
           isVerified: user.emailVerified
-        }, { merge: true }); // Use merge to not overwrite existing data if any
+        });
       } else {
         await updateDoc(userRef, {
           lastLogin: serverTimestamp(),
-          photoURL: user.photoURL // Update photoURL on login
+          photoURL: user.photoURL,
+          displayName: user.displayName
         });
       }
       
