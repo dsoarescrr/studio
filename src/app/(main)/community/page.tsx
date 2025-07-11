@@ -48,6 +48,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { Confetti } from '@/components/ui/confetti';
+import { Progress } from '@/components/ui/progress';
 
 // Types
 interface Post {
@@ -490,8 +491,10 @@ export default function CommunityPage() {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { addCredits, addXp } = useUserStore();
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
+    setIsClient(true);
     // Simulate loading
     const timer = setTimeout(() => {
       setIsLoading(false);
@@ -741,8 +744,9 @@ export default function CommunityPage() {
     return matches ? matches.map(tag => tag.substring(1)) : [];
   };
 
-  // Format date to relative time
+  // Format date to relative time, only on client
   const formatRelativeTime = (date: Date): string => {
+    if (!isClient) return '...';
     const now = new Date();
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
     
@@ -761,8 +765,9 @@ export default function CommunityPage() {
     return `${diffInMonths}m`;
   };
 
-  // Format date for events
+  // Format date for events, only on client
   const formatEventDate = (date: Date): string => {
+    if (!isClient) return '...';
     return date.toLocaleDateString('pt-PT', { 
       day: 'numeric', 
       month: 'short', 
