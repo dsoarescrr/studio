@@ -582,7 +582,8 @@ export default function PixelsPage() {
               )}
 
               <Card className={cn(
-                viewMode === 'list' ? "flex w-full" : ""
+                "w-full",
+                viewMode === 'list' ? "flex" : ""
               )}>
                 {/* Image */}
                 <div className={cn(
@@ -700,8 +701,8 @@ export default function PixelsPage() {
 
                 {/* Enhanced Content */}
                 <div className={cn(
-                  "p-4 flex-1",
-                  viewMode === 'list' && "flex flex-col justify-between"
+                  "p-4 flex-1 flex flex-col justify-between",
+                  viewMode === 'list' && ""
                 )}>
                   <div className="space-y-2">
                     {/* Header */}
