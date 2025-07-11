@@ -23,6 +23,13 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Users, UserPlus, MessageSquare, Calendar, Clock, CheckCircle, 
   XCircle, AlertTriangle, Info, HelpCircle, Settings, Zap, 
   Award, Gift, Heart, Star, Crown, Gem, Sparkles, MapPin, 
@@ -2229,6 +2236,7 @@ export default function PixelCollaborationSystem({ children }: PixelCollaboratio
             
             <ScrollArea className="flex-1">
               <div className="p-6">
+                <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsContent value="projects" className="mt-0 space-y-6">
                   {filteredProjects.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -2348,7 +2356,7 @@ export default function PixelCollaborationSystem({ children }: PixelCollaboratio
                     </Card>
                   )}
                 </TabsContent>
-                
+                </Tabs>
                 <TabsContent value="discover" className="mt-0 space-y-6">
                   {/* Content for Discover tab */}
                 </TabsContent>
