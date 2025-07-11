@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -23,8 +24,9 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSettingsStore, useUserStore } from "@/lib/store";
-import { SoundEffect, SOUND_EFFECTS } from "@/components/ui/sound-effect";
+import { SoundEffect, SOUND_EFFECTS } from '@/components/ui/sound-effect';
 import { Confetti } from '@/components/ui/confetti';
+import { cn } from '@/lib/utils';
 
 export default function SettingsPage() {
   const { toast } = useToast();
