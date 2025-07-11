@@ -32,11 +32,12 @@ import { Eye, Heart, MessageSquare, Star, TrendingUp, Clock, MapPin, Palette, Cr
 import { useUserStore, useSettingsStore } from '@/lib/store';
 import { SoundEffect, SOUND_EFFECTS } from '@/components/ui/sound-effect';
 import { Confetti } from '@/components/ui/confetti';
+import { UserProfileSheet } from '@/components/user/UserProfileSheet';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from 'framer-motion';
 
-type PixelRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'unique';
+type PixelRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'unique' | 'featured';
 type SortOption = 'trending' | 'recent' | 'views' | 'likes' | 'comments' | 'rarity' | 'price' | 'featured';
 type FilterCategory = 'all' | 'featured' | 'trending' | 'new' | 'rare' | 'animated' | 'interactive';
 
@@ -51,6 +52,7 @@ interface PixelShowcase {
     avatar: string;
     dataAiHint?: string;
     level: number;
+    followers?: number;
     verified: boolean;
   };
   rarity: PixelRarity;
@@ -60,6 +62,7 @@ interface PixelShowcase {
   comments: number;
   shares: number;
   bookmarks: number;
+  promoted?: boolean;
   createdAt: Date;
   lastModified: Date;
   imageUrl?: string;
@@ -67,6 +70,7 @@ interface PixelShowcase {
   tags: string[];
   region: string;
   isFeatured: boolean;
+  isSponsored?: boolean;
   isTrending: boolean;
   isAnimated: boolean;
   isInteractive: boolean;
@@ -74,6 +78,7 @@ interface PixelShowcase {
   effects: string[];
   boostLevel: number; // 0-5, paid promotion level
   engagement: {
+    score?: number;
     viewsToday: number;
     likesThisWeek: number;
     commentsThisMonth: number;
@@ -84,6 +89,7 @@ interface PixelShowcase {
     clickRate: number;
     conversionRate: number;
     avgViewTime: number;
+    growthRate?: number;
   };
   color?: string;
 }
@@ -100,6 +106,7 @@ const mockPixels: PixelShowcase[] = [
       avatar: 'https://placehold.co/40x40.png',
       dataAiHint: 'user avatar',
       level: 25,
+      followers: 342,
       verified: true
     },
     rarity: 'epic',
@@ -109,6 +116,7 @@ const mockPixels: PixelShowcase[] = [
     comments: 156,
     shares: 89,
     bookmarks: 234,
+    promoted: true,
     createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
     lastModified: new Date(Date.now() - 1 * 60 * 60 * 1000),
     imageUrl: 'https://placehold.co/200x200.png',
@@ -116,10 +124,12 @@ const mockPixels: PixelShowcase[] = [
     tags: ['lisboa', 'património', 'dourado', 'histórico'],
     region: 'Lisboa',
     isFeatured: true,
+    isSponsored: true,
     isTrending: true,
     isAnimated: true,
     isInteractive: false,
     hasSound: true,
+    color: '#FFD700',
     effects: ['glow', 'sparkle', 'rotation'],
     boostLevel: 5,
     engagement: {
@@ -146,6 +156,7 @@ const mockPixels: PixelShowcase[] = [
       avatar: 'https://placehold.co/40x40.png',
       dataAiHint: 'user avatar',
       level: 18,
+      followers: 156,
       verified: false
     },
     rarity: 'rare',
@@ -155,6 +166,7 @@ const mockPixels: PixelShowcase[] = [
     comments: 89,
     shares: 45,
     bookmarks: 123,
+    promoted: false,
     createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
     lastModified: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
     imageUrl: 'https://placehold.co/200x200.png',
@@ -162,10 +174,12 @@ const mockPixels: PixelShowcase[] = [
     tags: ['galo', 'barcelos', 'tradição', 'animado'],
     region: 'Braga',
     isFeatured: false,
+    isSponsored: false,
     isTrending: true,
     isAnimated: true,
     isInteractive: true,
     hasSound: false,
+    color: '#FF5733',
     effects: ['animation', 'color-shift'],
     boostLevel: 2,
     engagement: {
@@ -192,6 +206,7 @@ const mockPixels: PixelShowcase[] = [
       avatar: 'https://placehold.co/40x40.png',
       dataAiHint: 'user avatar',
       level: 12,
+      followers: 78,
       verified: true
     },
     rarity: 'uncommon',
@@ -201,6 +216,7 @@ const mockPixels: PixelShowcase[] = [
     comments: 67,
     shares: 23,
     bookmarks: 89,
+    promoted: false,
     createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
     lastModified: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
     imageUrl: 'https://placehold.co/200x200.png',
@@ -208,10 +224,12 @@ const mockPixels: PixelShowcase[] = [
     tags: ['pastéis', 'nata', 'doce', 'tradição'],
     region: 'Lisboa',
     isFeatured: false,
+    isSponsored: false,
     isTrending: false,
     isAnimated: true,
     isInteractive: false,
     hasSound: false,
+    color: '#F5DEB3',
     effects: ['steam', 'warm-glow'],
     boostLevel: 1,
     engagement: {
@@ -238,6 +256,7 @@ const mockPixels: PixelShowcase[] = [
       avatar: 'https://placehold.co/40x40.png',
       dataAiHint: 'user avatar',
       level: 30,
+      followers: 567,
       verified: true
     },
     rarity: 'legendary',
@@ -247,6 +266,7 @@ const mockPixels: PixelShowcase[] = [
     comments: 289,
     shares: 156,
     bookmarks: 445,
+    promoted: true,
     createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
     lastModified: new Date(Date.now() - 4 * 60 * 60 * 1000),
     imageUrl: 'https://placehold.co/200x200.png',
@@ -254,10 +274,12 @@ const mockPixels: PixelShowcase[] = [
     tags: ['fado', 'música', 'guitarra', 'interativo'],
     region: 'Lisboa',
     isFeatured: true,
+    isSponsored: false,
     isTrending: true,
     isAnimated: true,
     isInteractive: true,
     hasSound: true,
+    color: '#4682B4',
     effects: ['music-notes', 'golden-glow', 'sound-waves'],
     boostLevel: 4,
     engagement: {
@@ -281,6 +303,7 @@ const rarityColors: Record<PixelRarity, string> = {
   rare: 'text-blue-500 bg-blue-500/10 border-blue-500/30',
   epic: 'text-purple-500 bg-purple-500/10 border-purple-500/30',
   legendary: 'text-orange-500 bg-orange-500/10 border-orange-500/30',
+  featured: 'text-pink-500 bg-pink-500/10 border-pink-500/30',
   unique: 'text-pink-500 bg-pink-500/10 border-pink-500/30'
 };
 
@@ -290,6 +313,7 @@ const rarityLabels: Record<PixelRarity, string> = {
   rare: 'Raro',
   epic: 'Épico',
   legendary: 'Lendário',
+  featured: 'Destaque',
   unique: 'Único'
 };
 
@@ -297,6 +321,7 @@ export default function PixelsPage() {
   const [pixels, setPixels] = useState<PixelShowcase[]>(mockPixels);
   const { addCredits, removeCredits } = useUserStore();
   const { soundEffects } = useSettingsStore();
+  const [isLoading, setIsLoading] = useState(true);
   const [filteredPixels, setFilteredPixels] = useState<PixelShowcase[]>(mockPixels);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('trending');
@@ -308,6 +333,7 @@ export default function PixelsPage() {
   const [playPromoteSound, setPlayPromoteSound] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const { toast } = useToast();
+  const [selectedRegion, setSelectedRegion] = useState<string>('all');
 
   useEffect(() => {
     let filtered = pixels.filter(pixel => {
@@ -315,7 +341,10 @@ export default function PixelsPage() {
         pixel.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         pixel.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
         pixel.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        pixel.owner.name.toLowerCase().includes(searchQuery.toLowerCase());
+        pixel.owner.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        pixel.region.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesRegion = selectedRegion === 'all' || pixel.region === selectedRegion;
       
       const matchesCategory = filterCategory === 'all' || 
         (filterCategory === 'featured' && pixel.isFeatured) ||
@@ -325,7 +354,7 @@ export default function PixelsPage() {
         (filterCategory === 'animated' && pixel.isAnimated) ||
         (filterCategory === 'interactive' && pixel.isInteractive);
       
-      return matchesSearch && matchesCategory;
+      return matchesSearch && matchesCategory && matchesRegion;
     });
 
     filtered.sort((a, b) => {
@@ -334,7 +363,7 @@ export default function PixelsPage() {
           return (b.engagement.viewsToday + b.engagement.likesThisWeek) - 
                  (a.engagement.viewsToday + a.engagement.likesThisWeek);
         case 'recent':
-          return b.createdAt.getTime() - a.createdAt.getTime();
+          return b.lastModified.getTime() - a.lastModified.getTime();
         case 'views':
           return b.views - a.views;
         case 'likes':
@@ -342,6 +371,8 @@ export default function PixelsPage() {
         case 'comments':
           return b.comments - a.comments;
         case 'rarity':
+          if (b.isSponsored && !a.isSponsored) return 1;
+          if (!b.isSponsored && a.isSponsored) return -1;
           const rarityOrder = { common: 1, uncommon: 2, rare: 3, epic: 4, legendary: 5, unique: 6 };
           return rarityOrder[b.rarity] - rarityOrder[a.rarity];
         case 'price':
@@ -356,7 +387,14 @@ export default function PixelsPage() {
     });
 
     setFilteredPixels(filtered);
-  }, [pixels, searchQuery, sortBy, filterCategory]);
+  }, [pixels, searchQuery, sortBy, filterCategory, selectedRegion]);
+  
+  useEffect(() => {
+    // Simulate loading
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+  }, []);
 
   const handleLikePixel = (pixelId: string) => {
     setPixels(prev => prev.map(pixel => 
@@ -364,7 +402,7 @@ export default function PixelsPage() {
         ? { ...pixel, likes: pixel.likes + 1 }
         : pixel
     ));
-    
+
     toast({
       title: "Pixel Curtido!",
       description: "O seu gosto foi registado.",
@@ -377,13 +415,13 @@ export default function PixelsPage() {
         ? { ...pixel, bookmarks: pixel.bookmarks + 1 }
         : pixel
     ));
-    
+
     toast({
       title: "Pixel Guardado!",
       description: "Adicionado aos seus favoritos.",
     });
   };
-
+  
   const handlePromotePixel = (pixelId: string, boostLevel: number) => {
     const cost = boostLevel * 50; // 50 créditos por nível
     
@@ -393,7 +431,7 @@ export default function PixelsPage() {
     
     setPixels(prev => prev.map(pixel => 
       pixel.id === pixelId 
-        ? { ...pixel, boostLevel, isFeatured: boostLevel >= 3 }
+        ? { ...pixel, boostLevel, isFeatured: boostLevel >= 3, promoted: true }
         : pixel
     ));
     
@@ -405,6 +443,14 @@ export default function PixelsPage() {
     setShowPromotionModal(false);
   };
 
+  const clearFilters = () => {
+    setSearchQuery('');
+    setFilterCategory('all');
+    setSortBy('trending');
+    setSelectedRegion('all');
+    setViewMode('grid');
+  };
+
   const getEngagementScore = (pixel: PixelShowcase) => {
     return (pixel.views * 0.1) + (pixel.likes * 2) + (pixel.comments * 5) + (pixel.shares * 10);
   };
@@ -414,6 +460,14 @@ export default function PixelsPage() {
     if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
     return num.toString();
   };
+  
+  // Mock user data for profile sheet
+  const mockUserData = {
+    id: "user123", name: "Pixel Master", username: "@pixelmaster", avatarUrl: "https://placehold.co/100x100.png",
+    dataAiHint: "user avatar", level: 25, xp: 2450, xpMax: 3000, credits: 12500, specialCredits: 120,
+    bio: "Colecionador apaixonado de pixels raros e criador de arte digital no Pixel Universe.",
+    pixelsOwned: 156, achievementsUnlocked: 23, unlockedAchievementIds: ["pixel_initiate", "color_master", "community_star"],
+    rank: 12, location: "Lisboa, Portugal", socials: [], albums: [] };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5">
@@ -422,7 +476,7 @@ export default function PixelsPage() {
         play={playPromoteSound} 
         onEnd={() => setPlayPromoteSound(false)} 
         volume={0.7}
-      />
+      /> 
       <Confetti active={showConfetti} duration={3000} onComplete={() => setShowConfetti(false)} />
       
       <div className="container mx-auto py-6 px-4 mb-16 space-y-6 max-w-7xl">
@@ -431,7 +485,7 @@ export default function PixelsPage() {
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 animate-shimmer" 
                style={{ backgroundSize: '200% 200%' }} />
           <CardHeader className="relative">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 z-10">
               <div>
                 <CardTitle className="font-headline text-3xl text-gradient-gold flex items-center">
                   <Palette className="h-8 w-8 mr-3 animate-glow" />
@@ -441,7 +495,7 @@ export default function PixelsPage() {
                   Descubra, explore e promova os píxeis mais incríveis do Pixel Universe
                 </CardDescription>
               </div>
-              
+
               <div className="flex items-center gap-3">
                 <Button 
                   onClick={() => setShowPromotionModal(true)}
@@ -450,7 +504,7 @@ export default function PixelsPage() {
                   <Megaphone className="h-4 w-4 mr-2" />
                   Promover Pixel
                 </Button>
-                <Button variant="outline">
+                <Button variant="outline" className="hover:bg-primary/10 transition-colors">
                   <Plus className="h-4 w-4 mr-2" />
                   Submeter Pixel
                 </Button>
@@ -460,7 +514,7 @@ export default function PixelsPage() {
         </Card>
 
         {/* Filters and Search */}
-        <Card className="shadow-lg bg-card/80 backdrop-blur-sm border-primary/20">
+        <Card className="shadow-lg bg-card/80 backdrop-blur-sm border-primary/20 hover:border-primary/30 transition-colors">
           <CardContent className="p-4">
             <div className="space-y-4">
               {/* Search Bar */}
@@ -468,7 +522,7 @@ export default function PixelsPage() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Pesquisar píxeis, criadores, tags..."
-                  value={searchQuery}
+                  value={searchQuery} 
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10 bg-background/70 focus:border-primary"
                 />
@@ -476,7 +530,7 @@ export default function PixelsPage() {
 
               {/* Filter Tabs */}
               <Tabs value={filterCategory} onValueChange={(value) => setFilterCategory(value as FilterCategory)} className="animate-fade-in">
-                <TabsList className="grid w-full grid-cols-3 lg:grid-cols-7 h-12 bg-background/50">
+                <TabsList className="grid w-full grid-cols-3 lg:grid-cols-7 h-12 bg-background/50 rounded-xl">
                   <TabsTrigger value="all" className="text-xs">
                     <Globe className="h-4 w-4 mr-1" />
                     Todos
@@ -507,6 +561,27 @@ export default function PixelsPage() {
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
+              
+              {/* Region Filter */}
+              <div className="flex flex-wrap gap-2">
+                <Badge 
+                  variant={selectedRegion === 'all' ? 'default' : 'outline'} 
+                  className="cursor-pointer hover:bg-primary/10 transition-colors"
+                  onClick={() => setSelectedRegion('all')}
+                >
+                  Todas as Regiões
+                </Badge>
+                {['Lisboa', 'Porto', 'Braga', 'Coimbra', 'Faro', 'Évora', 'Madeira', 'Açores'].map(region => (
+                  <Badge 
+                    key={region} 
+                    variant={selectedRegion === region ? 'default' : 'outline'} 
+                    className="cursor-pointer hover:bg-primary/10 transition-colors"
+                    onClick={() => setSelectedRegion(region)}
+                  >
+                    {region}
+                  </Badge>
+                ))}
+              </div>
 
               {/* Sort and View Options */}
               <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
@@ -514,7 +589,7 @@ export default function PixelsPage() {
                   <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
                     <SelectTrigger className="w-48">
                       <SortAsc className="h-4 w-4 mr-2" />
-                      <SelectValue />
+                      <SelectValue placeholder="Ordenar por" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="trending">Mais Populares</SelectItem>
@@ -527,9 +602,15 @@ export default function PixelsPage() {
                       <SelectItem value="featured">Em Destaque</SelectItem>
                     </SelectContent>
                   </Select>
+
+                  {(searchQuery || filterCategory !== 'all' || selectedRegion !== 'all') && (
+                    <Button variant="outline" size="sm" onClick={clearFilters}>
+                      Limpar
+                    </Button>
+                  )}
                 </div>
                 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 text-muted-foreground">
                   <span className="text-sm text-muted-foreground">
                     {filteredPixels.length} píxeis encontrados
                   </span>
@@ -547,7 +628,16 @@ export default function PixelsPage() {
         </Card>
 
         {/* Pixels Grid/List */}
-        <div className={cn(
+        {isLoading ? (
+          <Card className="p-12 text-center">
+            <div className="flex flex-col items-center justify-center">
+              <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+              <h3 className="text-lg font-semibold mb-2">Carregando Pixels</h3>
+              <p className="text-muted-foreground">Aguarde enquanto carregamos os pixels mais incríveis...</p>
+            </div>
+          </Card>
+        ) : (
+          <div className={cn(
           "gap-6",
           viewMode === 'grid' 
             ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" 
@@ -556,7 +646,7 @@ export default function PixelsPage() {
           {filteredPixels.map((pixel) => (
             <motion.div
               key={pixel.id}
-              className={cn(
+              className={cn( 
                 "transition-all duration-300 hover:shadow-xl cursor-pointer group overflow-hidden",
                 pixel.isFeatured && "border-primary/50 bg-primary/5 shadow-primary/20",
                 pixel.boostLevel >= 3 && "ring-2 ring-accent/50",
@@ -564,7 +654,7 @@ export default function PixelsPage() {
               )}
               whileHover={{ scale: 1.02, y: -5 }}
               transition={{ type: "spring", stiffness: 300, damping: 10 }}
-              onClick={() => { setSelectedPixel(pixel); setShowPixelDetails(true); }}
+              onClick={() => { setSelectedPixel(pixel); setShowPixelDetails(true); }} 
             >
               {/* Boost Level Indicator */}
               {pixel.boostLevel > 0 && (
@@ -580,6 +670,13 @@ export default function PixelsPage() {
                   </Badge>
                 </div>
               )}
+              
+              {/* Promoted Badge */}
+              {pixel.promoted && (
+                <div className="absolute top-2 right-2 z-10">
+                  <Badge className="bg-gradient-to-r from-primary to-accent text-white">Promovido</Badge>
+                </div>
+              )}
 
               <Card className={cn(
                 "w-full",
@@ -587,7 +684,7 @@ export default function PixelsPage() {
               )}>
                 {/* Image */}
                 <div className={cn(
-                  "relative overflow-hidden",
+                  "relative overflow-hidden group",
                   viewMode === 'grid' ? "aspect-square" : "w-32 h-32 flex-shrink-0"
                 )} >
                   {pixel.imageUrl && (
@@ -595,7 +692,7 @@ export default function PixelsPage() {
                       src={pixel.imageUrl} 
                       alt={pixel.title}
                       data-ai-hint={pixel.dataAiHint}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" 
                     />
                   )}
                   
@@ -603,7 +700,7 @@ export default function PixelsPage() {
                   <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-2">
                     <TooltipProvider>
                       <Tooltip>
-                        <TooltipTrigger asChild>
+                        <TooltipTrigger asChild> 
                           <Button
                             size="sm"
                             variant="secondary"
@@ -611,7 +708,7 @@ export default function PixelsPage() {
                               e.stopPropagation();
                               handleLikePixel(pixel.id);
                             }}
-                          >
+                          > 
                             <Heart className="h-4 w-4" />
                           </Button>
                         </TooltipTrigger>
@@ -621,7 +718,7 @@ export default function PixelsPage() {
                     
                     <TooltipProvider>
                       <Tooltip>
-                        <TooltipTrigger asChild>
+                        <TooltipTrigger asChild> 
                           <Button
                             size="sm"
                             variant="secondary"
@@ -629,7 +726,7 @@ export default function PixelsPage() {
                               e.stopPropagation();
                               handleBookmarkPixel(pixel.id);
                             }}
-                          >
+                          > 
                             <Bookmark className="h-4 w-4" />
                           </Button>
                         </TooltipTrigger>
@@ -639,7 +736,7 @@ export default function PixelsPage() {
                     
                     <TooltipProvider>
                       <Tooltip>
-                        <TooltipTrigger asChild>
+                        <TooltipTrigger asChild> 
                           <Button
                             size="sm"
                             variant="secondary"
@@ -647,7 +744,7 @@ export default function PixelsPage() {
                               e.stopPropagation();
                             }}
                           >
-                            <Share2 className="h-4 w-4" />
+                            <Share2 className="h-4 w-4" /> 
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>Partilhar</TooltipContent>
@@ -655,7 +752,7 @@ export default function PixelsPage() {
                     </TooltipProvider>
                     
                     <TooltipProvider>
-                      <Tooltip>
+                      <Tooltip> 
                         <TooltipTrigger asChild>
                           <Button
                             size="sm"
@@ -663,7 +760,7 @@ export default function PixelsPage() {
                             onClick={(e) => { e.stopPropagation(); setShowPromotionModal(true); }}
                           >
                             <Megaphone className="h-4 w-4" />
-                          </Button>
+                          </Button> 
                         </TooltipTrigger>
                         <TooltipContent>Promover Pixel</TooltipContent>
                       </Tooltip>
@@ -671,7 +768,7 @@ export default function PixelsPage() {
                   </div>
 
                   {/* Status Badges */}
-                  <div className="absolute top-2 right-2 flex flex-col gap-1">
+                  <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
                     {pixel.isTrending && (
                       <Badge className="text-xs bg-red-500 hover:bg-red-500">
                         <Fire className="h-3 w-3 mr-1" />
@@ -696,15 +793,28 @@ export default function PixelsPage() {
                         Som
                       </Badge>
                     )}
+                    {pixel.rarity === 'legendary' && (
+                      <Badge className="text-xs bg-amber-500 hover:bg-amber-500">
+                        <Crown className="h-3 w-3 mr-1" />
+                        Lendário
+                      </Badge>
+                    )}
                   </div>
+
+                  {/* Price Indicator */}
+                  {pixel.price > 0 && (
+                    <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                      {pixel.price}€
+                    </div>
+                  )} 
                 </div>
 
                 {/* Enhanced Content */}
                 <div className={cn(
-                  "p-4 flex-1 flex flex-col justify-between",
-                  viewMode === 'list' && ""
+                  "p-4 flex-1",
+                  viewMode === 'list' && "flex flex-col justify-between"
                 )}>
-                  <div className="space-y-2">
+                  <div className="space-y-2"> 
                     {/* Header */}
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
@@ -712,7 +822,7 @@ export default function PixelsPage() {
                         <div className="flex items-center gap-2 mt-1">
                           <MapPin className="h-3 w-3 text-muted-foreground" />
                           <span className="text-xs text-muted-foreground">
-                            ({pixel.coordinates.x}, {pixel.coordinates.y}) • {pixel.region}
+                            ({pixel.coordinates.x}, {pixel.coordinates.y}) • <span className="hover:text-primary cursor-pointer" onClick={(e) => {e.stopPropagation(); setSelectedRegion(pixel.region);}}>{pixel.region}</span>
                           </span>
                         </div>
                       </div>
@@ -724,7 +834,7 @@ export default function PixelsPage() {
                         {rarityLabels[pixel.rarity]}
                       </Badge>
                     </div>
-                    
+
                     {/* Description */}
                     <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
                       {pixel.description}
@@ -732,7 +842,7 @@ export default function PixelsPage() {
                     
                     {/* Tags */}
                     <div className="flex flex-wrap gap-1">
-                      {pixel.tags.slice(0, 3).map((tag) => (
+                      {pixel.tags.slice(0, 3).map((tag) => ( 
                         <Badge key={tag} variant="secondary" className="text-xs">
                           #{tag}
                         </Badge>
@@ -746,20 +856,38 @@ export default function PixelsPage() {
                   </div>
 
                   {/* Enhanced Owner Section */}
-                  <div className="flex items-center gap-2 mt-3 mb-3">
-                    <Avatar className="h-6 w-6">
-                      <AvatarImage 
-                        src={pixel.owner.avatar} 
-                        alt={pixel.owner.name}
-                        data-ai-hint={pixel.owner.dataAiHint}
-                      />
-                      <AvatarFallback className="text-xs">
-                        {pixel.owner.name.substring(0, 1)}
-                      </AvatarFallback>
-                    </Avatar>
+                  <div className="flex items-center gap-2 mt-3 mb-3"> 
+                    <UserProfileSheet 
+                      userData={{
+                        ...mockUserData,
+                        name: pixel.owner.name,
+                        avatarUrl: pixel.owner.avatar,
+                        level: pixel.owner.level,
+                        rank: Math.floor(Math.random() * 100) + 1
+                      }} 
+                      achievementsData={[]}
+                    >
+                      <div className="cursor-pointer hover:scale-110 transition-transform">
+                        <Avatar className="h-6 w-6 border border-primary/30">
+                          <AvatarImage src={pixel.owner.avatar} alt={pixel.owner.name} data-ai-hint={pixel.owner.dataAiHint} />
+                          <AvatarFallback className="text-xs">{pixel.owner.name.substring(0, 1)}</AvatarFallback>
+                        </Avatar>
+                      </div>
+                    </UserProfileSheet>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1">
-                        <span className="text-xs font-medium truncate hover:text-primary transition-colors">{pixel.owner.name}</span>
+                        <UserProfileSheet 
+                          userData={{
+                            ...mockUserData,
+                            name: pixel.owner.name,
+                            avatarUrl: pixel.owner.avatar,
+                            level: pixel.owner.level,
+                            rank: Math.floor(Math.random() * 100) + 1
+                          }} 
+                          achievementsData={[]}
+                        >
+                          <span className="text-xs font-medium truncate hover:text-primary transition-colors cursor-pointer">{pixel.owner.name}</span>
+                        </UserProfileSheet>
                         {pixel.owner.verified && (
                           <Star className="h-3 w-3 text-blue-500 fill-current" />
                         )}
@@ -771,7 +899,7 @@ export default function PixelsPage() {
                   </div>
 
                   {/* Enhanced Stats */}
-                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-3"> 
                     <div className="flex items-center gap-3">
                       <span className="flex items-center gap-1">
                         <Eye className="h-3 w-3" />
@@ -792,7 +920,7 @@ export default function PixelsPage() {
                     </div>
                   </div>
                   
-                  <Separator className="bg-border/50" />
+                  <Separator className="bg-border/50" /> 
                   
                   {/* Engagement Bar */}
                   <div className="space-y-1">
@@ -800,7 +928,7 @@ export default function PixelsPage() {
                       <span className="text-muted-foreground">Engagement</span>
                       <span className="font-medium">{Math.round(getEngagementScore(pixel))}</span>
                     </div>
-                    <Progress 
+                    <Progress  
                       value={Math.min(getEngagementScore(pixel) / 100, 100)}
                       className="h-2 rounded-full"
                     />
@@ -809,7 +937,7 @@ export default function PixelsPage() {
               </Card>
             </motion.div>
           ))}
-          
+
           {filteredPixels.length > 0 && (
             <Button variant="outline" className="w-full mt-4">
               <RefreshCw className="h-4 w-4 mr-2" />
@@ -817,6 +945,7 @@ export default function PixelsPage() {
             </Button>
           )}
         </div>
+        )}
 
         {/* Promotion Modal */}
         <Dialog open={showPromotionModal} onOpenChange={setShowPromotionModal}>
@@ -825,7 +954,7 @@ export default function PixelsPage() {
               <DialogTitle className="flex items-center gap-2">
                 <Megaphone className="h-5 w-5 text-primary" />
                 Promover Pixel
-              </DialogTitle>
+              </DialogTitle> 
             </DialogHeader>
             
             <div className="space-y-4">
@@ -833,7 +962,7 @@ export default function PixelsPage() {
                 Aumente a visibilidade do seu pixel com diferentes níveis de promoção:
               </p>
               
-              <div className="space-y-3">
+              <div className="space-y-3"> 
                 {[1, 2, 3, 4, 5].map((level) => (
                   <Card key={level} className="p-3 cursor-pointer hover:border-primary/50 transition-colors">
                     <div className="flex items-center justify-between">
@@ -844,7 +973,7 @@ export default function PixelsPage() {
                           {level === 2 && "Destaque melhorado"}
                           {level === 3 && "Destaque premium + Featured"}
                           {level === 4 && "Destaque máximo + Trending"}
-                          {level === 5 && "Destaque lendário + Topo da página"}
+                          {level === 5 && "Destaque lendário + Topo da página"} 
                         </p>
                       </div>
                       <div className="text-right">
@@ -854,7 +983,7 @@ export default function PixelsPage() {
                     </div>
                   </Card>
                 ))}
-              </div>
+              </div> 
               
               <Button 
                 className="w-full"
@@ -868,7 +997,7 @@ export default function PixelsPage() {
 
         {/* Empty State */}
         {filteredPixels.length === 0 && (
-          <Card className="p-12 text-center">
+          <Card className="p-12 text-center"> 
             <Palette className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-50" />
             <h3 className="text-lg font-semibold mb-2">Nenhum pixel encontrado</h3>
             <p className="text-muted-foreground mb-4">
@@ -876,7 +1005,7 @@ export default function PixelsPage() {
             </p>
             <Button onClick={() => {
               setSearchQuery('');
-              setFilterCategory('all');
+              setFilterCategory('all'); 
               setSortBy('trending');
             }}>
               Limpar Filtros
@@ -884,7 +1013,7 @@ export default function PixelsPage() {
           </Card>
         )}
         
-        {/* Pixel Details Dialog */}
+        {/* Pixel Details Dialog */} 
         <Dialog open={showPixelDetails} onOpenChange={setShowPixelDetails}>
           <DialogContent className="max-w-4xl max-h-[90vh] p-0">
             {selectedPixel && (
@@ -892,7 +1021,7 @@ export default function PixelsPage() {
                 <DialogHeader className="p-6 border-b bg-gradient-to-br from-card via-card/95 to-primary/10 relative overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 animate-shimmer" 
                        style={{ backgroundSize: '200% 200%' }} />
-                  <div className="relative">
+                  <div className="relative"> 
                     <DialogTitle className="flex items-center gap-3 font-headline text-2xl text-gradient-gold">
                       <div className={cn(
                         "p-2 rounded-xl",
@@ -900,7 +1029,7 @@ export default function PixelsPage() {
                       )}>
                         <MapPin className={cn("h-6 w-6", rarityColors[selectedPixel.rarity].split(' ')[0])} />
                       </div>
-                      {selectedPixel.title}
+                      {selectedPixel.title} 
                     </DialogTitle>
                     <CardDescription className="mt-2">
                       {selectedPixel.description}
@@ -908,7 +1037,7 @@ export default function PixelsPage() {
                   </div>
                 </DialogHeader>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6"> 
                   {/* Left Column - Image and Stats */}
                   <div className="space-y-4">
                     <div className="aspect-square relative rounded-lg overflow-hidden border-2 border-primary/30">
@@ -916,7 +1045,7 @@ export default function PixelsPage() {
                         <img 
                           src={selectedPixel.imageUrl} 
                           alt={selectedPixel.title}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover" 
                           data-ai-hint={selectedPixel.dataAiHint}
                         />
                       ) : (
@@ -928,7 +1057,7 @@ export default function PixelsPage() {
                         </div>
                       )}
                       
-                      {/* Status Badges */}
+                      {/* Status Badges */} 
                       <div className="absolute top-2 right-2 flex flex-col gap-1">
                         <Badge className={cn(rarityColors[selectedPixel.rarity])}>
                           {rarityLabels[selectedPixel.rarity]}
@@ -941,7 +1070,7 @@ export default function PixelsPage() {
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="grid grid-cols-3 gap-4">
                       <Card className="p-3 bg-muted/20 text-center">
                         <Eye className="h-5 w-5 mx-auto mb-1 text-blue-500" />
@@ -959,7 +1088,7 @@ export default function PixelsPage() {
                         <p className="text-xs text-muted-foreground">Comentários</p>
                       </Card>
                     </div>
-                    
+
                     <Card className="p-4 bg-muted/20">
                       <h3 className="font-semibold mb-3 flex items-center">
                         <Layers className="h-4 w-4 mr-2 text-primary" />
@@ -974,7 +1103,7 @@ export default function PixelsPage() {
                       </div>
                     </Card>
                   </div>
-                  
+
                   {/* Right Column - Details and Purchase */}
                   <div className="space-y-4">
                     <Card className="p-4 bg-muted/20">
@@ -982,7 +1111,7 @@ export default function PixelsPage() {
                         <Info className="h-4 w-4 mr-2 text-blue-500" />
                         Detalhes do Pixel
                       </h3>
-                      <div className="space-y-2">
+                      <div className="space-y-2"> 
                         <div className="flex justify-between text-sm py-1 border-b border-border/30">
                           <span className="text-muted-foreground">Coordenadas</span>
                           <span className="font-medium">({selectedPixel.coordinates.x}, {selectedPixel.coordinates.y})</span>
@@ -990,19 +1119,24 @@ export default function PixelsPage() {
                         <div className="flex justify-between text-sm py-1 border-b border-border/30">
                           <span className="text-muted-foreground">Região</span>
                           <span className="font-medium">{selectedPixel.region}</span>
-                        </div>
+                        </div> 
                         <div className="flex justify-between text-sm py-1 border-b border-border/30">
                           <span className="text-muted-foreground">Proprietário</span>
-                          <span className="font-medium flex items-center">
-                            {selectedPixel.owner.name}
+                          <UserProfileSheet 
+                            userData={{...mockUserData, name: selectedPixel.owner.name, avatarUrl: selectedPixel.owner.avatar}} 
+                            achievementsData={[]}
+                          >
+                            <span className="font-medium flex items-center cursor-pointer hover:text-primary transition-colors">
+                              {selectedPixel.owner.name}
                             {selectedPixel.owner.verified && (
                               <Star className="h-3 w-3 ml-1 text-blue-500 fill-current" />
                             )}
-                          </span>
+                            </span>
+                          </UserProfileSheet>
                         </div>
                         <div className="flex justify-between text-sm py-1 border-b border-border/30">
                           <span className="text-muted-foreground">Data de Criação</span>
-                          <span className="font-medium">{selectedPixel.createdAt.toLocaleDateString('pt-PT')}</span>
+                          <span className="font-medium">{selectedPixel.createdAt.toLocaleDateString('pt-PT')}</span> 
                         </div>
                         <div className="flex justify-between text-sm py-1 border-b border-border/30">
                           <span className="text-muted-foreground">Última Modificação</span>
@@ -1010,7 +1144,7 @@ export default function PixelsPage() {
                         </div>
                       </div>
                     </Card>
-                    
+
                     <Card className="p-4 bg-gradient-to-br from-primary/10 to-accent/10">
                       <h3 className="font-semibold mb-3 flex items-center">
                         <Brush className="h-4 w-4 mr-2 text-primary" />
@@ -1029,14 +1163,14 @@ export default function PixelsPage() {
                         >
                           <Brush className="h-4 w-4 mr-2" />
                           Editar Pixel
-                        </Button>
+                        </Button> 
                         
                         <div className="flex gap-2">
                           <Button variant="outline" className="flex-1">
                             <Share2 className="h-4 w-4 mr-2" />
                             Compartilhar
                           </Button>
-                          <Button 
+                          <Button  
                             variant="outline" 
                             className="flex-1"
                             onClick={() => {
@@ -1050,7 +1184,7 @@ export default function PixelsPage() {
                         </div>
                       </div>
                     </Card>
-                    
+
                     <Card className="p-4 bg-muted/20">
                       <h3 className="font-semibold mb-3 flex items-center">
                         <Tag className="h-4 w-4 mr-2 text-purple-500" />
@@ -1058,7 +1192,7 @@ export default function PixelsPage() {
                       </h3>
                       <div className="flex flex-wrap gap-2">
                         {selectedPixel.tags.map(tag => (
-                          <Badge key={tag} variant="outline" className="hover:bg-primary/10 cursor-pointer transition-colors">
+                          <Badge key={tag} variant="outline" className="hover:bg-primary/10 cursor-pointer transition-colors"> 
                             #{tag}
                           </Badge>
                         ))}
@@ -1066,7 +1200,7 @@ export default function PixelsPage() {
                     </Card>
                   </div>
                 </div>
-                
+
                 <DialogFooter className="p-4 border-t">
                   <Button variant="outline" onClick={() => setShowPixelDetails(false)}>
                     Fechar
@@ -1075,7 +1209,7 @@ export default function PixelsPage() {
               </>
             )}
           </DialogContent>
-        </Dialog>
+        </Dialog> 
         
         {/* Tips and Tricks Section */}
         <Card className="bg-gradient-to-br from-primary/10 to-accent/5 border-primary/20 shadow-lg mt-8">
@@ -1083,7 +1217,7 @@ export default function PixelsPage() {
             <CardTitle className="flex items-center text-primary">
               <Lightbulb className="h-5 w-5 mr-2 text-yellow-500" />
               Dicas para Criadores de Pixel Art
-            </CardTitle>
+            </CardTitle> 
             <CardDescription>
               Estratégias para criar pixels impressionantes e aumentar seu engajamento
             </CardDescription>
@@ -1091,7 +1225,7 @@ export default function PixelsPage() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="p-4 bg-card/50 rounded-lg shadow-inner">
-                <h3 className="font-semibold flex items-center mb-2">
+                <h3 className="font-semibold flex items-center mb-2"> 
                   <Palette className="h-4 w-4 mr-2 text-blue-500" />
                   Escolha de Cores
                 </h3>
@@ -1099,7 +1233,7 @@ export default function PixelsPage() {
                   Use paletas de cores limitadas e harmoniosas para criar pixel art mais coesa e visualmente atraente.
                 </p>
               </div>
-              <div className="p-4 bg-card/50 rounded-lg shadow-inner">
+              <div className="p-4 bg-card/50 rounded-lg shadow-inner"> 
                 <h3 className="font-semibold flex items-center mb-2">
                   <Zap className="h-4 w-4 mr-2 text-purple-500" />
                   Animações Simples
@@ -1107,7 +1241,7 @@ export default function PixelsPage() {
                 <p className="text-sm text-muted-foreground">
                   Adicione pequenas animações para dar vida aos seus pixels e aumentar o engajamento dos visitantes.
                 </p>
-              </div>
+              </div> 
               <div className="p-4 bg-card/50 rounded-lg shadow-inner">
                 <h3 className="font-semibold flex items-center mb-2">
                   <Target className="h-4 w-4 mr-2 text-green-500" />
@@ -1115,7 +1249,7 @@ export default function PixelsPage() {
                 </h3>
                 <p className="text-sm text-muted-foreground">
                   Escolha localizações em áreas populares ou com significado histórico para aumentar a visibilidade.
-                </p>
+                </p> 
               </div>
             </div>
           </CardContent>
@@ -1123,7 +1257,7 @@ export default function PixelsPage() {
             <Button variant="outline" className="w-full sm:w-auto">
               <Compass className="h-4 w-4 mr-2" />
               Explorar Tutoriais de Pixel Art
-            </Button>
+            </Button> 
           </CardFooter>
         </Card>
       </div>
