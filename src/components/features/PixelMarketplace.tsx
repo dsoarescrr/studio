@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -40,6 +39,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from 'react-i18next';
 import EnhancedPixelPurchaseModal from '@/components/pixel-grid/EnhancedPixelPurchaseModal';
+import { UserProfileSheet } from '@/components/user/UserProfileSheet';
 import { Confetti } from '@/components/ui/confetti';
 
 type PixelRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'unique';
@@ -60,6 +60,7 @@ interface PixelListing {
     avatar: string;
     dataAiHint?: string;
     rating: number;
+    followers?: number;
     verified: boolean;
     level: number;
     totalSales: number;
@@ -70,6 +71,7 @@ interface PixelListing {
   tags: string[];
   views: number;
   likes: number;
+  comments?: number;
   watchers: number;
   bids?: {
     count: number;
@@ -84,6 +86,8 @@ interface PixelListing {
     priceHistory: { price: number; date: Date }[];
   };
   features: string[];
+  culturalValue?: string;
+  investmentRating?: number; // 1-5 stars
   createdAt: Date;
   isHot?: boolean;
   isFeatured?: boolean;
@@ -108,6 +112,7 @@ const mockListings: PixelListing[] = [
       avatar: 'https://placehold.co/40x40.png',
       dataAiHint: 'seller avatar',
       rating: 4.8,
+      followers: 342,
       verified: true,
       level: 25,
       totalSales: 156
@@ -115,6 +120,7 @@ const mockListings: PixelListing[] = [
     description: 'Pixel raro na zona histórica de Lisboa com vista para o Tejo. Localização premium com alto potencial de valorização.',
     imageUrl: 'https://placehold.co/300x300.png',
     dataAiHint: 'pixel preview',
+    culturalValue: 'Alto valor cultural por estar localizado em zona histórica de Lisboa com vista para o Tejo.',
     tags: ['histórico', 'vista-rio', 'centro', 'premium'],
     views: 1247,
     likes: 89,
@@ -135,6 +141,7 @@ const mockListings: PixelListing[] = [
         { price: 220, date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
       ]
     },
+    investmentRating: 5,
     features: ['Vista panorâmica', 'Zona turística', 'Transporte público', 'Património UNESCO'],
     createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
     isHot: true,
@@ -154,6 +161,7 @@ const mockListings: PixelListing[] = [
       avatar: 'https://placehold.co/40x40.png',
       dataAiHint: 'seller avatar',
       rating: 4.6,
+      followers: 156,
       verified: false,
       level: 18,
       totalSales: 89
@@ -161,6 +169,7 @@ const mockListings: PixelListing[] = [
     description: 'Pixel artístico na Ribeira do Porto, perfeito para colecionadores de arte digital.',
     imageUrl: 'https://placehold.co/300x300.png',
     dataAiHint: 'pixel preview',
+    culturalValue: 'Valor cultural significativo por representar a histórica Ribeira do Porto, Patrimônio Mundial da UNESCO.',
     tags: ['ribeira', 'arte', 'património', 'cultural'],
     views: 856,
     likes: 67,
@@ -171,6 +180,7 @@ const mockListings: PixelListing[] = [
         { price: 120, date: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000) }
       ]
     },
+    investmentRating: 4,
     features: ['Património UNESCO', 'Zona artística', 'Rio Douro'],
     createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
     isHot: false,
@@ -189,6 +199,7 @@ const mockListings: PixelListing[] = [
       avatar: 'https://placehold.co/40x40.png',
       dataAiHint: 'seller avatar',
       rating: 4.2,
+      followers: 78,
       verified: false,
       level: 12,
       totalSales: 23
@@ -196,6 +207,7 @@ const mockListings: PixelListing[] = [
     description: 'Pixel universitário perto da UC, ideal para investimento a longo prazo.',
     imageUrl: 'https://placehold.co/300x300.png',
     dataAiHint: 'pixel preview',
+    culturalValue: 'Valor cultural educacional por estar próximo à Universidade de Coimbra, uma das mais antigas da Europa.',
     tags: ['universidade', 'estudantes', 'cultura', 'investimento'],
     views: 432,
     likes: 23,
@@ -204,6 +216,7 @@ const mockListings: PixelListing[] = [
       totalSales: 0,
       priceHistory: []
     },
+    investmentRating: 3,
     features: ['Zona universitária', 'Vida noturna', 'Biblioteca Joanina'],
     createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)
   },
@@ -220,6 +233,7 @@ const mockListings: PixelListing[] = [
       avatar: 'https://placehold.co/40x40.png',
       dataAiHint: 'seller avatar',
       rating: 4.7,
+      followers: 234,
       verified: true,
       level: 20,
       totalSales: 67
@@ -227,6 +241,7 @@ const mockListings: PixelListing[] = [
     description: 'Pixel histórico no centro de Braga, próximo ao Santuário do Bom Jesus.',
     imageUrl: 'https://placehold.co/300x300.png',
     dataAiHint: 'pixel preview',
+    culturalValue: 'Alto valor cultural religioso por estar próximo ao Santuário do Bom Jesus, importante local de peregrinação.',
     tags: ['histórico', 'religioso', 'turismo', 'centro'],
     views: 623,
     likes: 45,
@@ -243,6 +258,7 @@ const mockListings: PixelListing[] = [
         { price: 80, date: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000) }
       ]
     },
+    investmentRating: 4,
     features: ['Santuário', 'Centro histórico', 'Arquitetura barroca'],
     createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
     isHot: true
@@ -260,6 +276,7 @@ const mockListings: PixelListing[] = [
       avatar: 'https://placehold.co/40x40.png',
       dataAiHint: 'seller avatar',
       rating: 4.9,
+      followers: 567,
       verified: true,
       level: 30,
       totalSales: 215
@@ -267,6 +284,7 @@ const mockListings: PixelListing[] = [
     description: 'Pixel lendário com vista para as famosas falésias do Algarve. Localização única e exclusiva.',
     imageUrl: 'https://placehold.co/300x300.png',
     dataAiHint: 'pixel preview',
+    culturalValue: 'Valor cultural e natural excepcional por representar as icônicas falésias do Algarve, um dos cartões postais de Portugal.',
     tags: ['praia', 'falésias', 'turismo', 'exclusivo', 'vista-mar'],
     views: 2345,
     likes: 178,
@@ -280,6 +298,7 @@ const mockListings: PixelListing[] = [
         { price: 280, date: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000) }
       ]
     },
+    investmentRating: 5,
     features: ['Vista para o mar', 'Zona turística premium', 'Acesso a praias', 'Pôr-do-sol espetacular'],
     createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
     isHot: true,
@@ -298,6 +317,7 @@ const mockListings: PixelListing[] = [
       avatar: 'https://placehold.co/40x40.png',
       dataAiHint: 'seller avatar',
       rating: 4.3,
+      followers: 89,
       verified: false,
       level: 15,
       totalSales: 42
@@ -305,6 +325,7 @@ const mockListings: PixelListing[] = [
     description: 'Pixel no centro histórico de Évora, próximo ao Templo Romano. Excelente para amantes de história.',
     imageUrl: 'https://placehold.co/300x300.png',
     dataAiHint: 'pixel preview',
+    culturalValue: 'Valor cultural histórico por estar próximo ao Templo Romano de Évora, um dos monumentos mais antigos de Portugal.',
     tags: ['histórico', 'património', 'romano', 'cultura'],
     views: 532,
     likes: 37,
@@ -315,6 +336,7 @@ const mockListings: PixelListing[] = [
         { price: 95, date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
       ]
     },
+    investmentRating: 4,
     features: ['Centro histórico', 'Património UNESCO', 'Arquitetura romana'],
     createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000)
   },
@@ -333,6 +355,7 @@ const mockListings: PixelListing[] = [
       avatar: 'https://placehold.co/40x40.png',
       dataAiHint: 'seller avatar',
       rating: 4.7,
+      followers: 321,
       verified: true,
       level: 22,
       totalSales: 78
@@ -340,6 +363,7 @@ const mockListings: PixelListing[] = [
     description: 'Pixel épico com vista para o oceano Atlântico na ilha da Madeira. Perfeito para colecionadores.',
     imageUrl: 'https://placehold.co/300x300.png',
     dataAiHint: 'pixel preview',
+    culturalValue: 'Valor cultural insular por representar a beleza natural da Madeira, com sua paisagem única e biodiversidade.',
     tags: ['ilha', 'oceano', 'natureza', 'montanha', 'exclusivo'],
     views: 1123,
     likes: 98,
@@ -359,6 +383,7 @@ const mockListings: PixelListing[] = [
         { price: 150, date: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000) }
       ]
     },
+    investmentRating: 5,
     features: ['Vista para o oceano', 'Clima tropical', 'Biodiversidade única', 'Levadas próximas'],
     createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
     isHot: true,
@@ -377,6 +402,7 @@ const mockListings: PixelListing[] = [
       avatar: 'https://placehold.co/40x40.png',
       dataAiHint: 'seller avatar',
       rating: 4.5,
+      followers: 145,
       verified: true,
       level: 19,
       totalSales: 56
@@ -384,6 +410,7 @@ const mockListings: PixelListing[] = [
     description: 'Pixel raro localizado próximo às lagoas vulcânicas dos Açores. Uma verdadeira joia natural.',
     imageUrl: 'https://placehold.co/300x300.png',
     dataAiHint: 'pixel preview',
+    culturalValue: 'Valor cultural e geológico por representar as famosas lagoas vulcânicas dos Açores, fenômeno natural único.',
     tags: ['vulcão', 'lagoa', 'natureza', 'ilha', 'verde'],
     views: 876,
     likes: 76,
@@ -394,12 +421,21 @@ const mockListings: PixelListing[] = [
         { price: 125, date: new Date(Date.now() - 75 * 24 * 60 * 60 * 1000) }
       ]
     },
+    investmentRating: 4,
     features: ['Lagoas vulcânicas', 'Paisagem verde', 'Biodiversidade única', 'Termas naturais'],
     createdAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
     isHot: false,
     isFeatured: false
   }
 ];
+
+// Mock user data for profile sheet
+const mockUserData = {
+  id: "user123", name: "Pixel Master", username: "@pixelmaster", avatarUrl: "https://placehold.co/100x100.png",
+  dataAiHint: "user avatar", level: 25, xp: 2450, xpMax: 3000, credits: 12500, specialCredits: 120,
+  bio: "Colecionador apaixonado de pixels raros e criador de arte digital no Pixel Universe.",
+  pixelsOwned: 156, achievementsUnlocked: 23, unlockedAchievementIds: ["pixel_initiate", "color_master", "community_star"],
+  rank: 12, location: "Lisboa, Portugal", socials: [], albums: [] };
 
 const rarityColors: Record<PixelRarity, string> = {
   common: 'text-gray-500 border-gray-500 bg-gray-500/10',
@@ -440,6 +476,15 @@ const priceRanges = [
   { value: '500+', label: 'Acima de 500€' }
 ];
 
+const investmentRatingLabels = [
+  { value: 1, label: 'Baixo Potencial', color: 'text-red-500' },
+  { value: 2, label: 'Potencial Moderado', color: 'text-orange-500' },
+  { value: 3, label: 'Bom Potencial', color: 'text-yellow-500' },
+  { value: 4, label: 'Ótimo Potencial', color: 'text-green-500' },
+  { value: 5, label: 'Excelente Potencial', color: 'text-blue-500' }
+];
+
+
 interface PixelMarketplaceProps {
   children: React.ReactNode;
   onSelectPixel: (pixelData: any) => void;
@@ -461,6 +506,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
   const [activeTab, setActiveTab] = useState<FilterCategory>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [showInvestmentInfo, setShowInvestmentInfo] = useState(false);
   const [playPurchaseSound, setPlayPurchaseSound] = useState(false);
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -469,7 +515,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
   useEffect(() => {
     // Simulate loading
     const timer = setTimeout(() => {
-      setIsLoading(false);
+      setIsLoading(false); 
     }, 1500);
     
     return () => clearTimeout(timer);
@@ -477,7 +523,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
 
   useEffect(() => {
     let filtered = listings.filter(listing => {
-      const matchesSearch = !searchQuery || 
+      const matchesSearch = !searchQuery ||  
         listing.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         listing.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())) ||
         listing.region.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -485,7 +531,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
       
       const matchesRarity = selectedRarity === 'all' || listing.rarity === selectedRarity;
       const matchesType = selectedType === 'all' || listing.type === selectedType;
-      const matchesRegion = selectedRegion === 'all' || listing.region === selectedRegion;
+      const matchesRegion = selectedRegion === 'all' || listing.region === selectedRegion; 
       
       // Handle price range filtering
       let matchesPrice = true;
@@ -498,7 +544,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
           matchesPrice = listing.price >= min;
         }
       }
-      
+
       // Handle tab filtering
       const matchesTab = 
         activeTab === 'all' || 
@@ -507,7 +553,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
         (activeTab === 'fixed' && listing.type === 'fixed') ||
         (activeTab === 'offer' && listing.type === 'offer') ||
         (activeTab === 'rare' && (listing.rarity === 'rare' || listing.rarity === 'epic' || listing.rarity === 'legendary' || listing.rarity === 'unique')) ||
-        (activeTab === 'region' && selectedRegion !== 'all' && listing.region === selectedRegion);
+        (activeTab === 'region' && selectedRegion !== 'all' && listing.region === selectedRegion); 
       
       return matchesSearch && matchesRarity && matchesType && matchesRegion && matchesPrice && matchesTab;
     });
@@ -515,7 +561,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'price_asc':
-          return a.price - b.price;
+          return a.price - b.price; 
         case 'price_desc':
           return b.price - a.price;
         case 'rarity':
@@ -523,7 +569,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
           return rarityOrder[b.rarity] - rarityOrder[a.rarity];
         case 'recent':
           return b.createdAt.getTime() - a.createdAt.getTime();
-        case 'ending_soon':
+        case 'ending_soon': 
           if (a.type === 'auction' && b.type === 'auction' && a.bids && b.bids) {
             return a.bids.endTime.getTime() - b.bids.endTime.getTime();
           }
@@ -531,7 +577,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
         case 'popular':
           return (b.views + b.likes + b.watchers) - (a.views + a.likes + a.watchers);
         case 'featured':
-          if (a.isFeatured && !b.isFeatured) return -1;
+          if (a.isFeatured && !b.isFeatured) return -1; 
           if (!a.isFeatured && b.isFeatured) return 1;
           if (a.isSponsored && !b.isSponsored) return -1;
           if (!a.isSponsored && b.isSponsored) return 1;
@@ -542,7 +588,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
     });
 
     setFilteredListings(filtered);
-  }, [listings, searchQuery, selectedRarity, selectedType, selectedRegion, selectedPriceRange, sortBy, activeTab]);
+  }, [listings, searchQuery, selectedRarity, selectedType, selectedRegion, selectedPriceRange, sortBy, activeTab]); 
 
   const getTimeRemaining = (endTime: Date) => {
     const now = new Date();
@@ -550,7 +596,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
     
     if (diff <= 0) return "Terminado";
     
-    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const hours = Math.floor(diff / (1000 * 60 * 60)); 
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     
     if (hours > 24) {
@@ -558,7 +604,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
       return `${days}d ${hours % 24}h`;
     }
     
-    if (hours > 0) return `${hours}h ${minutes}m`;
+    if (hours > 0) return `${hours}h ${minutes}m`; 
     return `${minutes}m`;
   };
 
@@ -568,7 +614,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
       listing.id === listingId 
         ? { ...listing, watchers: listing.watchers + 1 }
         : listing
-    ));
+    )); 
     
     toast({
       title: "Adicionado à Lista de Observação",
@@ -582,7 +628,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
       listing.id === listingId 
         ? { ...listing, likes: listing.likes + 1 }
         : listing
-    ));
+    )); 
     
     toast({
       title: "Pixel Curtido!",
@@ -596,7 +642,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
       title: "Link Copiado",
       description: "Link do pixel copiado para a área de transferência.",
     });
-  };
+  }; 
 
   const handleListingClick = (listing: PixelListing) => {
     const pixelData = {
@@ -604,7 +650,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
       y: listing.coordinates.y,
       color: `#${Math.floor(Math.random()*16777215).toString(16)}`,
       owner: listing.seller.name,
-      price: listing.price,
+      price: listing.price, 
       lastSold: listing.history.lastSold || new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
       views: listing.views,
       likes: listing.likes,
@@ -612,7 +658,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
       region: listing.region,
       isProtected: Math.random() > 0.8,
       history: listing.history.priceHistory.map(h => ({
-        owner: listing.seller.name,
+        owner: listing.seller.name, 
         date: h.date,
         price: h.price,
         action: 'purchase' as const
@@ -620,7 +666,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
       features: listing.features,
       description: listing.description,
       tags: listing.tags,
-      gpsCoords: { lat: 38.7223 + Math.random() * 0.1, lon: -9.1393 + Math.random() * 0.1 }
+      gpsCoords: { lat: 38.7223 + Math.random() * 0.1, lon: -9.1393 + Math.random() * 0.1 } 
     };
     
     onSelectPixel(pixelData);
@@ -630,7 +676,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
   const handlePurchase = async (pixelData: any, paymentMethod: string, customizations: any) => {
     setPlayPurchaseSound(true);
     setShowConfetti(true);
-    
+
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1500));
     
@@ -638,7 +684,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
     removeCredits(pixelData.price);
     
     // Add some XP and bonus credits for the purchase
-    addCredits(Math.floor(pixelData.price * 0.05)); // 5% cashback
+    addCredits(Math.floor(pixelData.price * 0.05)); // 5% cashback 
     
     toast({
       title: "Compra Bem-Sucedida!",
@@ -646,7 +692,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
     });
     
     return true;
-  };
+  }; 
 
   const clearFilters = () => {
     setSearchQuery('');
@@ -654,7 +700,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
     setSelectedType('all');
     setSelectedRegion('all');
     setSelectedPriceRange('all');
-    setSortBy('featured');
+    setSortBy('featured'); 
     setActiveTab('all');
   };
 
@@ -662,7 +708,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
     if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
     return num.toString();
-  };
+  }; 
 
   return (
     <>
@@ -670,7 +716,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
         <DialogTrigger asChild>
           {children}
         </DialogTrigger>
-      
+
         <DialogContent className="max-w-7xl max-h-[95vh] p-0 gap-0">
           <DialogHeader className="p-4 border-b bg-gradient-to-r from-card to-primary/5">
             <div className="flex items-center justify-between">
@@ -678,7 +724,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                 <DialogTitle className="flex items-center gap-2">
                   <ShoppingCart className="h-5 w-5 text-primary" />
                   Marketplace de Píxeis
-                  <Badge variant="secondary" className="text-xs">
+                  <Badge variant="secondary" className="text-xs"> 
                     {filteredListings.length} resultados
                   </Badge>
                 </DialogTitle>
@@ -686,7 +732,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                   Descubra, compre e venda píxeis únicos no maior marketplace de Portugal
                 </p>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
@@ -694,7 +740,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                   onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
                 >
                   {viewMode === 'grid' ? 'Lista' : 'Grelha'}
-                </Button>
+                </Button> 
                 <Button
                   variant="outline"
                   size="sm"
@@ -702,7 +748,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                 >
                   <Filter className="h-4 w-4 mr-2" />
                   Filtros
-                  {showFilters ? <ChevronUp className="h-4 w-4 ml-1" /> : <ChevronDown className="h-4 w-4 ml-1" />}
+                  {showFilters ? <ChevronUp className="h-4 w-4 ml-1" /> : <ChevronDown className="h-4 w-4 ml-1" />} 
                 </Button>
               </div>
             </div>
@@ -710,7 +756,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
 
           <div className="flex flex-col h-[calc(95vh-80px)]">
             {/* Search and Quick Filters */}
-            <div className="p-4 border-b bg-muted/30">
+            <div className="p-4 border-b bg-muted/30"> 
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -718,10 +764,10 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                     placeholder="Pesquisar por localização, vendedor, tags..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
+                    className="pl-10" 
                   />
                 </div>
-                
+
                 <div className="flex gap-2">
                   <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
                     <SelectTrigger className="w-48">
@@ -729,7 +775,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="featured">Em Destaque</SelectItem>
+                      <SelectItem value="featured">Em Destaque</SelectItem> 
                       <SelectItem value="recent">Mais Recentes</SelectItem>
                       <SelectItem value="price_asc">Preço: Menor</SelectItem>
                       <SelectItem value="price_desc">Preço: Maior</SelectItem>
@@ -737,7 +783,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                       <SelectItem value="ending_soon">A Terminar</SelectItem>
                       <SelectItem value="popular">Mais Populares</SelectItem>
                     </SelectContent>
-                  </Select>
+                  </Select> 
                   
                   {(searchQuery || selectedRarity !== 'all' || selectedType !== 'all' || selectedRegion !== 'all') && (
                     <Button variant="outline" size="sm" onClick={clearFilters}>
@@ -749,7 +795,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
             </div>
 
             {/* Advanced Filters */}
-            {showFilters && (
+            {showFilters && ( 
               <div className="p-4 border-b bg-muted/20">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div>
@@ -757,7 +803,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                     <Select value={selectedType} onValueChange={(value: ListingType | 'all') => setSelectedType(value)}>
                       <SelectTrigger>
                         <SelectValue />
-                      </SelectTrigger>
+                      </SelectTrigger> 
                       <SelectContent>
                         <SelectItem value="all">Todos</SelectItem>
                         <SelectItem value="fixed">Preço Fixo</SelectItem>
@@ -765,7 +811,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                         <SelectItem value="offer">Aceita Ofertas</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
+                  </div> 
 
                   <div>
                     <label className="text-sm font-medium mb-2 block">Raridade</label>
@@ -773,7 +819,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent> 
                         <SelectItem value="all">Todas</SelectItem>
                         {Object.entries(rarityLabels).map(([key, label]) => (
                           <SelectItem key={key} value={key}>
@@ -781,7 +827,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                           </SelectItem>
                         ))}
                       </SelectContent>
-                    </Select>
+                    </Select> 
                   </div>
 
                   <div>
@@ -789,7 +835,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                     <Select value={selectedRegion} onValueChange={setSelectedRegion}>
                       <SelectTrigger>
                         <SelectValue />
-                      </SelectTrigger>
+                      </SelectTrigger> 
                       <SelectContent>
                         <SelectItem value="all">Todas</SelectItem>
                         <SelectItem value="Lisboa">Lisboa</SelectItem>
@@ -797,7 +843,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                         <SelectItem value="Coimbra">Coimbra</SelectItem>
                         <SelectItem value="Braga">Braga</SelectItem>
                         <SelectItem value="Faro">Faro</SelectItem>
-                      </SelectContent>
+                      </SelectContent> 
                     </Select>
                   </div>
 
@@ -805,7 +851,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                     <label className="text-sm font-medium mb-2 block">Faixa de Preço</label>
                      <Select value={selectedPriceRange} onValueChange={setSelectedPriceRange}>
                         <SelectTrigger>
-                          <SelectValue />
+                          <SelectValue /> 
                         </SelectTrigger>
                         <SelectContent>
                           {priceRanges.map(option => (
@@ -813,7 +859,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                               {option.label}
                             </SelectItem>
                           ))}
-                        </SelectContent>
+                        </SelectContent> 
                       </Select>
                   </div>
                 </div>
@@ -821,7 +867,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
             )}
 
             {/* Listings */}
-            <ScrollArea className="flex-1">
+            <ScrollArea className="flex-1"> 
               <div className="p-4">
                 {filteredListings.length === 0 ? (
                   <Card className="p-12 text-center">
@@ -829,7 +875,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                     <h3 className="text-lg font-semibold mb-2">Nenhum pixel encontrado</h3>
                     <p className="text-muted-foreground mb-4">
                       Tente ajustar os seus filtros ou pesquisar por outros termos
-                    </p>
+                    </p> 
                     <Button onClick={clearFilters}>Limpar Filtros</Button>
                   </Card>
                 ) : (
@@ -837,7 +883,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                     "gap-4",
                     viewMode === 'grid' 
                       ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" 
-                      : "space-y-4"
+                      : "space-y-4" 
                   )}>
                     {filteredListings.map((listing) => (
                       <Card
@@ -845,7 +891,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                         className={cn(
                           "transition-all duration-200 hover:shadow-lg cursor-pointer group",
                           listing.isFeatured && "border-primary/50 bg-primary/5",
-                          listing.isSponsored && "ring-2 ring-accent/50",
+                          listing.isSponsored && "ring-2 ring-accent/50", 
                           viewMode === 'list' && "flex flex-row"
                         )}
                         onClick={() => handleListingClick(listing)}
@@ -853,7 +899,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                         {listing.isSponsored && (
                           <div className="absolute -top-2 -right-2 z-10">
                             <Badge className="bg-accent text-accent-foreground text-xs px-2 py-1">
-                              <Sparkles className="h-3 w-3 mr-1" />
+                              <Sparkles className="h-3 w-3 mr-1" /> 
                               Patrocinado
                             </Badge>
                           </div>
@@ -861,7 +907,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
 
                         <div className={cn(
                           viewMode === 'list' ? "flex w-full" : ""
-                        )}>
+                        )}> 
                           {listing.imageUrl && (
                             <div className={cn(
                               "relative overflow-hidden",
@@ -870,14 +916,14 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                               <img 
                                 src={listing.imageUrl} 
                                 alt="Pixel preview"
-                                data-ai-hint={listing.dataAiHint}
+                                data-ai-hint={listing.dataAiHint} 
                                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                               />
                               
                               <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-2">
                                 <Button
                                   size="sm"
-                                  variant="secondary"
+                                  variant="secondary" 
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleLikeListing(listing.id);
@@ -885,7 +931,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                                 >
                                   <Heart className="h-4 w-4" />
                                 </Button>
-                                <Button
+                                <Button 
                                   size="sm"
                                   variant="secondary"
                                   onClick={(e) => {
@@ -893,7 +939,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                                     handleWatchListing(listing.id);
                                   }}
                                 >
-                                  <Bookmark className="h-4 w-4" />
+                                  <Bookmark className="h-4 w-4" /> 
                                 </Button>
                                 <Button
                                   size="sm"
@@ -901,14 +947,14 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                                   onClick={(e) => {
                                     e.stopPropagation();
                                   }}
-                                >
+                                > 
                                   <Share2 className="h-4 w-4" />
                                 </Button>
                               </div>
 
                               <div className="absolute top-2 left-2 flex flex-col gap-1">
                                 {listing.isHot && (
-                                  <Badge className="text-xs bg-red-500 hover:bg-red-500">
+                                  <Badge className="text-xs bg-red-500 hover:bg-red-500"> 
                                     <Flame className="h-3 w-3 mr-1" />
                                     Hot
                                   </Badge>
@@ -920,7 +966,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                                   </Badge>
                                 )}
                                 {listing.discount && (
-                                  <Badge className="text-xs bg-green-500 hover:bg-green-500">
+                                  <Badge className="text-xs bg-green-500 hover:bg-green-500"> 
                                     -{listing.discount}%
                                   </Badge>
                                 )}
@@ -928,7 +974,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
 
                               {listing.type === 'auction' && listing.bids && (
                                 <div className="absolute bottom-2 right-2">
-                                  <Badge variant="destructive" className="text-xs">
+                                  <Badge variant="destructive" className="text-xs"> 
                                     <Timer className="h-3 w-3 mr-1" />
                                     {getTimeRemaining(listing.bids.endTime)}
                                   </Badge>
@@ -936,7 +982,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                               )}
                             </div>
                           )}
-
+                          
                           <div className={cn(
                             "p-4 flex-1",
                             viewMode === 'list' && "flex flex-col justify-between"
@@ -944,7 +990,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                             <div className="space-y-2">
                               <div className="flex items-start justify-between">
                                 <div className="flex items-center gap-2">
-                                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                                  <MapPin className="h-4 w-4 text-muted-foreground" /> 
                                   <span className="text-sm font-medium">
                                     ({listing.coordinates.x}, {listing.coordinates.y})
                                   </span>
@@ -952,7 +998,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                                     {listing.region}
                                   </Badge>
                                 </div>
-                                
+
                                 <Badge 
                                   variant="outline" 
                                   className={cn("text-xs", rarityColors[listing.rarity])}
@@ -960,7 +1006,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                                   {rarityLabels[listing.rarity]}
                                 </Badge>
                               </div>
-                              
+
                               {listing.description && (
                                 <p className="text-sm text-muted-foreground line-clamp-2">
                                   {listing.description}
@@ -968,7 +1014,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                               )}
                               
                               <div className="flex flex-wrap gap-1">
-                                {listing.tags.slice(0, 3).map((tag) => (
+                                {listing.tags.slice(0, 3).map((tag) => ( 
                                   <Badge key={tag} variant="secondary" className="text-xs">
                                     #{tag}
                                   </Badge>
@@ -980,21 +1026,39 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                                 )}
                               </div>
                             </div>
-
+                            
+                            {/* Investment Rating */}
+                            {listing.investmentRating && (
+                              <div className="mt-2 flex items-center gap-1">
+                                <span className="text-xs text-muted-foreground">Potencial de Investimento:</span>
+                                <div className="flex">
+                                  {Array.from({ length: 5 }).map((_, i) => (
+                                    <Star key={i} className={`h-3 w-3 ${i < listing.investmentRating! ? 'text-yellow-500 fill-current' : 'text-gray-300'}`} />
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            
                             <div className="flex items-center gap-2 mt-3 mb-3">
-                              <Avatar className="h-6 w-6">
-                                <AvatarImage 
-                                  src={listing.seller.avatar} 
-                                  alt={listing.seller.name}
-                                  data-ai-hint={listing.seller.dataAiHint}
-                                />
-                                <AvatarFallback className="text-xs">
-                                  {listing.seller.name.substring(0, 1)}
-                                </AvatarFallback>
-                              </Avatar>
+                              <UserProfileSheet 
+                                userData={{...mockUserData, name: listing.seller.name, avatarUrl: listing.seller.avatar}} 
+                                achievementsData={[]}
+                              >
+                                <div className="cursor-pointer hover:scale-110 transition-transform">
+                                  <Avatar className="h-6 w-6 border border-primary/30">
+                                    <AvatarImage src={listing.seller.avatar} alt={listing.seller.name} data-ai-hint={listing.seller.dataAiHint} />
+                                    <AvatarFallback className="text-xs">{listing.seller.name.substring(0, 1)}</AvatarFallback>
+                                  </Avatar>
+                                </div>
+                              </UserProfileSheet>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-1">
-                                  <span className="text-xs font-medium truncate">{listing.seller.name}</span>
+                                  <UserProfileSheet 
+                                    userData={{...mockUserData, name: listing.seller.name, avatarUrl: listing.seller.avatar}} 
+                                    achievementsData={[]}
+                                  >
+                                    <span className="text-xs font-medium truncate hover:text-primary transition-colors cursor-pointer">{listing.seller.name}</span>
+                                  </UserProfileSheet>
                                   {listing.seller.verified && (
                                     <Star className="h-3 w-3 text-blue-500 fill-current" />
                                   )}
@@ -1002,7 +1066,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                                     Nv.{listing.seller.level}
                                   </Badge>
                                 </div>
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground"> 
                                   <span>⭐ {listing.seller.rating}</span>
                                   <span>•</span>
                                   <span>{listing.seller.totalSales} vendas</span>
@@ -1010,7 +1074,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                               </div>
                             </div>
 
-                            <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
+                            <div className="flex items-center justify-between text-xs text-muted-foreground mb-3"> 
                               <div className="flex items-center gap-3">
                                 <span className="flex items-center gap-1">
                                   <Eye className="h-3 w-3" />
@@ -1023,7 +1087,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                                 <span className="flex items-center gap-1">
                                   <Bookmark className="h-3 w-3" />
                                   {formatNumber(listing.watchers)}
-                                </span>
+                                </span> 
                               </div>
                               
                               {listing.type === 'auction' && listing.bids && (
@@ -1032,7 +1096,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                                 </span>
                               )}
                             </div>
-                            
+
                             <Separator className="my-3" />
                             
                             <div className="space-y-3">
@@ -1040,7 +1104,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                                 <div>
                                   {listing.discount && listing.originalPrice && (
                                     <span className="text-sm text-muted-foreground line-through mr-2">
-                                      {listing.originalPrice}€
+                                      {listing.originalPrice}€ 
                                     </span>
                                   )}
                                   <span className="text-lg font-bold text-primary">
@@ -1048,7 +1112,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                                   </span>
                                   {listing.type === 'auction' && listing.bids && (
                                     <div className="text-xs text-muted-foreground">
-                                      Licitação atual: {listing.bids.highest}€
+                                      Licitação atual: {listing.bids.highest}€ 
                                     </div>
                                   )}
                                 </div>
@@ -1056,7 +1120,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                                 {listing.history.priceHistory.length > 0 && (
                                   <div className="text-right">
                                     <div className="text-xs text-green-500 flex items-center">
-                                      <TrendingUp className="h-3 w-3 mr-1" />
+                                      <TrendingUp className="h-3 w-3 mr-1" /> 
                                       +{Math.round(((listing.price - listing.history.priceHistory[0].price) / listing.history.priceHistory[0].price) * 100)}%
                                     </div>
                                     <div className="text-xs text-muted-foreground">
@@ -1064,7 +1128,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                                     </div>
                                   </div>
                                 )}
-                              </div>
+                              </div> 
                               
                               <div className="flex gap-2">
                                 {listing.type === 'fixed' && (
@@ -1072,7 +1136,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                                     size="sm" 
                                     className="flex-1"
                                     onClick={(e) => {
-                                      e.stopPropagation();
+                                      e.stopPropagation(); 
                                       handleListingClick(listing);
                                     }}
                                   >
@@ -1080,7 +1144,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                                     Comprar
                                   </Button>
                                 )}
-                                
+
                                 {listing.type === 'auction' && (
                                   <Button 
                                     size="sm" 
@@ -1088,7 +1152,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handleListingClick(listing);
-                                    }}
+                                    }} 
                                   >
                                     <Gavel className="h-4 w-4 mr-1" />
                                     Licitar
@@ -1096,7 +1160,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                                 )}
                                 
                                 {listing.type === 'offer' && (
-                                  <Button 
+                                  <Button  
                                     size="sm" 
                                     variant="outline" 
                                     className="flex-1"
@@ -1104,7 +1168,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                                       e.stopPropagation();
                                       handleListingClick(listing);
                                     }}
-                                  >
+                                  > 
                                     <DollarSign className="h-4 w-4 mr-1" />
                                     Oferecer
                                   </Button>
@@ -1112,7 +1176,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                                 
                                 <Button 
                                   size="sm" 
-                                  variant="ghost" 
+                                  variant="ghost"  
                                   className="px-2"
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -1120,7 +1184,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                                   }}
                                 >
                                   <Bookmark className="h-4 w-4" />
-                                </Button>
+                                </Button> 
                               </div>
                             </div>
                           </div>
@@ -1128,6 +1192,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                       </Card>
                     ))}
                   </div>
+                  
                 )}
               </div>
             </ScrollArea>
