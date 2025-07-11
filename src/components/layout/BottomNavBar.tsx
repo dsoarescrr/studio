@@ -16,6 +16,7 @@ import { useAuth } from '@/lib/auth-context';
 import { AuthModal } from '@/components/auth/AuthModal';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { useTranslation } from 'react-i18next';
+import { StripeProvider } from '@/components/payment/StripePaymentProvider';
 import { motion } from 'framer-motion';
 import {
   DropdownMenu,
@@ -130,6 +131,7 @@ export default function BottomNavBar() {
   };
 
   return (
+    <StripeProvider>
     <>
       <SoundEffect src={SOUND_EFFECTS.HOVER} play={playHoverSound} onEnd={() => setPlayHoverSound(false)} volume={0.2} rate={1.5} />
       <style jsx global>{`
@@ -461,14 +463,17 @@ export default function BottomNavBar() {
         </div>
       </nav>
       
-      <EnhancedPixelPurchaseModal
-        isOpen={showPurchaseModal}
-        onClose={() => setShowPurchaseModal(false)}
-        pixelData={selectedPixelForPurchase}
-        userCredits={12500}
-        userSpecialCredits={120}
-        onPurchase={handlePurchase}
-      />
+      {selectedPixelForPurchase && (
+        <EnhancedPixelPurchaseModal
+          isOpen={showPurchaseModal}
+          onClose={() => setShowPurchaseModal(false)}
+          pixelData={selectedPixelForPurchase}
+          userCredits={credits}
+          userSpecialCredits={specialCredits}
+          onPurchase={handlePurchase}
+        />
+      )}
     </>
+    </StripeProvider>
   );
 }
