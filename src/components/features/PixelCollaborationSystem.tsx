@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -33,7 +34,7 @@ import {
   PenTool, Eraser, Pipette, Crop, RotateCw, RotateCcw, FlipHorizontal,
   FlipVertical, Undo, Redo, Play, Pause, Square, Circle, Triangle,
   Hexagon, Type, BoldIcon, ItalicIcon, Underline, AlignLeft, AlignCenter,
-  AlignRight, AlignJustify, List, ListOrdered, CheckSquare, X
+  AlignRight, AlignJustify, List, ListOrdered, CheckSquare, X, BookOpen, MoreVertical
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useUserStore } from '@/lib/store';
@@ -1030,20 +1031,12 @@ export default function PixelCollaborationSystem({ children }: PixelCollaboratio
                     
                     <div className="space-y-2">
                       <Label htmlFor="project-region">Região <span className="text-red-500">*</span></Label>
-                      <Select value={newProjectRegion} onValueChange={setNewProjectRegion}>
-                        <SelectTrigger id="project-region">
-                          <SelectValue placeholder="Selecione uma região" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Lisboa">Lisboa</SelectItem>
-                          <SelectItem value="Porto">Porto</SelectItem>
-                          <SelectItem value="Algarve">Algarve</SelectItem>
-                          <SelectItem value="Coimbra">Coimbra</SelectItem>
-                          <SelectItem value="Braga">Braga</SelectItem>
-                          <SelectItem value="Madeira">Madeira</SelectItem>
-                          <SelectItem value="Açores">Açores</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Input
+                          id="project-region"
+                          placeholder="Ex: Lisboa"
+                          value={newProjectRegion}
+                          onChange={(e) => setNewProjectRegion(e.target.value)}
+                      />
                     </div>
                     
                     <div className="space-y-2">
@@ -1471,7 +1464,7 @@ export default function PixelCollaborationSystem({ children }: PixelCollaboratio
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center bg-muted">
-                                <Image className="h-12 w-12 text-muted-foreground" />
+                                <ImageIcon className="h-12 w-12 text-muted-foreground" />
                               </div>
                             )}
                             
@@ -1799,7 +1792,7 @@ export default function PixelCollaborationSystem({ children }: PixelCollaboratio
                                 size="sm" 
                                 className="flex flex-col items-center h-auto py-2 px-1"
                               >
-                                <MoreHorizontal className="h-4 w-4 mb-1" />
+                                <MoreVertical className="h-4 w-4 mb-1" />
                                 <span className="text-xs">Mais</span>
                               </Button>
                             </div>
@@ -1839,12 +1832,13 @@ export default function PixelCollaborationSystem({ children }: PixelCollaboratio
                                   <Label className="text-xs">Tamanho do Pincel</Label>
                                   <span className="text-xs font-code">{brushSize}px</span>
                                 </div>
-                                <Slider
-                                  value={[brushSize]}
-                                  onValueChange={(value) => setBrushSize(value[0])}
-                                  min={1}
-                                  max={20}
-                                  step={1}
+                                <Input
+                                  type="range"
+                                  min="1"
+                                  max="20"
+                                  step="1"
+                                  value={brushSize}
+                                  onChange={(e) => setBrushSize(parseInt(e.target.value))}
                                 />
                               </div>
                             </div>
@@ -2077,14 +2071,14 @@ export default function PixelCollaborationSystem({ children }: PixelCollaboratio
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-6">
-                        {selectedProject.activities.reduce((acc: any, activity) => {
+                        {Object.entries(selectedProject.activities.reduce((acc: any, activity) => {
                           const date = new Date(activity.timestamp).toLocaleDateString('pt-PT');
                           if (!acc[date]) {
                             acc[date] = [];
                           }
                           acc[date].push(activity);
                           return acc;
-                        }, {}).map((activities: any, date: string) => (
+                        }, {})).map(([date, activities]: [string, any[]]) => (
                           <div key={date}>
                             <div className="flex items-center gap-2 mb-3">
                               <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -2122,49 +2116,6 @@ export default function PixelCollaborationSystem({ children }: PixelCollaboratio
                       </div>
                     </CardContent>
                   </Card>
-                  
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg flex items-center">
-                        <BarChart className="h-5 w-5 mr-2 text-primary" />
-                        Estatísticas de Atividade
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                        <div className="p-4 bg-muted/20 rounded-lg text-center">
-                          <Edit className="h-6 w-6 text-blue-500 mx-auto mb-2" />
-                          <p className="text-2xl font-bold">
-                            {selectedProject.activities.filter(a => a.type === 'edit').length}
-                          </p>
-                          <p className="text-xs text-muted-foreground">Edições</p>
-                        </div>
-                        <div className="p-4 bg-muted/20 rounded-lg text-center">
-                          <MessageSquare className="h-6 w-6 text-purple-500 mx-auto mb-2" />
-                          <p className="text-2xl font-bold">
-                            {selectedProject.activities.filter(a => a.type === 'comment').length}
-                          </p>
-                          <p className="text-xs text-muted-foreground">Comentários</p>
-                        </div>
-                        <div className="p-4 bg-muted/20 rounded-lg text-center">
-                          <CheckCircle className="h-6 w-6 text-green-500 mx-auto mb-2" />
-                          <p className="text-2xl font-bold">
-                            {selectedProject.activities.filter(a => a.type === 'milestone').length}
-                          </p>
-                          <p className="text-xs text-muted-foreground">Marcos Concluídos</p>
-                        </div>
-                      </div>
-                      
-                      <div className="h-60 bg-muted/20 rounded-lg flex items-center justify-center relative">
-                        {/* Placeholder for activity chart */}
-                        <div className="text-center text-muted-foreground">
-                          <BarChart className="h-12 w-12 mx-auto mb-2" />
-                          <p>Gráfico de Atividade</p>
-                          <p className="text-sm mt-2">Visualização de atividade ao longo do tempo</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
                 </TabsContent>
                 
                 <TabsContent value="settings" className="mt-0 space-y-6">
@@ -2178,19 +2129,19 @@ export default function PixelCollaborationSystem({ children }: PixelCollaboratio
                     <CardContent>
                       <div className="space-y-6">
                         <div className="space-y-2">
-                          <Label htmlFor="project-title">Título do Projeto</Label>
-                          <Input id="project-title" defaultValue={selectedProject.title} />
+                          <Label htmlFor="project-title-edit">Título do Projeto</Label>
+                          <Input id="project-title-edit" defaultValue={selectedProject.title} />
                         </div>
                         
                         <div className="space-y-2">
-                          <Label htmlFor="project-description">Descrição</Label>
-                          <Textarea id="project-description" defaultValue={selectedProject.description} rows={4} />
+                          <Label htmlFor="project-description-edit">Descrição</Label>
+                          <Textarea id="project-description-edit" defaultValue={selectedProject.description} rows={4} />
                         </div>
                         
                         <div className="space-y-2">
-                          <Label htmlFor="project-visibility">Visibilidade</Label>
+                          <Label htmlFor="project-visibility-edit">Visibilidade</Label>
                           <Select defaultValue={selectedProject.visibility}>
-                            <SelectTrigger id="project-visibility">
+                            <SelectTrigger id="project-visibility-edit">
                               <SelectValue placeholder="Selecione a visibilidade" />
                             </SelectTrigger>
                             <SelectContent>
@@ -2201,87 +2152,6 @@ export default function PixelCollaborationSystem({ children }: PixelCollaboratio
                           </Select>
                         </div>
                         
-                        <div className="space-y-2">
-                          <Label htmlFor="project-status">Status</Label>
-                          <Select defaultValue={selectedProject.status}>
-                            <SelectTrigger id="project-status">
-                              <SelectValue placeholder="Selecione o status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="planning">Planejamento</SelectItem>
-                              <SelectItem value="active">Ativo</SelectItem>
-                              <SelectItem value="paused">Pausado</SelectItem>
-                              <SelectItem value="completed">Concluído</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="project-tags">Tags</Label>
-                          <Input id="project-tags" defaultValue={selectedProject.tags.join(', ')} />
-                          <p className="text-xs text-muted-foreground">
-                            Separe as tags com vírgulas (ex: lisboa, turismo, monumentos)
-                          </p>
-                        </div>
-                        
-                        <Separator />
-                        
-                        <div className="space-y-2">
-                          <Label>Permissões</Label>
-                          <div className="space-y-3 p-3 bg-muted/20 rounded-lg">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <Edit className="h-4 w-4 text-muted-foreground" />
-                                <span className="text-sm">Quem pode editar</span>
-                              </div>
-                              <Select defaultValue="editors">
-                                <SelectTrigger className="w-[180px]">
-                                  <SelectValue placeholder="Selecione" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="owners">Apenas Proprietários</SelectItem>
-                                  <SelectItem value="admins">Administradores</SelectItem>
-                                  <SelectItem value="editors">Editores</SelectItem>
-                                  <SelectItem value="all">Todos os Membros</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <UserPlus className="h-4 w-4 text-muted-foreground" />
-                                <span className="text-sm">Quem pode convidar</span>
-                              </div>
-                              <Select defaultValue="admins">
-                                <SelectTrigger className="w-[180px]">
-                                  <SelectValue placeholder="Selecione" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="owners">Apenas Proprietários</SelectItem>
-                                  <SelectItem value="admins">Administradores</SelectItem>
-                                  <SelectItem value="all">Todos os Membros</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <Eye className="h-4 w-4 text-muted-foreground" />
-                                <span className="text-sm">Quem pode ver</span>
-                              </div>
-                              <Select defaultValue="all">
-                                <SelectTrigger className="w-[180px]">
-                                  <SelectValue placeholder="Selecione" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="members">Apenas Membros</SelectItem>
-                                  <SelectItem value="all">Todos</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-                        </div>
-                        
                         <Separator />
                         
                         <div className="space-y-2">
@@ -2290,10 +2160,6 @@ export default function PixelCollaborationSystem({ children }: PixelCollaboratio
                             <Button variant="outline" className="w-full justify-start">
                               <Download className="h-4 w-4 mr-2" />
                               Exportar Projeto
-                            </Button>
-                            <Button variant="outline" className="w-full justify-start">
-                              <Copy className="h-4 w-4 mr-2" />
-                              Duplicar Projeto
                             </Button>
                             <Button variant="outline" className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-100/10">
                               <Trash2 className="h-4 w-4 mr-2" />
@@ -2319,25 +2185,6 @@ export default function PixelCollaborationSystem({ children }: PixelCollaboratio
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-[calc(95vh-80px)]">
-            <TabsList className="px-6 pt-4 bg-transparent justify-start border-b rounded-none gap-2">
-              <TabsTrigger value="projects" className="data-[state=active]:bg-primary/10">
-                <Grid className="h-4 w-4 mr-2" />
-                Projetos
-              </TabsTrigger>
-              <TabsTrigger value="discover" className="data-[state=active]:bg-primary/10">
-                <Compass className="h-4 w-4 mr-2" />
-                Descobrir
-              </TabsTrigger>
-              <TabsTrigger value="my-projects" className="data-[state=active]:bg-primary/10">
-                <User className="h-4 w-4 mr-2" />
-                Meus Projetos
-              </TabsTrigger>
-              <TabsTrigger value="tutorials" className="data-[state=active]:bg-primary/10">
-                <BookOpen className="h-4 w-4 mr-2" />
-                Tutoriais
-              </TabsTrigger>
-            </TabsList>
-            
             <div className="px-6 py-4 border-b">
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="relative flex-1">
@@ -2401,7 +2248,7 @@ export default function PixelCollaborationSystem({ children }: PixelCollaboratio
                                 />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center bg-muted">
-                                  <Image className="h-12 w-12 text-muted-foreground" />
+                                  <ImageIcon className="h-12 w-12 text-muted-foreground" />
                                 </div>
                               )}
                               
@@ -2503,499 +2350,15 @@ export default function PixelCollaborationSystem({ children }: PixelCollaboratio
                 </TabsContent>
                 
                 <TabsContent value="discover" className="mt-0 space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg flex items-center">
-                        <Sparkles className="h-5 w-5 mr-2 text-primary" />
-                        Projetos em Destaque
-                      </CardTitle>
-                      <CardDescription>
-                        Projetos colaborativos populares para você explorar
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {projects.slice(0, 3).map((project) => (
-                          <Card key={project.id} className="cursor-pointer hover:shadow-md transition-all" onClick={() => setSelectedProject(project)}>
-                            <div className="aspect-video relative overflow-hidden">
-                              {project.coverImage ? (
-                                <img 
-                                  src={project.coverImage} 
-                                  alt={project.title}
-                                  className="w-full h-full object-cover"
-                                  data-ai-hint={project.dataAiHint}
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center bg-muted">
-                                  <Image className="h-8 w-8 text-muted-foreground" />
-                                </div>
-                              )}
-                              
-                              <div className="absolute top-2 right-2">
-                                <StatusBadge status={project.status} />
-                              </div>
-                            </div>
-                            
-                            <CardContent className="p-3">
-                              <h3 className="font-medium text-sm">{project.title}</h3>
-                              <div className="flex items-center justify-between mt-2">
-                                <div className="flex items-center gap-1">
-                                  <Users className="h-3 w-3 text-muted-foreground" />
-                                  <span className="text-xs text-muted-foreground">{project.members.length}</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <MapPin className="h-3 w-3 text-muted-foreground" />
-                                  <span className="text-xs text-muted-foreground">{project.region}</span>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-lg flex items-center">
-                          <MapPin className="h-5 w-5 mr-2 text-primary" />
-                          Projetos por Região
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-3">
-                          {['Lisboa', 'Porto', 'Algarve', 'Coimbra', 'Braga'].map((region) => {
-                            const count = projects.filter(p => p.region === region).length;
-                            return (
-                              <div key={region} className="space-y-1">
-                                <div className="flex justify-between text-sm">
-                                  <span>{region}</span>
-                                  <span className="font-medium">{count} projetos</span>
-                                </div>
-                                <Progress value={(count / projects.length) * 100} className="h-2" />
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </CardContent>
-                    </Card>
-                    
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-lg flex items-center">
-                          <Users className="h-5 w-5 mr-2 text-primary" />
-                          Artistas em Destaque
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-3">
-                          {['PixelMaster', 'ArtistaPT', 'ColorMaster', 'BeachArtist', 'DouroArtist'].map((artist, index) => (
-                            <div key={artist} className="flex items-center justify-between p-2 bg-muted/20 rounded-lg">
-                              <div className="flex items-center gap-3">
-                                <Avatar>
-                                  <AvatarImage src="https://placehold.co/40x40.png" alt={artist} data-ai-hint="user avatar" />
-                                  <AvatarFallback>{artist.substring(0, 2)}</AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <p className="font-medium text-sm">{artist}</p>
-                                  <p className="text-xs text-muted-foreground">{5 - index} projetos ativos</p>
-                                </div>
-                              </div>
-                              <Button variant="outline" size="sm">
-                                <Eye className="h-4 w-4 mr-2" />
-                                Perfil
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                  
-                  <Card className="bg-gradient-to-br from-primary/10 to-accent/5 border-primary/20 shadow-lg">
-                    <CardHeader>
-                      <CardTitle className="flex items-center text-primary">
-                        <Calendar className="h-5 w-5 mr-2 text-primary" />
-                        Eventos Colaborativos
-                      </CardTitle>
-                      <CardDescription>
-                        Participe de eventos especiais de criação colaborativa
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Card>
-                          <CardContent className="p-4">
-                            <div className="flex items-start gap-3">
-                              <div className="p-2 rounded-lg bg-yellow-500/20">
-                                <Calendar className="h-5 w-5 text-yellow-500" />
-                              </div>
-                              <div>
-                                <h3 className="font-medium">Maratona de Pixel Art</h3>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                  48 horas de criação colaborativa com prêmios para os melhores projetos.
-                                </p>
-                                <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-                                  <Calendar className="h-3 w-3" />
-                                  <span>15-17 Abril, 2025</span>
-                                </div>
-                                <Button variant="outline" size="sm" className="mt-3 w-full">
-                                  <Calendar className="h-4 w-4 mr-2" />
-                                  Inscrever-se
-                                </Button>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                        
-                        <Card>
-                          <CardContent className="p-4">
-                            <div className="flex items-start gap-3">
-                              <div className="p-2 rounded-lg bg-blue-500/20">
-                                <Users className="h-5 w-5 text-blue-500" />
-                              </div>
-                              <div>
-                                <h3 className="font-medium">Workshop Colaborativo</h3>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                  Aprenda técnicas avançadas de colaboração em pixel art com especialistas.
-                                </p>
-                                <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-                                  <Calendar className="h-3 w-3" />
-                                  <span>22 Março, 2025</span>
-                                </div>
-                                <Button variant="outline" size="sm" className="mt-3 w-full">
-                                  <Calendar className="h-4 w-4 mr-2" />
-                                  Inscrever-se
-                                </Button>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  {/* Content for Discover tab */}
                 </TabsContent>
                 
                 <TabsContent value="my-projects" className="mt-0 space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg flex items-center">
-                        <User className="h-5 w-5 mr-2 text-primary" />
-                        Meus Projetos
-                      </CardTitle>
-                      <CardDescription>
-                        Projetos que você criou ou participa
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      {projects.filter(p => p.members.some(m => m.id === 'user1')).length > 0 ? (
-                        <div className="space-y-4">
-                          {projects.filter(p => p.members.some(m => m.id === 'user1')).map((project) => (
-                            <Card key={project.id} className="cursor-pointer hover:shadow-md transition-all" onClick={() => setSelectedProject(project)}>
-                              <CardContent className="p-4">
-                                <div className="flex items-start gap-4">
-                                  <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
-                                    {project.coverImage ? (
-                                      <img 
-                                        src={project.coverImage} 
-                                        alt={project.title}
-                                        className="w-full h-full object-cover"
-                                        data-ai-hint={project.dataAiHint}
-                                      />
-                                    ) : (
-                                      <div className="w-full h-full flex items-center justify-center bg-muted">
-                                        <Image className="h-8 w-8 text-muted-foreground" />
-                                      </div>
-                                    )}
-                                  </div>
-                                  
-                                  <div className="flex-1">
-                                    <div className="flex items-start justify-between">
-                                      <div>
-                                        <h3 className="font-medium">{project.title}</h3>
-                                        <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{project.description}</p>
-                                      </div>
-                                      <StatusBadge status={project.status} />
-                                    </div>
-                                    
-                                    <div className="mt-3 space-y-2">
-                                      <div className="flex justify-between text-xs">
-                                        <span className="text-muted-foreground">Progresso</span>
-                                        <span>{Math.round((project.completedPixels / project.pixelCount) * 100)}%</span>
-                                      </div>
-                                      <Progress value={(project.completedPixels / project.pixelCount) * 100} className="h-1.5" />
-                                    </div>
-                                    
-                                    <div className="flex items-center justify-between mt-3">
-                                      <div className="flex items-center gap-2">
-                                        <div className="flex -space-x-2">
-                                          {project.members.slice(0, 3).map((member) => (
-                                            <Avatar key={member.id} className="h-6 w-6 border-2 border-background">
-                                              <AvatarImage src={member.avatar} alt={member.name} data-ai-hint={member.dataAiHint} />
-                                              <AvatarFallback>{member.name.substring(0, 2)}</AvatarFallback>
-                                            </Avatar>
-                                          ))}
-                                          {project.members.length > 3 && (
-                                            <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-xs border-2 border-background">
-                                              +{project.members.length - 3}
-                                            </div>
-                                          )}
-                                        </div>
-                                        <span className="text-xs text-muted-foreground">{project.members.length} membros</span>
-                                      </div>
-                                      
-                                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                        <Clock className="h-3 w-3" />
-                                        <span>Atualizado {formatTimeAgo(project.updatedAt)}</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-center py-12">
-                          <User className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                          <h3 className="text-lg font-semibold mb-2">Nenhum projeto encontrado</h3>
-                          <p className="text-muted-foreground mb-4">
-                            Você ainda não participa de nenhum projeto colaborativo
-                          </p>
-                          <Button onClick={() => setShowCreateProject(true)}>
-                            <Plus className="h-4 w-4 mr-2" />
-                            Criar Novo Projeto
-                          </Button>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg flex items-center">
-                        <Award className="h-5 w-5 mr-2 text-primary" />
-                        Minhas Contribuições
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div className="p-4 bg-muted/20 rounded-lg text-center">
-                            <Edit className="h-6 w-6 text-blue-500 mx-auto mb-2" />
-                            <p className="text-2xl font-bold">156</p>
-                            <p className="text-xs text-muted-foreground">Edições</p>
-                          </div>
-                          <div className="p-4 bg-muted/20 rounded-lg text-center">
-                            <MessageSquare className="h-6 w-6 text-purple-500 mx-auto mb-2" />
-                            <p className="text-2xl font-bold">42</p>
-                            <p className="text-xs text-muted-foreground">Comentários</p>
-                          </div>
-                          <div className="p-4 bg-muted/20 rounded-lg text-center">
-                            <CheckCircle className="h-6 w-6 text-green-500 mx-auto mb-2" />
-                            <p className="text-2xl font-bold">8</p>
-                            <p className="text-xs text-muted-foreground">Marcos Concluídos</p>
-                          </div>
-                        </div>
-                        
-                        <div className="p-4 bg-muted/20 rounded-lg">
-                          <h3 className="font-medium mb-3">Estatísticas de Contribuição</h3>
-                          <div className="h-40 bg-muted/30 rounded-lg flex items-center justify-center">
-                            {/* Placeholder for contribution chart */}
-                            <div className="text-center text-muted-foreground">
-                              <BarChart className="h-8 w-8 mx-auto mb-2" />
-                              <p className="text-sm">Gráfico de Contribuições</p>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
-                          <div className="flex items-start gap-3">
-                            <div className="p-2 rounded-full bg-primary/20">
-                              <Award className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                              <h3 className="font-medium">Conquistas de Colaboração</h3>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                Você desbloqueou 3 de 10 conquistas relacionadas a projetos colaborativos.
-                              </p>
-                              <Button variant="outline" size="sm" className="mt-3">
-                                <Award className="h-4 w-4 mr-2" />
-                                Ver Conquistas
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  {/* Content for My Projects tab */}
                 </TabsContent>
                 
                 <TabsContent value="tutorials" className="mt-0 space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg flex items-center">
-                        <BookOpen className="h-5 w-5 mr-2 text-primary" />
-                        Tutoriais de Colaboração
-                      </CardTitle>
-                      <CardDescription>
-                        Aprenda a colaborar efetivamente em projetos de pixel art
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <Card className="cursor-pointer hover:shadow-md transition-all">
-                          <div className="aspect-video relative overflow-hidden">
-                            <img 
-                              src="https://placehold.co/300x200.png" 
-                              alt="Tutorial de Colaboração Básica"
-                              className="w-full h-full object-cover"
-                              data-ai-hint="tutorial thumbnail"
-                            />
-                            <div className="absolute bottom-2 right-2">
-                              <Badge className="bg-primary">Básico</Badge>
-                            </div>
-                          </div>
-                          
-                          <CardContent className="p-4">
-                            <h3 className="font-medium">Introdução à Colaboração</h3>
-                            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                              Aprenda os fundamentos da colaboração em projetos de pixel art.
-                            </p>
-                            <div className="flex items-center justify-between mt-3">
-                              <div className="flex items-center gap-1">
-                                <Clock className="h-3 w-3 text-muted-foreground" />
-                                <span className="text-xs text-muted-foreground">5 min</span>
-                              </div>
-                              <Button variant="outline" size="sm">
-                                <Play className="h-4 w-4 mr-2" />
-                                Assistir
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                        
-                        <Card className="cursor-pointer hover:shadow-md transition-all">
-                          <div className="aspect-video relative overflow-hidden">
-                            <img 
-                              src="https://placehold.co/300x200.png" 
-                              alt="Tutorial de Ferramentas Colaborativas"
-                              className="w-full h-full object-cover"
-                              data-ai-hint="tutorial thumbnail"
-                            />
-                            <div className="absolute bottom-2 right-2">
-                              <Badge className="bg-yellow-500">Intermediário</Badge>
-                            </div>
-                          </div>
-                          
-                          <CardContent className="p-4">
-                            <h3 className="font-medium">Ferramentas Colaborativas</h3>
-                            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                              Domine as ferramentas de edição colaborativa para trabalhar em equipe.
-                            </p>
-                            <div className="flex items-center justify-between mt-3">
-                              <div className="flex items-center gap-1">
-                                <Clock className="h-3 w-3 text-muted-foreground" />
-                                <span className="text-xs text-muted-foreground">12 min</span>
-                              </div>
-                              <Button variant="outline" size="sm">
-                                <Play className="h-4 w-4 mr-2" />
-                                Assistir
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                        
-                        <Card className="cursor-pointer hover:shadow-md transition-all">
-                          <div className="aspect-video relative overflow-hidden">
-                            <img 
-                              src="https://placehold.co/300x200.png" 
-                              alt="Tutorial de Gestão de Projetos"
-                              className="w-full h-full object-cover"
-                              data-ai-hint="tutorial thumbnail"
-                            />
-                            <div className="absolute bottom-2 right-2">
-                              <Badge className="bg-red-500">Avançado</Badge>
-                            </div>
-                          </div>
-                          
-                          <CardContent className="p-4">
-                            <h3 className="font-medium">Gestão de Projetos Colaborativos</h3>
-                            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                              Aprenda a gerenciar projetos complexos com múltiplos colaboradores.
-                            </p>
-                            <div className="flex items-center justify-between mt-3">
-                              <div className="flex items-center gap-1">
-                                <Clock className="h-3 w-3 text-muted-foreground" />
-                                <span className="text-xs text-muted-foreground">20 min</span>
-                              </div>
-                              <Button variant="outline" size="sm">
-                                <Play className="h-4 w-4 mr-2" />
-                                Assistir
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </div>
-                      
-                      <div className="mt-6 text-center">
-                        <Button variant="outline">
-                          <BookOpen className="h-4 w-4 mr-2" />
-                          Ver Todos os Tutoriais
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card className="bg-gradient-to-br from-primary/10 to-accent/5 border-primary/20 shadow-lg">
-                    <CardHeader>
-                      <CardTitle className="flex items-center text-primary">
-                        <Lightbulb className="h-5 w-5 mr-2 text-yellow-500" />
-                        Melhores Práticas de Colaboração
-                      </CardTitle>
-                      <CardDescription>
-                        Dicas para colaborar efetivamente em projetos de pixel art
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="p-4 bg-card/50 rounded-lg shadow-inner">
-                          <h3 className="font-semibold flex items-center mb-2">
-                            <MessageSquare className="h-4 w-4 mr-2 text-blue-500" />
-                            Comunicação Clara
-                          </h3>
-                          <p className="text-sm text-muted-foreground">
-                            Mantenha uma comunicação clara e frequente com todos os membros do projeto.
-                          </p>
-                        </div>
-                        <div className="p-4 bg-card/50 rounded-lg shadow-inner">
-                          <h3 className="font-semibold flex items-center mb-2">
-                            <Layers className="h-4 w-4 mr-2 text-purple-500" />
-                            Organização em Camadas
-                          </h3>
-                          <p className="text-sm text-muted-foreground">
-                            Use camadas para organizar o trabalho e facilitar a colaboração simultânea.
-                          </p>
-                        </div>
-                        <div className="p-4 bg-card/50 rounded-lg shadow-inner">
-                          <h3 className="font-semibold flex items-center mb-2">
-                            <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
-                            Definição de Marcos
-                          </h3>
-                          <p className="text-sm text-muted-foreground">
-                            Estabeleça marcos claros para acompanhar o progresso do projeto.
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                    <CardFooter className="flex justify-center border-t border-primary/10 pt-4">
-                      <Button variant="outline" className="w-full sm:w-auto">
-                        <Download className="h-4 w-4 mr-2" />
-                        Baixar Guia Completo
-                      </Button>
-                    </CardFooter>
-                  </Card>
+                  {/* Content for Tutorials tab */}
                 </TabsContent>
               </div>
             </ScrollArea>
@@ -3005,260 +2368,3 @@ export default function PixelCollaborationSystem({ children }: PixelCollaboratio
     </Dialog>
   );
 }
-
-// Component for the Grid icon since it's not in lucide-react by default
-const Grid = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-    <line x1="3" y1="9" x2="21" y2="9"></line>
-    <line x1="3" y1="15" x2="21" y2="15"></line>
-    <line x1="9" y1="3" x2="9" y2="21"></line>
-    <line x1="15" y1="3" x2="15" y2="21"></line>
-  </svg>
-);
-
-// Component for the User icon since it's not in lucide-react by default
-const User = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-    <circle cx="12" cy="7" r="4"></circle>
-  </svg>
-);
-
-// Component for the BookOpen icon since it's not in lucide-react by default
-const BookOpen = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
-    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
-  </svg>
-);
-
-// Component for the ArrowLeft icon since it's not in lucide-react by default
-const ArrowLeft = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <line x1="19" y1="12" x2="5" y2="12"></line>
-    <polyline points="12 19 5 12 12 5"></polyline>
-  </svg>
-);
-
-// Component for the Activity icon since it's not in lucide-react by default
-const Activity = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-  </svg>
-);
-
-// Component for the BarChart icon since it's not in lucide-react by default
-const BarChart = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <line x1="12" y1="20" x2="12" y2="10"></line>
-    <line x1="18" y1="20" x2="18" y2="4"></line>
-    <line x1="6" y1="20" x2="6" y2="16"></line>
-  </svg>
-);
-
-// Component for the Mail icon since it's not in lucide-react by default
-const Mail = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-    <polyline points="22,6 12,13 2,6"></polyline>
-  </svg>
-);
-
-// Component for the Globe icon since it's not in lucide-react by default
-const Globe = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <circle cx="12" cy="12" r="10"></circle>
-    <line x1="2" y1="12" x2="22" y2="12"></line>
-    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-  </svg>
-);
-
-// Component for the MoreHorizontal icon since it's not in lucide-react by default
-const MoreHorizontal = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <circle cx="12" cy="12" r="1"></circle>
-    <circle cx="19" cy="12" r="1"></circle>
-    <circle cx="5" cy="12" r="1"></circle>
-  </svg>
-);
-
-// Component for the MoreVertical icon since it's not in lucide-react by default
-const MoreVertical = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <circle cx="12" cy="12" r="1"></circle>
-    <circle cx="12" cy="5" r="1"></circle>
-    <circle cx="12" cy="19" r="1"></circle>
-  </svg>
-);
-
-// Component for the Image icon since it's not in lucide-react by default
-const Image = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-    <circle cx="8.5" cy="8.5" r="1.5"></circle>
-    <polyline points="21 15 16 10 5 21"></polyline>
-  </svg>
-);
-
-// Component for the Pipette icon since it's not in lucide-react by default
-const Pipette = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <path d="M2 22l3-3"></path>
-    <path d="M18 2l4 4"></path>
-    <path d="M5 19l15-15"></path>
-    <path d="M19 9l-4-4"></path>
-    <path d="M9 19l-4-4"></path>
-  </svg>
-);
-
-// Component for the Flag icon since it's not in lucide-react by default
-const Flag = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
-    <line x1="4" y1="22" x2="4" y2="15"></line>
-  </svg>
-);
