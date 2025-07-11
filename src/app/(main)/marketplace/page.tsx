@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -38,6 +39,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from 'react-i18next';
 import EnhancedPixelPurchaseModal from '@/components/pixel-grid/EnhancedPixelPurchaseModal';
+import { Confetti } from '@/components/ui/confetti';
 
 type PixelRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'unique';
 type ListingType = 'fixed' | 'auction' | 'offer';
