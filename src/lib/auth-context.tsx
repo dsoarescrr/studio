@@ -133,6 +133,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         displayName: username
       });
       
+      // Create user document in Firestore with initial data
+      await setDoc(doc(db, 'users', userCredential.user.uid), {
+        uid: userCredential.user.uid,
+        email: userCredential.user.email,
+        displayName: username,
+        photoURL: '',
+        createdAt: serverTimestamp(),
+        lastLogin: serverTimestamp(),
+        credits: 500,
+        specialCredits: 50,
+        xp: 0,
+        level: 1,
+        pixels: [],
+        achievements: [],
+        isPremium: false,
+        isVerified: false
+      });
+      
       toast({
         title: "Registo bem-sucedido",
         description: "A sua conta foi criada com sucesso!",
@@ -168,7 +186,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signInWithSocialProvider = async (provider: AuthProvider) => {
     try {
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      
+      // Check if user document exists, create if not
+      const userRef = doc(db, 'users', user.uid);
+      const userSnap = await getDoc(userRef);
+      
+      if (!userSnap.exists()) {
+        await setDoc(userRef, {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+          createdAt: serverTimestamp(),
+          lastLogin: serverTimestamp(),
+          credits: 500,
+          specialCredits: 50,
+          xp: 0,
+          level: 1,
+          pixels: [],
+          achievements: [],
+          isPremium: false,
+          isVerified: user.emailVerified
+        }, { merge: true }); // Use merge to not overwrite existing data if any
+      } else {
+        await updateDoc(userRef, {
+          lastLogin: serverTimestamp(),
+          photoURL: user.photoURL // Update photoURL on login
+        });
+      }
+      
       toast({
         title: "Login bem-sucedido",
         description: "Bem-vindo ao Pixel Universe!",
