@@ -31,7 +31,9 @@ import {
   PixelCollaborationSystem,
   PixelMarketplace,
   PixelWallet,
-  ThemeCustomizer
+  ThemeCustomizer,
+  HelpCenter,
+  FeedbackSystem
 } from '@/components/features';
 import { SoundEffect, SOUND_EFFECTS } from '@/components/ui/sound-effect';
 import { UserPlus, LogIn, Crown } from 'lucide-react';
@@ -256,11 +258,11 @@ export default function BottomNavBar() {
                 </motion.span>
                 
                 {/* Notification Badge */}
-                {link.badge && ( 
+                {link.badge && notifications > 0 && link.href === "/member" && ( 
                   <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 500, damping: 15 }}>
                     <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 flex items-center justify-center animate-bounce shadow-lg">
                     <span className="animate-pulse">
-                      {link.href === "/member" ? notifications : link.badge}
+                      {notifications > 9 ? '9+' : notifications}
                     </span>
                     </Badge>
                   </motion.div>

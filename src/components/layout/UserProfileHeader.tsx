@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import NotificationCenter from './NotificationCenter';
-import { useUserStore, useSettingsStore } from '@/lib/store';
+import { useUserStore } from '@/lib/store';
 import SearchSystem from './SearchSystem';
 import { 
   Award, CreditCard, Sparkles, Gift, Bell, Settings, Menu,
@@ -35,7 +35,6 @@ import Link from "next/link";
 import { usePathname } from 'next/navigation';
 import { LanguageSwitcher } from '@/components/ui/language-switcher';
 import { useTranslation } from 'react-i18next';
-import Link from 'next/link';
 import HelpCenter from '@/components/features/HelpCenter';
 import TwoFactorAuth from '@/components/security/TwoFactorAuth';
 import FeedbackSystem from '@/components/features/FeedbackSystem';
@@ -78,7 +77,7 @@ export default function UserProfileHeader() {
   const [isScrolled, setIsScrolled] = useState(false);
 
   // Combine store data with mock data for a complete user object
-  const user = {
+  const userData = {
     name: "PixelMasterPT",
     avatarUrl: 'https://placehold.co/40x40.png',
     dataAiHint: 'profile avatar',
@@ -149,23 +148,23 @@ export default function UserProfileHeader() {
                 <div className="flex items-center space-x-4">
                   <div className="relative">
                     <Avatar className="h-16 w-16 border-2 border-primary shadow-lg">
-                      <AvatarImage src={user.avatarUrl} alt={user.name} data-ai-hint={user.dataAiHint} />
-                      <AvatarFallback className="text-lg font-headline">{user.name.substring(0, 1).toUpperCase()}</AvatarFallback>
+                      <AvatarImage src={userData.avatarUrl} alt={userData.name} data-ai-hint={userData.dataAiHint} />
+                      <AvatarFallback className="text-lg font-headline">{userData.name.substring(0, 1).toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-0.5">
                       <Badge className="h-6 w-6 p-0 flex items-center justify-center bg-primary text-primary-foreground">
-                        {user.level}
+                        {userData.level}
                       </Badge>
                     </div>
                   </div>
                   <div>
                     <SheetTitle className="text-left text-xl font-headline text-gradient-gold">
-                      {user.name}
+                      {userData.name}
                     </SheetTitle>
                     <div className="flex items-center gap-2">
-                      <div className="text-xs text-muted-foreground font-code">@{user.name.toLowerCase()}</div>
-                      {user.isPremium && <Crown className="h-3 w-3 text-amber-400" />}
-                      {user.isVerified && <Star className="h-3 w-3 text-blue-400" />}
+                      <div className="text-xs text-muted-foreground font-code">@{userData.name.toLowerCase()}</div>
+                      {userData.isPremium && <Crown className="h-3 w-3 text-amber-400" />}
+                      {userData.isVerified && <Star className="h-3 w-3 text-blue-400" />}
                     </div>
                   </div>
                 </div>
@@ -174,7 +173,7 @@ export default function UserProfileHeader() {
                 <div className="space-y-2 mt-4">
                   <div className="flex justify-between text-xs">
                     <span>Progresso XP</span>
-                    <span className="font-code">{user.xp}/{user.xpMax}</span>
+                    <span className="font-code">{userData.xp}/{userData.xpMax}</span>
                   </div>
                   <div className="w-full bg-muted/50 rounded-full h-2 overflow-hidden">
                     <div 
@@ -200,12 +199,12 @@ export default function UserProfileHeader() {
                   </div>
                   <div className="bg-green-500/10 p-3 rounded-lg text-center shadow-inner">
                     <Award className="h-5 w-5 text-green-500 mx-auto mb-1" />
-                    <p className="text-sm font-bold text-green-500">{user.achievements}</p>
+                    <p className="text-sm font-bold text-green-500">{userData.achievements}</p>
                     <p className="text-xs text-muted-foreground">Conquistas</p>
                   </div>
                   <div className="bg-purple-500/10 p-3 rounded-lg text-center shadow-inner">
                     <Sparkles className="h-5 w-5 text-purple-500 mx-auto mb-1" />
-                    <p className="text-sm font-bold text-purple-500">{user.pixels}</p>
+                    <p className="text-sm font-bold text-purple-500">{userData.pixels}</p>
                     <p className="text-xs text-muted-foreground">Pixels</p>
                   </div>
                 </div>
@@ -231,14 +230,18 @@ export default function UserProfileHeader() {
                 </div>
 
                 <div className="space-y-1 pt-4 border-t border-border/50">
-                  <Button variant="outline" className="w-full justify-start" size="sm">
-                    <Settings className="h-4 w-4 mr-2" />
-                    Definições
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start" size="sm">
-                    <HelpCircle className="h-4 w-4 mr-2" />
-                    Ajuda & Suporte
-                  </Button>
+                  <Link href="/settings">
+                    <Button variant="outline" className="w-full justify-start" size="sm">
+                      <Settings className="h-4 w-4 mr-2" />
+                      Definições
+                    </Button>
+                  </Link>
+                  <HelpCenter>
+                    <Button variant="outline" className="w-full justify-start" size="sm">
+                      <HelpCircle className="h-4 w-4 mr-2" />
+                      Ajuda & Suporte
+                    </Button>
+                  </HelpCenter>
                   <Link href="/security">
                     <Button variant="outline" className="w-full justify-start" size="sm">
                       <Shield className="h-4 w-4 mr-2" />
@@ -327,12 +330,14 @@ export default function UserProfileHeader() {
               className="h-8 w-8 relative hover:bg-primary/10 transition-colors"
             >
               <Bell className="h-4 w-4" />
+              {notifications > 0 && (
               <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center">
                 <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75 animate-ping"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 text-[10px] text-white font-bold">
-                  {notifications}
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 text-[10px] text-white font-bold items-center justify-center">
+                  {notifications > 9 ? '9+' : notifications}
                 </span>
               </span>
+              )}
             </Button>
           </NotificationCenter></motion.div>
 

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -11,7 +12,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { useStripe, StripePaymentElements } from './StripePaymentProvider';
+import { useStripePayment, StripePaymentElements } from './StripePaymentProvider';
 import CheckoutForm from './CheckoutForm';
 import { useAuth } from '@/lib/auth-context';
 import { useUserStore } from '@/lib/store';
@@ -48,7 +49,7 @@ export default function PixelPaymentModal({
   const [playSuccessSound, setPlaySuccessSound] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'credit_card' | 'paypal' | 'mbway'>('credit_card');
   
-  const { createPaymentIntent } = useStripe();
+  const { createPaymentIntent } = useStripePayment();
   const { toast } = useToast();
   const { user } = useAuth();
   const { credits, specialCredits, removeCredits, removeSpecialCredits } = useUserStore();

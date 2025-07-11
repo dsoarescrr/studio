@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -18,8 +19,7 @@ import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/comp
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { useAuth } from '@/lib/auth-context';
+import { Separator } from '../ui/separator';
 import { RequireAuth } from '@/components/auth/RequireAuth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
@@ -43,7 +43,7 @@ import {
   Target, Flame, Crown, Gem, Activity, Image as ImageIcon, Link as LinkIcon,
   Plus, Minus, RotateCcw, Maximize2, Settings, Bell, Flag, ThumbsUp, Layers, Palette,
   Calculator, Wallet, History, Camera, Palette as PaletteIcon, Eraser, RefreshCw,
-  BookImage, FileText, FolderPlus, Play, Volume2, X
+  BookImage, FileText, FolderPlus, Play, Volume2, X, Twitter, Instagram
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -1223,7 +1223,7 @@ export default function EnhancedPixelPurchaseModal({
 
                       <div className="space-y-2">
                       <Label htmlFor="pixelUrl" className="text-sm font-medium flex items-center">
-                        <Link className="h-4 w-4 mr-2 text-primary" />
+                        <LinkIcon className="h-4 w-4 mr-2 text-primary" />
                         Link Personalizado
                       </Label>
                       <Input
@@ -1237,7 +1237,7 @@ export default function EnhancedPixelPurchaseModal({
 
                       <div className="space-y-2">
                       <Label htmlFor="pixelImage" className="text-sm font-medium flex items-center">
-                        <Image className="h-4 w-4 mr-2 text-primary" />
+                        <ImageIcon className="h-4 w-4 mr-2 text-primary" />
                         Imagem (1x1)
                       </Label>
                       <Input 
