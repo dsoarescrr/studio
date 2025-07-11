@@ -12,16 +12,19 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import Image from 'next/image';
 import { 
   Settings, Moon, Sun, Monitor, Volume2, VolumeX, Bell, Eye, 
   Paintbrush, Zap, Shield, Key, LogOut, Download, Upload, 
   RefreshCw, Smartphone, Laptop, Globe, Languages, Sparkles, 
   Contrast, Palette, Save, Check, AlertTriangle, Lock, User, 
-  Mail, BellRing, CreditCard, HelpCircle, FileText, MessageSquare
+  Mail, BellRing, CreditCard, HelpCircle, FileText, MessageSquare,
+  Gift, Coins
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSettingsStore, useUserStore } from "@/lib/store";
 import { SoundEffect, SOUND_EFFECTS } from "@/components/ui/sound-effect";
+import { Confetti } from '@/components/ui/confetti';
 
 export default function SettingsPage() {
   const { toast } = useToast();
@@ -51,12 +54,16 @@ export default function SettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [playTestSound, setPlayTestSound] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [playSaveSound, setPlaySaveSound] = useState(false);
 
   const handleSaveSettings = () => {
     setIsSaving(true);
     
     setTimeout(() => {
       setIsSaving(false);
+      setShowConfetti(true);
+      setPlaySaveSound(true);
       toast({
         title: "Definições Guardadas",
         description: "As suas preferências foram atualizadas com sucesso.",
@@ -65,6 +72,7 @@ export default function SettingsPage() {
   };
 
   const handleResetSettings = () => {
+    setPlayTestSound(true);
     // Reset to defaults
     setTheme('dark');
     setFontSize(100);
@@ -79,6 +87,7 @@ export default function SettingsPage() {
   };
 
   const handleExportSettings = () => {
+    setPlayTestSound(true);
     const settings = {
       theme,
       animations,
@@ -108,6 +117,7 @@ export default function SettingsPage() {
   };
 
   const handleChangePassword = () => {
+    setPlaySaveSound(true);
     if (newPassword !== confirmPassword) {
       toast({
         title: "Erro",
@@ -139,6 +149,12 @@ export default function SettingsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5">
       <SoundEffect 
+        src={SOUND_EFFECTS.SUCCESS} 
+        play={playSaveSound} 
+        onEnd={() => setPlaySaveSound(false)} 
+      />
+      <Confetti active={showConfetti} duration={3000} onComplete={() => setShowConfetti(false)} />
+      <SoundEffect 
         src={SOUND_EFFECTS.CLICK} 
         play={playTestSound} 
         onEnd={() => setPlayTestSound(false)} 
@@ -149,7 +165,7 @@ export default function SettingsPage() {
         <Card className="shadow-2xl bg-gradient-to-br from-card via-card/95 to-primary/10 border-primary/30 overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 animate-shimmer" 
                style={{ backgroundSize: '200% 200%' }} />
-          <CardHeader className="relative">
+          <CardHeader className="relative z-10">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div>
                 <CardTitle className="font-headline text-3xl text-gradient-gold flex items-center">
@@ -208,21 +224,21 @@ export default function SettingsPage() {
                     value="appearance" 
                     className="w-full justify-start text-left px-3 py-2 h-auto"
                   >
-                    <Paintbrush className="h-4 w-4 mr-3" />
+                    <Paintbrush className="h-4 w-4 mr-3 text-blue-500" />
                     Aparência
                   </TabsTrigger>
                   <TabsTrigger 
                     value="accessibility" 
                     className="w-full justify-start text-left px-3 py-2 h-auto"
                   >
-                    <Eye className="h-4 w-4 mr-3" />
+                    <Eye className="h-4 w-4 mr-3 text-green-500" />
                     Acessibilidade
                   </TabsTrigger>
                   <TabsTrigger 
                     value="notifications" 
                     className="w-full justify-start text-left px-3 py-2 h-auto"
                   >
-                    <Bell className="h-4 w-4 mr-3" />
+                    <Bell className="h-4 w-4 mr-3 text-red-500" />
                     Notificações
                   </TabsTrigger>
                   <TabsTrigger 
@@ -236,28 +252,28 @@ export default function SettingsPage() {
                     value="security" 
                     className="w-full justify-start text-left px-3 py-2 h-auto"
                   >
-                    <Shield className="h-4 w-4 mr-3" />
+                    <Shield className="h-4 w-4 mr-3 text-purple-500" />
                     Segurança
                   </TabsTrigger>
                   <TabsTrigger 
                     value="performance" 
                     className="w-full justify-start text-left px-3 py-2 h-auto"
                   >
-                    <Zap className="h-4 w-4 mr-3" />
+                    <Zap className="h-4 w-4 mr-3 text-yellow-500" />
                     Desempenho
                   </TabsTrigger>
                   <TabsTrigger 
                     value="language" 
                     className="w-full justify-start text-left px-3 py-2 h-auto"
                   >
-                    <Globe className="h-4 w-4 mr-3" />
+                    <Globe className="h-4 w-4 mr-3 text-cyan-500" />
                     Idioma
                   </TabsTrigger>
                   <TabsTrigger 
                     value="help" 
                     className="w-full justify-start text-left px-3 py-2 h-auto"
                   >
-                    <HelpCircle className="h-4 w-4 mr-3" />
+                    <HelpCircle className="h-4 w-4 mr-3 text-orange-500" />
                     Ajuda
                   </TabsTrigger>
                 </TabsList>
