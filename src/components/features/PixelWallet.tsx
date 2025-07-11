@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -27,7 +28,7 @@ import {
   ShoppingCart, Award, Star, Users, Zap, AlertTriangle, CheckCircle, 
   HelpCircle, Settings, Lock, Unlock, Eye, EyeOff, RefreshCw, Download,
   Upload, Filter, Search, SortAsc, Info, Bell, Shield, Key, Send, 
-  Sparkles, Gem, Crown, Heart, MapPin, Tag, Package, PackageOpen
+  Sparkles, Gem, Crown, Heart, MapPin, Tag, Package, PackageOpen, ArrowLeft
 } from 'lucide-react';
 import { useUserStore } from '@/lib/store';
 import { useToast } from '@/hooks/use-toast';
@@ -731,6 +732,42 @@ export default function PixelWallet({ children }: PixelWalletProps) {
                           <Settings className="h-4 w-4 mr-2" />
                           Gerenciar
                         </Button>
+                      </div>
+                      
+                      <div className="mt-4 space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Próxima Cobrança</span>
+                          <span className="font-medium">{formatDate(subscription.endDate)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Valor</span>
+                          <span className="font-medium">{subscription.price} créditos</span>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Período Restante</span>
+                            <span className="font-medium">
+                              {Math.ceil((subscription.endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))} dias
+                            </span>
+                          </div>
+                          <Progress 
+                            value={100 - (Math.ceil((subscription.endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) / 30) * 100} 
+                            className="h-2" 
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <Button variant="outline" onClick={handleCancelSubscription} disabled={!subscription.autoRenew}>
+                          <X className="h-4 w-4 mr-2" />
+                          Cancelar Renovação
+                        </Button>
+                        {subscription.tier !== 'ultimate' && (
+                          <Button onClick={handleUpgradeSubscription}>
+                            <ArrowUpRight className="h-4 w-4 mr-2" />
+                            Fazer Upgrade
+                          </Button>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
