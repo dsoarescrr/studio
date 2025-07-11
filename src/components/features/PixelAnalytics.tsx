@@ -35,7 +35,7 @@ import {
   Crown, Gem, Star, Info, HelpCircle, Lightbulb, Coins,
   Sparkles, ChevronRight, ChevronDown, ChevronUp, Maximize2,
   Minimize2, Settings, AlertTriangle, CheckCircle, XCircle,
-  Layers, Map, Globe, Compass, Package, PackageOpen, ShoppingCart
+  Layers, Map, Globe, Compass, Package, PackageOpen, ShoppingCart, Bell, ArrowLeft
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
@@ -212,6 +212,32 @@ const TrendIndicator = ({ trend, value }: { trend: 'up' | 'down' | 'neutral'; va
 interface PixelAnalyticsProps {
   children: React.ReactNode;
 }
+
+// Component for the Calculator icon since it's not in lucide-react by default
+const Calculator = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props}
+  >
+    <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
+    <line x1="8" y1="6" x2="16" y2="6"></line>
+    <line x1="8" y1="12" x2="8" y2="12"></line>
+    <line x1="12" y1="12" x2="12" y2="12"></line>
+    <line x1="16" y1="12" x2="16" y2="12"></line>
+    <line x1="8" y1="16" x2="8" y2="16"></line>
+    <line x1="12" y1="16" x2="12" y2="16"></line>
+    <line x1="16" y1="16" x2="16" y2="16"></line>
+  </svg>
+);
+
 
 export default function PixelAnalytics({ children }: PixelAnalyticsProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -2034,46 +2060,3 @@ export default function PixelAnalytics({ children }: PixelAnalyticsProps) {
   );
 }
 
-// Component for the ArrowLeft icon since it's not in lucide-react by default
-const ArrowLeft = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <path d="M19 12H5"></path>
-    <path d="M12 19l-7-7 7-7"></path>
-  </svg>
-);
-
-// Component for the Calculator icon since it's not in lucide-react by default
-const Calculator = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
-    <line x1="8" y1="6" x2="16" y2="6"></line>
-    <line x1="8" y1="12" x2="8" y2="12"></line>
-    <line x1="12" y1="12" x2="12" y2="12"></line>
-    <line x1="16" y1="12" x2="16" y2="12"></line>
-    <line x1="8" y1="16" x2="8" y2="16"></line>
-    <line x1="12" y1="16" x2="12" y2="16"></line>
-    <line x1="16" y1="16" x2="16" y2="16"></line>
-  </svg>
-);
