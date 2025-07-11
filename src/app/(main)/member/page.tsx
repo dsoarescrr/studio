@@ -52,6 +52,8 @@ import { motion } from 'framer-motion';
 import { Confetti } from '@/components/ui/confetti';
 import { achievementsData } from '@/data/achievements-data';
 import { UserProfileDisplay } from '@/components/user/UserProfileDisplay';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 
 // Types
 interface Pixel {
@@ -1583,19 +1585,20 @@ export default function MemberPage() {
                 <h3 className="text-lg font-semibold">Informações Básicas</h3>
                 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Nome de Utilizador</label>
-                  <Input value="PixelMasterPT" disabled />
+                  <Label htmlFor="username-edit">Nome de Utilizador</Label>
+                  <Input id="username-edit" value="PixelMasterPT" disabled />
                   <p className="text-xs text-muted-foreground">O nome de utilizador não pode ser alterado</p>
                 </div>
                 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Email</label>
-                  <Input value="pixelmaster@example.com" />
+                  <Label htmlFor="email-edit">Email</Label>
+                  <Input id="email-edit" value="pixelmaster@example.com" />
                 </div>
                 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Biografia</label>
+                  <Label htmlFor="bio-edit">Biografia</Label>
                   <Textarea 
+                    id="bio-edit"
                     value={profileBio} 
                     onChange={(e) => setProfileBio(e.target.value)}
                     placeholder="Fale um pouco sobre você..."
@@ -1605,8 +1608,9 @@ export default function MemberPage() {
                 </div>
                 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Localização</label>
+                  <Label htmlFor="location-edit">Localização</Label>
                   <Input 
+                    id="location-edit"
                     value={profileLocation} 
                     onChange={(e) => setProfileLocation(e.target.value)}
                     placeholder="Cidade, País"
@@ -1700,8 +1704,9 @@ export default function MemberPage() {
           
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Nome do Álbum</label>
+              <Label htmlFor="album-name">Nome do Álbum</Label>
               <Input 
+                id="album-name"
                 value={newAlbumName} 
                 onChange={(e) => setNewAlbumName(e.target.value)}
                 placeholder="Ex: Coleção Lisboa"
@@ -1709,8 +1714,9 @@ export default function MemberPage() {
             </div>
             
             <div className="space-y-2">
-              <label className="text-sm font-medium">Descrição</label>
+              <Label htmlFor="album-description">Descrição</Label>
               <Textarea 
+                id="album-description"
                 value={newAlbumDescription} 
                 onChange={(e) => setNewAlbumDescription(e.target.value)}
                 placeholder="Descreva o seu álbum..."
@@ -1745,4 +1751,3 @@ export default function MemberPage() {
     </div>
   );
 }
-
