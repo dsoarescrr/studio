@@ -41,7 +41,7 @@ import {
   ShieldCheck, Key, LogOut, Zap, Lightbulb, HelpCircle, Info, AlertTriangle,
   CheckCircle, XCircle, Sparkles, TrendingUp, BarChart3, PieChart, LineChart,
   Users, Bell, FileText, Wallet, History, Package, Grid3X3, Layers, Image as ImageIcon,
-  ShoppingCart, Search
+  ShoppingCart, Search, Filter
 } from "lucide-react";
 import { useUserStore } from '@/lib/store';
 import { SoundEffect, SOUND_EFFECTS } from '@/components/ui/sound-effect';
