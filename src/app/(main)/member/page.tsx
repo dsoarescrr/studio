@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -39,7 +40,8 @@ import {
   Twitter, Instagram, Github, Globe, Link as LinkIcon, Mail, Lock, Unlock,
   ShieldCheck, Key, LogOut, Zap, Lightbulb, HelpCircle, Info, AlertTriangle,
   CheckCircle, XCircle, Sparkles, TrendingUp, BarChart3, PieChart, LineChart,
-  Users, Bell, FileText, Wallet, History, Package, Grid3X3, Layers, Image as ImageIcon
+  Users, Bell, FileText, Wallet, History, Package, Grid3X3, Layers, Image as ImageIcon,
+  ShoppingCart
 } from "lucide-react";
 import { useUserStore } from '@/lib/store';
 import { SoundEffect, SOUND_EFFECTS } from '@/components/ui/sound-effect';
@@ -1404,7 +1406,7 @@ export default function MemberPage() {
                       className="flex-1 sm:flex-none"
                       onClick={() => handleTogglePixelForSale(selectedPixel.id, true, Math.round(selectedPixel.price * 1.5))}
                     >
-                      <DollarSign className="h-4 w-4 mr-2" />
+                      <Coins className="h-4 w-4 mr-2" />
                       Colocar à Venda
                     </Button>
                   )}
