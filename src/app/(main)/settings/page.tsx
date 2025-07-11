@@ -20,7 +20,7 @@ import {
   RefreshCw, Smartphone, Laptop, Globe, Languages, Sparkles, 
   Contrast, Palette, Save, Check, AlertTriangle, Lock, User, 
   Mail, BellRing, CreditCard, HelpCircle, FileText, MessageSquare,
-  Gift, Coins, ShoppingCart, Trophy
+  Gift, Coins, ShoppingCart, Trophy, Crown
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSettingsStore, useUserStore } from "@/lib/store";
