@@ -7,14 +7,17 @@ import {
   History as HistoryIcon, DollarSign, ShoppingCart, Edit3, Palette as PaletteIconLucide, FileText, Upload, Save,
   Image as ImageIcon, XCircle, TagsIcon, Link as LinkIconLucide, Pencil,
   Eraser, PaintBucket, Trash2, Heart, Flag, BadgePercent, Star, MapPin as MapPinIconLucide, ScrollText, Gem, Globe, AlertTriangle,
-  Map as MapIcon,
+  Map as MapIcon, Crown,
 } from 'lucide-react';
 import NextImage from 'next/image';
+import Link from 'next/link';
 import PortugalMapSvg, { type MapData } from './PortugalMapSvg';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { generatePixelDescription, type GeneratePixelDescriptionInput } from '@/ai/flows/generate-pixel-description';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/lib/auth-context';
+import { AuthModal } from '@/components/auth/AuthModal';
 import {
   Dialog,
   DialogContent,
@@ -42,6 +45,27 @@ const SVG_VIEWBOX_WIDTH = 12969;
 const SVG_VIEWBOX_HEIGHT = 26674;
 const LOGICAL_GRID_COLS_CONFIG = 1273;
 const RENDERED_PIXEL_SIZE_CONFIG = 1;
+
+// Pixel pricing constants
+const PIXEL_BASE_PRICE = 1; // Base price in euros
+const PIXEL_RARITY_MULTIPLIERS = {
+  'Comum': 1,
+  'Incomum': 2.5,
+  'Raro': 5,
+  'Épico': 10,
+  'Lendário': 25,
+  'Marco Histórico': 50
+};
+
+// Special credits pricing
+const SPECIAL_CREDITS_CONVERSION = {
+  'Comum': 10,
+  'Incomum': 25,
+  'Raro': 50,
+  'Épico': 100,
+  'Lendário': 250,
+  'Marco Histórico': 500
+};
 
 // Derived constants
 const canvasDrawWidth = LOGICAL_GRID_COLS_CONFIG * RENDERED_PIXEL_SIZE_CONFIG;
@@ -93,6 +117,7 @@ interface SelectedPixelDetails {
   isProtected: boolean;
   features?: string[];
   description?: string;
+  specialCreditsPrice?: number;
 }
 
 const MIN_ZOOM = 0.05;
@@ -124,6 +149,7 @@ export default function PixelGrid() {
   const [selectedPixelDetails, setSelectedPixelDetails] = useState<SelectedPixelDetails | null>(null);
   
   const [showPixelModal, setShowPixelModal] = useState(false);
+  const { user } = useAuth();
   
   const containerRef = useRef<HTMLDivElement>(null);
   const pixelCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -507,6 +533,10 @@ export default function PixelGrid() {
         const randomLore = mockLoreSnippets[Math.floor(Math.random() * mockLoreSnippets.length)];
         const approxGps = mapPixelToApproxGps(logicalCol, logicalRow, LOGICAL_GRID_COLS_CONFIG, logicalGridRows);
         const region = mapData?.districtMapping?.[`${logicalCol},${logicalRow}`] || "Desconhecida";
+        
+        // Calculate price based on rarity
+        const basePrice = PIXEL_BASE_PRICE * (PIXEL_RARITY_MULTIPLIERS[randomRarity] || 1);
+        const specialCreditsPrice = SPECIAL_CREDITS_CONVERSION[randomRarity] || 10;
 
         if (existingSoldPixel) {
              mockDetails = {
@@ -534,15 +564,16 @@ export default function PixelGrid() {
                 price: existingSoldPixel.ownerId ? (Math.floor(Math.random() * 100) + 20) : 0,
                 views: Math.floor(Math.random() * 1000),
                 likes: Math.floor(Math.random() * 200),
-                region: region,
+                region,
                 isProtected: Math.random() > 0.8,
+                specialCreditsPrice: specialCreditsPrice,
             };
         } else { 
              mockDetails = {
                 x: logicalCol,
                 y: logicalRow,
                 owner: 'Disponível (Sistema)',
-                price: Math.floor(Math.random() * 50) + 10, 
+                price: basePrice,
                 color: unsoldColor,
                 isOwnedByCurrentUser: false,
                 isForSaleBySystem: true,
@@ -553,8 +584,9 @@ export default function PixelGrid() {
                 gpsCoords: approxGps,
                 views: Math.floor(Math.random() * 1000),
                 likes: Math.floor(Math.random() * 200),
-                region: region,
+                region,
                 isProtected: false,
+                specialCreditsPrice: specialCreditsPrice,
             };
         }
 
@@ -583,6 +615,15 @@ export default function PixelGrid() {
   
   const handlePurchase = async (pixelData: SelectedPixelDetails, paymentMethod: string, customizations: any) => {
     // Simulate API call and logic
+    if (!user) {
+      toast({
+        title: "Autenticação Necessária",
+        description: "Por favor, inicie sessão ou crie uma conta para comprar pixels.",
+        variant: "destructive"
+      });
+      return false;
+    }
+    
     await new Promise(resolve => setTimeout(resolve, 1500));
     
     // Check if user has enough credits (simplified)
@@ -834,7 +875,12 @@ export default function PixelGrid() {
               <Button pointerEvents="auto" variant="outline" className="button-3d-effect-outline"><Search className="mr-2 h-4 w-4" />Explorar Pixel por Coordenadas</Button>
               <Button pointerEvents="auto" variant="outline" className="button-3d-effect-outline"><PaletteIconLucide className="mr-2 h-4 w-4" />Filtros de Visualização</Button>
               <Button pointerEvents="auto" variant="outline" className="button-3d-effect-outline"><Sparkles className="mr-2 h-4 w-4" />Ver Eventos Atuais</Button>
-               <Button pointerEvents="auto" variant="outline" onClick={handleGoToMyLocation} className="button-3d-effect-outline"><MapPinIconLucide className="mr-2 h-4 w-4" />Ir para Minha Localização</Button>
+              <Button pointerEvents="auto" variant="outline" onClick={handleGoToMyLocation} className="button-3d-effect-outline"><MapPinIconLucide className="mr-2 h-4 w-4" />Ir para Minha Localização</Button>
+              <Link href="/premium">
+                <Button pointerEvents="auto" variant="default" className="w-full button-gradient-gold button-3d-effect">
+                  <Crown className="mr-2 h-4 w-4" />Tornar-se Premium
+                </Button>
+              </Link>
             </div>
             <DialogFooter className="dialog-footer-gold-accent rounded-b-lg">
             </DialogFooter>

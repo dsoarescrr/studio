@@ -18,6 +18,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   User,
   LogOut,
   Settings,
@@ -151,6 +159,16 @@ export function UserMenu() {
               <Award className="mr-2 h-4 w-4 text-yellow-500 animate-pulse" style={{ animationDuration: '3s' }} />
               <span>Conquistas</span>
               <Badge className="ml-auto bg-red-500 text-white text-xs">{achievements}</Badge>
+            </DropdownMenuItem>
+          </Link>
+          
+          <Link href="/premium">
+            <DropdownMenuItem className="cursor-pointer hover:bg-primary/10 transition-colors">
+              <Crown className="mr-2 h-4 w-4 text-amber-500 animate-pulse" style={{ animationDuration: '3s' }} />
+              <span>Tornar-se Premium</span>
+              {isPremium && (
+                <Badge className="ml-auto bg-green-500 text-white text-xs">Ativo</Badge>
+              )}
             </DropdownMenuItem>
           </Link>
           

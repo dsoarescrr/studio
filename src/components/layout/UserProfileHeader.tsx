@@ -35,6 +35,7 @@ import Link from "next/link";
 import { usePathname } from 'next/navigation';
 import { LanguageSwitcher } from '@/components/ui/language-switcher';
 import { useTranslation } from 'react-i18next';
+import Link from 'next/link';
 import HelpCenter from '@/components/features/HelpCenter';
 import FeedbackSystem from '@/components/features/FeedbackSystem';
 import { useAuth } from '@/lib/auth-context';
@@ -237,6 +238,12 @@ export default function UserProfileHeader() {
                     <HelpCircle className="h-4 w-4 mr-2" />
                     Ajuda & Suporte
                   </Button>
+                  <Link href="/premium">
+                    <Button variant="default" className="w-full justify-start bg-gradient-to-r from-primary to-amber-500 hover:from-primary/90 hover:to-amber-500/90">
+                      <Crown className="h-4 w-4 mr-2" />
+                      Tornar-se Premium
+                    </Button>
+                  </Link>
                   <Button variant="destructive" className="w-full justify-start mt-4" size="sm">
                     <LogOut className="h-4 w-4 mr-2" />
                     Terminar Sessão

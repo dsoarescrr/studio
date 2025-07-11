@@ -12,17 +12,11 @@ import NotificationCenter from '@/components/layout/NotificationCenter';
 import { useUserStore } from '@/lib/store';
 import SearchSystem from '@/components/layout/SearchSystem';
 import EnhancedPixelPurchaseModal from '@/components/pixel-grid/EnhancedPixelPurchaseModal';
+import { useAuth } from '@/lib/auth-context';
+import { AuthModal } from '@/components/auth/AuthModal';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,9 +33,7 @@ import {
   ThemeCustomizer
 } from '@/components/features';
 import { SoundEffect, SOUND_EFFECTS } from '@/components/ui/sound-effect';
-import { useAuth } from '@/lib/auth-context';
-import { AuthModal } from '@/components/auth/AuthModal';
-import { UserPlus, LogIn } from 'lucide-react';
+import { UserPlus, LogIn, Crown } from 'lucide-react';
 import '@/lib/i18n';
 import type { Achievement } from '@/data/achievements-data';
 
@@ -53,6 +45,7 @@ const navLinks = [
   { href: "/ranking", label: "Ranking", icon: AnalyticsIcon, color: "text-amber-500", badge: 2, description: "Classificações" },
   { href: "/community", label: "Comunidade", icon: Users2, color: "text-pink-500", badge: 3, description: "Interagir com a comunidade" },
   { href: "/settings", label: "Ajustes", icon: Settings, color: "text-gray-500", description: "Configurações" },
+  { href: "/premium", label: "Premium", icon: Crown, color: "text-yellow-500", description: "Subscrição Premium" },
 ];
 
 const BOTTOM_NAV_HEIGHT = '80px';
@@ -412,6 +405,22 @@ export default function BottomNavBar() {
                   </div>
                 </DropdownMenuItem>
               </PixelWallet>
+
+              <Link href="/premium">
+                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer hover:bg-primary/10 transition-colors group">
+                  <div className="flex items-center w-full"> 
+                    <div className="p-2 rounded-lg bg-yellow-500/20 mr-3 group-hover:scale-110 transition-transform">
+                      <Crown className="h-4 w-4 text-yellow-500" />
+                    </div>
+                    <div>
+                      <div className="font-medium">Subscrição Premium</div>
+                      <div className="text-xs text-muted-foreground">
+                        Desbloqueie vantagens exclusivas
+                      </div>
+                    </div>
+                  </div>
+                </DropdownMenuItem>
+              </Link>
               
               <NotificationCenter>
                 <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer hover:bg-primary/10 transition-colors group">

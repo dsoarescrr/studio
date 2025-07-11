@@ -51,6 +51,8 @@ import { SoundEffect, SOUND_EFFECTS } from '@/components/ui/sound-effect';
 import { Confetti } from '@/components/ui/confetti';
 import { motion } from 'framer-motion';
 import { UserProfileSheet } from '@/components/user/UserProfileSheet';
+import { useAuth } from '@/lib/auth-context';
+import { AuthModal } from '@/components/auth/AuthModal';
 
 interface SelectedPixelDetails {
   x: number;
@@ -1042,7 +1044,7 @@ export default function EnhancedPixelPurchaseModal({
                       {/* Purchase Button */}
                       <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}><Button 
                           size="lg" 
-                          className="w-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 hover:scale-[1.02] transition-transform" 
+                          className={`w-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 hover:scale-[1.02] transition-transform ${!user ? 'hidden' : ''}`}
                           onClick={handlePurchaseClick} 
                           disabled={!canAfford || isProcessing || isOwnedByCurrentUser}
                       >
@@ -1054,6 +1056,18 @@ export default function EnhancedPixelPurchaseModal({
                           {isOwnedByCurrentUser ? 'Já é Seu!' : 
                           canAfford ? 'Confirmar Compra' : 'Créditos Insuficientes'}
                       </Button></motion.div>
+
+                      {!user && (
+                        <AuthModal>
+                          <Button
+                            variant="default"
+                            className="flex-1 bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 button-hover-lift-glow"
+                          >
+                            <LogIn className="h-4 w-4 mr-2" />
+                            Entrar para Comprar
+                          </Button>
+                        </AuthModal>
+                      )}
 
                       {/* Advanced Options */}
                       <div className="pt-4 border-t">
