@@ -31,7 +31,8 @@ import {
   Flame, Package, Sparkles, ChevronDown, ChevronUp, ExternalLink,
   Bookmark, MessageSquare, Flag, Gift, Coins, Timer, Target, Palette,
   Wallet, History, RefreshCw, Bell, Settings, HelpCircle, Info, Plus,
-  ArrowUp, ArrowDown, TrendingDown, Layers, Map, Globe, Compass, Maximize2, Activity
+  ArrowUp, ArrowDown, TrendingDown, Layers, Map, Globe, Compass, Maximize2, Activity,
+  BookImage
 } from "lucide-react";
 import { useUserStore } from '@/lib/store';
 import { SoundEffect, SOUND_EFFECTS } from '@/components/ui/sound-effect';
