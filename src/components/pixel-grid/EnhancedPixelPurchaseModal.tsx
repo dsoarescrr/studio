@@ -19,6 +19,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { useAuth } from '@/lib/auth-context';
+import { RequireAuth } from '@/components/auth/RequireAuth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { useUserStore } from '@/lib/store';
@@ -163,6 +165,7 @@ export default function EnhancedPixelPurchaseModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const [enableNotifications, setEnableNotifications] = useState(true);
+  const { user } = useAuth();
   const [showConfetti, setShowConfetti] = useState(false);
   const [playPurchaseSound, setPlayPurchaseSound] = useState(false);
   const [playErrorSound, setPlayErrorSound] = useState(false);
@@ -554,6 +557,30 @@ export default function EnhancedPixelPurchaseModal({
       <Confetti active={showConfetti} duration={3000} onComplete={() => setShowConfetti(false)} />
       
       <DialogContent className="max-w-4xl max-h-[95vh] flex flex-col p-0 gap-0">
+        
+        <RequireAuth fallback={
+          <div className="p-8 text-center">
+            <Lock className="h-16 w-16 mx-auto mb-4 text-primary" />
+            <h3 className="text-xl font-semibold mb-2">Autenticação Necessária</h3>
+            <p className="text-muted-foreground mb-6">
+              Precisa de iniciar sessão para comprar pixels.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <AuthModal defaultTab="login">
+                <Button>
+                  Iniciar Sessão
+                </Button>
+              </AuthModal>
+              <AuthModal defaultTab="register">
+                <Button variant="outline">
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Criar Conta
+                </Button>
+              </AuthModal>
+            </div>
+          </div>
+        }>
+        </RequireAuth>
         <DialogHeader className="p-6 border-b bg-gradient-to-br from-card via-card/95 to-primary/10 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 animate-shimmer" 
                style={{ backgroundSize: '200% 200%' }} />

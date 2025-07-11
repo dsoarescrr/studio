@@ -37,6 +37,8 @@ import { LanguageSwitcher } from '@/components/ui/language-switcher';
 import { useTranslation } from 'react-i18next';
 import HelpCenter from '@/components/features/HelpCenter';
 import FeedbackSystem from '@/components/features/FeedbackSystem';
+import { useAuth } from '@/lib/auth-context';
+import { UserMenu } from '@/components/auth/UserMenu';
 
 const navLinks = [
   { href: "/", label: "Universo", icon: Home, color: "text-blue-500", description: "Explorar o mapa" },
@@ -66,6 +68,7 @@ export default function UserProfileHeader() {
   
   const pathname = usePathname();
   const { t } = useTranslation();
+  const { user } = useAuth();
 
   const [formattedCredits, setFormattedCredits] = useState<string | null>(null);
   const [formattedSpecialCredits, setFormattedSpecialCredits] = useState<string | null>(null);
@@ -349,112 +352,7 @@ export default function UserProfileHeader() {
           </div>
 
           {/* User Menu */}
-          <motion.div whileHover={{ scale: 1.05 }}><DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="ghost" 
-                className="relative h-8 w-8 rounded-full p-0 hover:bg-primary/10 transition-colors"
-              >
-                <div className="relative">
-                  <Avatar className="h-8 w-8 border-2 border-primary/50 hover:border-primary transition-colors">
-                    <AvatarImage src="https://placehold.co/40x40.png" alt="PixelMasterPT" data-ai-hint="profile avatar" className="hover:scale-110 transition-transform duration-300" />
-                    <AvatarFallback className="text-xs font-headline">P</AvatarFallback>
-                  </Avatar>
-                  <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-background animate-pulse" />
-                </div>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent 
-              className="w-64 mt-1 p-2 bg-background/95 backdrop-blur-xl border border-primary/20 shadow-2xl" 
-              align="end"
-              forceMount
-            >
-              <div className="flex items-center gap-3 p-2">
-                <Avatar className="h-10 w-10 border-2 border-primary">
-                  <AvatarImage src="https://placehold.co/40x40.png" alt="PixelMasterPT" data-ai-hint="profile avatar" />
-                  <AvatarFallback className="text-sm font-headline">P</AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium leading-none truncate">PixelMasterPT</p>
-                  <motion.div animate={{ y: [0, -2, 0] }} transition={{ duration: 2, repeat: Infinity }} className="flex items-center gap-2 mt-1">
-                    <Badge variant="secondary" className="text-xs">Nível {level}</Badge>
-                    {isPremium && (
-                      <Badge className="text-xs bg-gradient-to-r from-amber-500 to-orange-500">
-                        <Crown className="h-3 w-3 mr-1" />
-                        Pro
-                      </Badge>
-                    )}
-                  </motion.div>
-                </div>
-              </div>
-              
-              <div className="mt-2 p-2 bg-muted/20 rounded-lg">
-                <div className="flex justify-between text-xs mb-1">
-                  <span>XP: {xp}/{xpMax}</span>
-                  <span>{Math.round(xpPercentage)}%</span>
-                </div>
-                <div className="w-full bg-muted/50 rounded-full h-1.5 overflow-hidden shadow-inner">
-                  <div 
-                    className="bg-gradient-to-r from-primary to-accent h-1.5 rounded-full transition-all duration-500"
-                    style={{ width: `${xpPercentage}%` }}
-                  />
-                </div>
-              </div>
-              
-              <DropdownMenuSeparator className="my-2" />
-              
-              <Link href="/member">
-                <DropdownMenuItem className="cursor-pointer hover:bg-primary/10 transition-colors hover:scale-[1.02]">
-                  <User className="mr-2 h-4 w-4 text-primary" />
-                  <span>Perfil Completo</span>
-                </DropdownMenuItem>
-              </Link>
-              
-              <Link href="/achievements">
-                <DropdownMenuItem className="cursor-pointer hover:bg-primary/10 transition-colors">
-                  <Award className="mr-2 h-4 w-4 text-yellow-500 animate-pulse" style={{ animationDuration: '3s' }} />
-                  <span>{t('user.achievements')}</span>
-                  <Badge className="ml-auto bg-red-500 text-white text-xs">{achievements}</Badge>
-                </DropdownMenuItem>
-              </Link>
-              
-              <DropdownMenuItem className="cursor-pointer hover:bg-primary/10 transition-colors">
-                <CreditCard className="mr-2 h-4 w-4 text-green-500" />
-                <span>Carteira Digital</span>
-                <span className="ml-auto text-xs text-muted-foreground">{formattedCredits || credits}</span>
-              </DropdownMenuItem>
-              
-              <DropdownMenuSeparator className="my-2" />
-              
-              <HelpCenter>
-                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer hover:bg-primary/10 transition-colors">
-                  <HelpCircle className="mr-2 h-4 w-4 text-blue-500" />
-                  <span>Centro de Ajuda</span>
-                </DropdownMenuItem>
-              </HelpCenter>
-              
-              <FeedbackSystem>
-                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer hover:bg-primary/10 transition-colors">
-                  <MessageSquare className="mr-2 h-4 w-4 text-purple-500" />
-                  <span>Feedback</span>
-                </DropdownMenuItem>
-              </FeedbackSystem>
-              
-              <Link href="/settings">
-                <DropdownMenuItem className="cursor-pointer hover:bg-primary/10 transition-colors">
-                  <Settings className="mr-2 h-4 w-4 text-gray-500" />
-                  <span>Preferências</span>
-                </DropdownMenuItem>
-              </Link>
-              
-              <DropdownMenuSeparator className="my-2" />
-              
-              <DropdownMenuItem className="cursor-pointer text-red-500 hover:bg-red-500/10 transition-colors">
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Terminar Sessão</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu></motion.div>
+          <UserMenu />
         </div>
       </div>
     </div>

@@ -40,6 +40,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from 'react-i18next';
 import EnhancedPixelPurchaseModal from '@/components/pixel-grid/EnhancedPixelPurchaseModal';
 import { UserProfileSheet } from '@/components/user/UserProfileSheet';
+import { useAuth } from '@/lib/auth-context';
+import { AuthModal } from '@/components/auth/AuthModal';
+import { RequireAuth } from '@/components/auth/RequireAuth';
 import { Confetti } from '@/components/ui/confetti';
 
 type PixelRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'unique';
@@ -508,6 +511,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
   const [showConfetti, setShowConfetti] = useState(false);
   const [showInvestmentInfo, setShowInvestmentInfo] = useState(false);
   const [playPurchaseSound, setPlayPurchaseSound] = useState(false);
+  const { user } = useAuth();
   const { t } = useTranslation();
   const { toast } = useToast();
   const { addCredits, removeCredits } = useUserStore();
@@ -1151,8 +1155,15 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                                     className="flex-1"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleListingClick(listing);
-                                    }} 
+                                      if (user) {
+                                        handleListingClick(listing);
+                                      } else {
+                                        toast({
+                                          title: "Autenticação Necessária",
+                                          description: "Precisa de iniciar sessão para licitar em leilões.",
+                                        });
+                                      }
+                                    }}
                                   >
                                     <Gavel className="h-4 w-4 mr-1" />
                                     Licitar
@@ -1166,7 +1177,14 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                                     className="flex-1"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleListingClick(listing);
+                                      if (user) {
+                                        handleListingClick(listing);
+                                      } else {
+                                        toast({
+                                          title: "Autenticação Necessária",
+                                          description: "Precisa de iniciar sessão para fazer ofertas.",
+                                        });
+                                      }
                                     }}
                                   > 
                                     <DollarSign className="h-4 w-4 mr-1" />
@@ -1177,10 +1195,17 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                                 <Button 
                                   size="sm" 
                                   variant="ghost"  
-                                  className="px-2"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleWatchListing(listing.id);
+                                    if (user) {
+                                      handleListingClick(listing);
+                                    } else {
+                                      toast({
+                                        title: "Autenticação Necessária",
+                                        description: "Precisa de iniciar sessão para comprar pixels.",
+                                      });
+                                    }
+                                  }}
                                   }}
                                 >
                                   <Bookmark className="h-4 w-4" />

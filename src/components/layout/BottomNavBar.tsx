@@ -22,6 +22,14 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
   PixelAnalytics,
@@ -31,6 +39,9 @@ import {
   ThemeCustomizer
 } from '@/components/features';
 import { SoundEffect, SOUND_EFFECTS } from '@/components/ui/sound-effect';
+import { useAuth } from '@/lib/auth-context';
+import { AuthModal } from '@/components/auth/AuthModal';
+import { UserPlus, LogIn } from 'lucide-react';
 import '@/lib/i18n';
 import type { Achievement } from '@/data/achievements-data';
 
@@ -59,6 +70,7 @@ export default function BottomNavBar() {
   const [pulseIndex, setPulseIndex] = useState<number | null>(null);
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [playHoverSound, setPlayHoverSound] = useState(false);
+  const { user } = useAuth();
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -291,7 +303,41 @@ export default function BottomNavBar() {
               <DropdownMenuLabel className="text-center font-headline text-primary">
                 <motion.span animate={{ scale: [1, 1.1, 1] }} transition={{ duration: 2, repeat: Infinity }}>🚀</motion.span> Ações Rápidas
               </DropdownMenuLabel>
-              <DropdownMenuSeparator className="bg-primary/20" />
+                <DropdownMenuSeparator className="bg-primary/20" />
+                
+                {!user && (
+                  <>
+                    <AuthModal defaultTab="login">
+                      <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer hover:bg-primary/10 transition-colors group">
+                        <div className="flex items-center w-full"> 
+                          <div className="p-2 rounded-lg bg-blue-500/20 mr-3 group-hover:scale-110 transition-transform">
+                            <LogIn className="h-4 w-4 text-blue-500" />
+                          </div>
+                          <div>
+                            <div className="font-medium">Iniciar Sessão</div>
+                            <div className="text-xs text-muted-foreground">Aceda à sua conta</div>
+                          </div>
+                        </div>
+                      </DropdownMenuItem>
+                    </AuthModal>
+                    
+                    <AuthModal defaultTab="register">
+                      <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer hover:bg-primary/10 transition-colors group">
+                        <div className="flex items-center w-full"> 
+                          <div className="p-2 rounded-lg bg-green-500/20 mr-3 group-hover:scale-110 transition-transform">
+                            <UserPlus className="h-4 w-4 text-green-500" />
+                          </div>
+                          <div>
+                            <div className="font-medium">Criar Conta</div>
+                            <div className="text-xs text-muted-foreground">Registe-se para comprar pixels</div>
+                          </div>
+                        </div>
+                      </DropdownMenuItem>
+                    </AuthModal>
+                    
+                    <DropdownMenuSeparator className="bg-primary/10" />
+                  </>
+                )}
               
               <PixelMarketplace onSelectPixel={handleSelectPixel}>
                 <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer hover:bg-primary/10 transition-colors group">
