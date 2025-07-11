@@ -37,6 +37,7 @@ import { LanguageSwitcher } from '@/components/ui/language-switcher';
 import { useTranslation } from 'react-i18next';
 import Link from 'next/link';
 import HelpCenter from '@/components/features/HelpCenter';
+import TwoFactorAuth from '@/components/security/TwoFactorAuth';
 import FeedbackSystem from '@/components/features/FeedbackSystem';
 import { useAuth } from '@/lib/auth-context';
 import { UserMenu } from '@/components/auth/UserMenu';
@@ -238,6 +239,12 @@ export default function UserProfileHeader() {
                     <HelpCircle className="h-4 w-4 mr-2" />
                     Ajuda & Suporte
                   </Button>
+                  <Link href="/security">
+                    <Button variant="outline" className="w-full justify-start" size="sm">
+                      <Shield className="h-4 w-4 mr-2" />
+                      Segurança
+                    </Button>
+                  </Link>
                   <Link href="/premium">
                     <Button variant="default" className="w-full justify-start bg-gradient-to-r from-primary to-amber-500 hover:from-primary/90 hover:to-amber-500/90">
                       <Crown className="h-4 w-4 mr-2" />
