@@ -5,3 +5,5 @@ export { default as PixelCollaborationSystem } from './PixelCollaborationSystem'
 export { default as PixelMarketplace } from './PixelMarketplace';
 export { default as PixelWallet } from './PixelWallet';
 export { default as ThemeCustomizer } from './ThemeCustomizer';
+export { default as HelpCenter } from './HelpCenter';
+export { default as FeedbackSystem } from './FeedbackSystem';

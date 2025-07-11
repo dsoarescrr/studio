@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -7,8 +8,8 @@ import NotificationCenter from './NotificationCenter';
 import { useUserStore, useSettingsStore } from '@/lib/store';
 import SearchSystem from './SearchSystem';
 import { 
-  Award, CreditCard, Sparkles, Gift, Bell, Settings, Menu, Zap,
-  User, Search, Plus, Zap, Crown, Star, LogOut, HelpCircle, MessageSquare,
+  Award, CreditCard, Sparkles, Gift, Bell, Settings, Menu,
+  User, Search, Plus, Crown, Star, LogOut, HelpCircle, MessageSquare,
   BarChart3, Users2, Palette, Coins, Home, ShoppingCart, Users as UsersIcon, BarChart3 as AnalyticsIcon
 } from "lucide-react"; 
 import React, { useState, useEffect } from 'react';
@@ -34,6 +35,8 @@ import Link from "next/link";
 import { usePathname } from 'next/navigation';
 import { LanguageSwitcher } from '@/components/ui/language-switcher';
 import { useTranslation } from 'react-i18next';
+import HelpCenter from '@/components/features/HelpCenter';
+import FeedbackSystem from '@/components/features/FeedbackSystem';
 
 const navLinks = [
   { href: "/", label: "Universo", icon: Home, color: "text-blue-500", description: "Explorar o mapa" },
@@ -410,7 +413,7 @@ export default function UserProfileHeader() {
               <Link href="/achievements">
                 <DropdownMenuItem className="cursor-pointer hover:bg-primary/10 transition-colors">
                   <Award className="mr-2 h-4 w-4 text-yellow-500 animate-pulse" style={{ animationDuration: '3s' }} />
-                  <span>{t('user.wallet')}</span>
+                  <span>{t('user.achievements')}</span>
                   <Badge className="ml-auto bg-red-500 text-white text-xs">{achievements}</Badge>
                 </DropdownMenuItem>
               </Link>
@@ -423,20 +426,26 @@ export default function UserProfileHeader() {
               
               <DropdownMenuSeparator className="my-2" />
               
-              <DropdownMenuItem className="cursor-pointer hover:bg-primary/10 transition-colors">
-                <HelpCircle className="mr-2 h-4 w-4 text-blue-500" />
-                <span>Centro de Ajuda</span>
-              </DropdownMenuItem>
+              <HelpCenter>
+                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer hover:bg-primary/10 transition-colors">
+                  <HelpCircle className="mr-2 h-4 w-4 text-blue-500" />
+                  <span>Centro de Ajuda</span>
+                </DropdownMenuItem>
+              </HelpCenter>
               
-              <DropdownMenuItem className="cursor-pointer hover:bg-primary/10 transition-colors">
-                <MessageSquare className="mr-2 h-4 w-4 text-purple-500" />
-                <span>Feedback</span>
-              </DropdownMenuItem>
+              <FeedbackSystem>
+                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer hover:bg-primary/10 transition-colors">
+                  <MessageSquare className="mr-2 h-4 w-4 text-purple-500" />
+                  <span>Feedback</span>
+                </DropdownMenuItem>
+              </FeedbackSystem>
               
-              <DropdownMenuItem className="cursor-pointer hover:bg-primary/10 transition-colors">
-                <Settings className="mr-2 h-4 w-4 text-gray-500" />
-                <span>Preferências</span>
-              </DropdownMenuItem>
+              <Link href="/settings">
+                <DropdownMenuItem className="cursor-pointer hover:bg-primary/10 transition-colors">
+                  <Settings className="mr-2 h-4 w-4 text-gray-500" />
+                  <span>Preferências</span>
+                </DropdownMenuItem>
+              </Link>
               
               <DropdownMenuSeparator className="my-2" />
               
