@@ -1,40 +1,51 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   ShoppingCart, TrendingUp, Star, MapPin, Clock, Filter, Search,
   Eye, Heart, Share2, Gavel, Zap, Crown, Gem, Award, AlertTriangle,
   DollarSign, Calendar, Users, BarChart3, ArrowUpDown, SortAsc,
   Flame, Package, Sparkles, ChevronDown, ChevronUp, ExternalLink,
-  Bookmark, MessageSquare, Flag, Gift, Coins, Timer, Target
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
+  Bookmark, MessageSquare, Flag, Gift, Coins, Timer, Target, Palette,
+  Wallet, History, RefreshCw, Bell, Settings, HelpCircle, Info, Plus,
+  ArrowUp, ArrowDown, TrendingDown, Layers, Map, Globe, Compass, Maximize2, Activity,
+  BookImage
+} from "lucide-react";
+import { useUserStore } from '@/lib/store';
+import { SoundEffect, SOUND_EFFECTS } from '@/components/ui/sound-effect';
+import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from 'react-i18next';
+import EnhancedPixelPurchaseModal from '@/components/pixel-grid/EnhancedPixelPurchaseModal';
+import { Confetti } from '@/components/ui/confetti';
 
 type PixelRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'unique';
 type ListingType = 'fixed' | 'auction' | 'offer';
 type SortOption = 'price_asc' | 'price_desc' | 'rarity' | 'recent' | 'ending_soon' | 'popular' | 'featured';
+type FilterCategory = 'all' | 'featured' | 'auction' | 'fixed' | 'offer' | 'rare' | 'region';
 
 interface PixelListing {
   id: string;
@@ -102,7 +113,7 @@ const mockListings: PixelListing[] = [
       totalSales: 156
     },
     description: 'Pixel raro na zona histórica de Lisboa com vista para o Tejo. Localização premium com alto potencial de valorização.',
-    imageUrl: 'https://placehold.co/100x100.png',
+    imageUrl: 'https://placehold.co/300x300.png',
     dataAiHint: 'pixel preview',
     tags: ['histórico', 'vista-rio', 'centro', 'premium'],
     views: 1247,
@@ -148,7 +159,7 @@ const mockListings: PixelListing[] = [
       totalSales: 89
     },
     description: 'Pixel artístico na Ribeira do Porto, perfeito para colecionadores de arte digital.',
-    imageUrl: 'https://placehold.co/100x100.png',
+    imageUrl: 'https://placehold.co/300x300.png',
     dataAiHint: 'pixel preview',
     tags: ['ribeira', 'arte', 'património', 'cultural'],
     views: 856,
@@ -183,6 +194,8 @@ const mockListings: PixelListing[] = [
       totalSales: 23
     },
     description: 'Pixel universitário perto da UC, ideal para investimento a longo prazo.',
+    imageUrl: 'https://placehold.co/300x300.png',
+    dataAiHint: 'pixel preview',
     tags: ['universidade', 'estudantes', 'cultura', 'investimento'],
     views: 432,
     likes: 23,
@@ -212,7 +225,7 @@ const mockListings: PixelListing[] = [
       totalSales: 67
     },
     description: 'Pixel histórico no centro de Braga, próximo ao Santuário do Bom Jesus.',
-    imageUrl: 'https://placehold.co/100x100.png',
+    imageUrl: 'https://placehold.co/300x300.png',
     dataAiHint: 'pixel preview',
     tags: ['histórico', 'religioso', 'turismo', 'centro'],
     views: 623,
@@ -233,6 +246,158 @@ const mockListings: PixelListing[] = [
     features: ['Santuário', 'Centro histórico', 'Arquitetura barroca'],
     createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
     isHot: true
+  },
+  {
+    id: '5',
+    coordinates: { x: 512, y: 345 },
+    region: 'Algarve',
+    price: 320,
+    type: 'fixed',
+    rarity: 'legendary',
+    seller: {
+      id: 'seller5',
+      name: 'BeachLover',
+      avatar: 'https://placehold.co/40x40.png',
+      dataAiHint: 'seller avatar',
+      rating: 4.9,
+      verified: true,
+      level: 30,
+      totalSales: 215
+    },
+    description: 'Pixel lendário com vista para as famosas falésias do Algarve. Localização única e exclusiva.',
+    imageUrl: 'https://placehold.co/300x300.png',
+    dataAiHint: 'pixel preview',
+    tags: ['praia', 'falésias', 'turismo', 'exclusivo', 'vista-mar'],
+    views: 2345,
+    likes: 178,
+    watchers: 45,
+    history: {
+      previousPrice: 280,
+      lastSold: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
+      totalSales: 2,
+      priceHistory: [
+        { price: 250, date: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000) },
+        { price: 280, date: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000) }
+      ]
+    },
+    features: ['Vista para o mar', 'Zona turística premium', 'Acesso a praias', 'Pôr-do-sol espetacular'],
+    createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+    isHot: true,
+    isFeatured: true
+  },
+  {
+    id: '6',
+    coordinates: { x: 423, y: 178 },
+    region: 'Évora',
+    price: 110,
+    type: 'fixed',
+    rarity: 'uncommon',
+    seller: {
+      id: 'seller6',
+      name: 'HistoryBuff',
+      avatar: 'https://placehold.co/40x40.png',
+      dataAiHint: 'seller avatar',
+      rating: 4.3,
+      verified: false,
+      level: 15,
+      totalSales: 42
+    },
+    description: 'Pixel no centro histórico de Évora, próximo ao Templo Romano. Excelente para amantes de história.',
+    imageUrl: 'https://placehold.co/300x300.png',
+    dataAiHint: 'pixel preview',
+    tags: ['histórico', 'património', 'romano', 'cultura'],
+    views: 532,
+    likes: 37,
+    watchers: 9,
+    history: {
+      totalSales: 1,
+      priceHistory: [
+        { price: 95, date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
+      ]
+    },
+    features: ['Centro histórico', 'Património UNESCO', 'Arquitetura romana'],
+    createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000)
+  },
+  {
+    id: '7',
+    coordinates: { x: 289, y: 456 },
+    region: 'Madeira',
+    price: 180,
+    originalPrice: 220,
+    discount: 18,
+    type: 'auction',
+    rarity: 'epic',
+    seller: {
+      id: 'seller7',
+      name: 'IslandDreamer',
+      avatar: 'https://placehold.co/40x40.png',
+      dataAiHint: 'seller avatar',
+      rating: 4.7,
+      verified: true,
+      level: 22,
+      totalSales: 78
+    },
+    description: 'Pixel épico com vista para o oceano Atlântico na ilha da Madeira. Perfeito para colecionadores.',
+    imageUrl: 'https://placehold.co/300x300.png',
+    dataAiHint: 'pixel preview',
+    tags: ['ilha', 'oceano', 'natureza', 'montanha', 'exclusivo'],
+    views: 1123,
+    likes: 98,
+    watchers: 27,
+    bids: {
+      count: 15,
+      highest: 195,
+      endTime: new Date(Date.now() + 12 * 60 * 60 * 1000),
+      bidders: ['user7', 'user8', 'user9', 'user10']
+    },
+    history: {
+      previousPrice: 150,
+      lastSold: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
+      totalSales: 2,
+      priceHistory: [
+        { price: 120, date: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) },
+        { price: 150, date: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000) }
+      ]
+    },
+    features: ['Vista para o oceano', 'Clima tropical', 'Biodiversidade única', 'Levadas próximas'],
+    createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
+    isHot: true,
+    isFeatured: true
+  },
+  {
+    id: '8',
+    coordinates: { x: 567, y: 234 },
+    region: 'Açores',
+    price: 140,
+    type: 'offer',
+    rarity: 'rare',
+    seller: {
+      id: 'seller8',
+      name: 'VolcanoExplorer',
+      avatar: 'https://placehold.co/40x40.png',
+      dataAiHint: 'seller avatar',
+      rating: 4.5,
+      verified: true,
+      level: 19,
+      totalSales: 56
+    },
+    description: 'Pixel raro localizado próximo às lagoas vulcânicas dos Açores. Uma verdadeira joia natural.',
+    imageUrl: 'https://placehold.co/300x300.png',
+    dataAiHint: 'pixel preview',
+    tags: ['vulcão', 'lagoa', 'natureza', 'ilha', 'verde'],
+    views: 876,
+    likes: 76,
+    watchers: 18,
+    history: {
+      totalSales: 1,
+      priceHistory: [
+        { price: 125, date: new Date(Date.now() - 75 * 24 * 60 * 60 * 1000) }
+      ]
+    },
+    features: ['Lagoas vulcânicas', 'Paisagem verde', 'Biodiversidade única', 'Termas naturais'],
+    createdAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
+    isHot: false,
+    isFeatured: false
   }
 ];
 
@@ -254,6 +419,27 @@ const rarityLabels: Record<PixelRarity, string> = {
   unique: 'Único'
 };
 
+const regionOptions = [
+  { value: 'all', label: 'Todas as Regiões' },
+  { value: 'Lisboa', label: 'Lisboa' },
+  { value: 'Porto', label: 'Porto' },
+  { value: 'Coimbra', label: 'Coimbra' },
+  { value: 'Braga', label: 'Braga' },
+  { value: 'Algarve', label: 'Algarve' },
+  { value: 'Évora', label: 'Évora' },
+  { value: 'Madeira', label: 'Madeira' },
+  { value: 'Açores', label: 'Açores' }
+];
+
+const priceRanges = [
+  { value: 'all', label: 'Qualquer Preço' },
+  { value: '0-50', label: 'Até 50€' },
+  { value: '50-100', label: 'De 50€ a 100€' },
+  { value: '100-200', label: 'De 100€ a 200€' },
+  { value: '200-500', label: 'De 200€ a 500€' },
+  { value: '500+', label: 'Acima de 500€' }
+];
+
 interface PixelMarketplaceProps {
   children: React.ReactNode;
   onSelectPixel: (pixelData: any) => void;
@@ -266,12 +452,28 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
   const [selectedRarity, setSelectedRarity] = useState<PixelRarity | 'all'>('all');
   const [selectedType, setSelectedType] = useState<ListingType | 'all'>('all');
   const [selectedRegion, setSelectedRegion] = useState<string>('all');
+  const [selectedPriceRange, setSelectedPriceRange] = useState<string>('all');
   const [sortBy, setSortBy] = useState<SortOption>('featured');
-  const [priceRange, setPriceRange] = useState<{ min: number; max: number }>({ min: 0, max: 1000 });
   const [isOpen, setIsOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(false);
+  const [playHoverSound, setPlayHoverSound] = useState(false);
+  const [activeTab, setActiveTab] = useState<FilterCategory>('all');
+  const [isLoading, setIsLoading] = useState(true);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [playPurchaseSound, setPlayPurchaseSound] = useState(false);
+  const { t } = useTranslation();
   const { toast } = useToast();
+  const { addCredits, removeCredits } = useUserStore();
+
+  useEffect(() => {
+    // Simulate loading
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1500);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     let filtered = listings.filter(listing => {
@@ -284,9 +486,30 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
       const matchesRarity = selectedRarity === 'all' || listing.rarity === selectedRarity;
       const matchesType = selectedType === 'all' || listing.type === selectedType;
       const matchesRegion = selectedRegion === 'all' || listing.region === selectedRegion;
-      const matchesPrice = listing.price >= priceRange.min && listing.price <= priceRange.max;
       
-      return matchesSearch && matchesRarity && matchesType && matchesRegion && matchesPrice;
+      // Handle price range filtering
+      let matchesPrice = true;
+      if (selectedPriceRange !== 'all') {
+        const [min, max] = selectedPriceRange.split('-').map(Number);
+        if (max) {
+          matchesPrice = listing.price >= min && listing.price <= max;
+        } else {
+          // For "500+" case
+          matchesPrice = listing.price >= min;
+        }
+      }
+      
+      // Handle tab filtering
+      const matchesTab = 
+        activeTab === 'all' || 
+        (activeTab === 'featured' && listing.isFeatured) ||
+        (activeTab === 'auction' && listing.type === 'auction') ||
+        (activeTab === 'fixed' && listing.type === 'fixed') ||
+        (activeTab === 'offer' && listing.type === 'offer') ||
+        (activeTab === 'rare' && (listing.rarity === 'rare' || listing.rarity === 'epic' || listing.rarity === 'legendary' || listing.rarity === 'unique')) ||
+        (activeTab === 'region' && selectedRegion !== 'all' && listing.region === selectedRegion);
+      
+      return matchesSearch && matchesRarity && matchesType && matchesRegion && matchesPrice && matchesTab;
     });
 
     filtered.sort((a, b) => {
@@ -319,47 +542,28 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
     });
 
     setFilteredListings(filtered);
-  }, [listings, searchQuery, selectedRarity, selectedType, selectedRegion, sortBy, priceRange]);
+  }, [listings, searchQuery, selectedRarity, selectedType, selectedRegion, selectedPriceRange, sortBy, activeTab]);
 
   const getTimeRemaining = (endTime: Date) => {
     const now = new Date();
     const diff = endTime.getTime() - now.getTime();
+    
+    if (diff <= 0) return "Terminado";
+    
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (hours > 24) {
+      const days = Math.floor(hours / 24);
+      return `${days}d ${hours % 24}h`;
+    }
     
     if (hours > 0) return `${hours}h ${minutes}m`;
     return `${minutes}m`;
   };
 
-  const handleResultClick = (result: PixelListing) => {
-    const pixelData = {
-      x: result.coordinates.x,
-      y: result.coordinates.y,
-      color: `#${Math.floor(Math.random()*16777215).toString(16)}`,
-      owner: result.seller.name,
-      price: result.price,
-      lastSold: result.history.lastSold || new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
-      views: result.views,
-      likes: result.likes,
-      rarity: result.rarity as any,
-      region: result.region,
-      isProtected: Math.random() > 0.8,
-      history: result.history.priceHistory.map(h => ({
-        owner: result.seller.name,
-        date: h.date,
-        price: h.price,
-        action: 'purchase' as const
-      })),
-      features: result.features,
-      description: result.description,
-      tags: result.tags
-    };
-    
-    onSelectPixel(pixelData);
-    setIsOpen(false);
-  };
-
-  const handleWatchListing = (listingId: string) => {
+  const handleWatchListing = (listingId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
     setListings(prev => prev.map(listing => 
       listing.id === listingId 
         ? { ...listing, watchers: listing.watchers + 1 }
@@ -372,12 +576,76 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
     });
   };
 
-  const handleLikeListing = (listingId: string) => {
+  const handleLikeListing = (listingId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
     setListings(prev => prev.map(listing => 
       listing.id === listingId 
         ? { ...listing, likes: listing.likes + 1 }
         : listing
     ));
+    
+    toast({
+      title: "Pixel Curtido!",
+      description: "O seu gosto foi registado com sucesso.",
+    });
+  };
+
+  const handleShareListing = (listingId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    toast({
+      title: "Link Copiado",
+      description: "Link do pixel copiado para a área de transferência.",
+    });
+  };
+
+  const handleListingClick = (listing: PixelListing) => {
+    const pixelData = {
+      x: listing.coordinates.x,
+      y: listing.coordinates.y,
+      color: `#${Math.floor(Math.random()*16777215).toString(16)}`,
+      owner: listing.seller.name,
+      price: listing.price,
+      lastSold: listing.history.lastSold || new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
+      views: listing.views,
+      likes: listing.likes,
+      rarity: rarityLabels[listing.rarity] as any,
+      region: listing.region,
+      isProtected: Math.random() > 0.8,
+      history: listing.history.priceHistory.map(h => ({
+        owner: listing.seller.name,
+        date: h.date,
+        price: h.price,
+        action: 'purchase' as const
+      })),
+      features: listing.features,
+      description: listing.description,
+      tags: listing.tags,
+      gpsCoords: { lat: 38.7223 + Math.random() * 0.1, lon: -9.1393 + Math.random() * 0.1 }
+    };
+    
+    onSelectPixel(pixelData);
+    setIsOpen(false);
+  };
+
+  const handlePurchase = async (pixelData: any, paymentMethod: string, customizations: any) => {
+    setPlayPurchaseSound(true);
+    setShowConfetti(true);
+    
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    // Update user credits
+    removeCredits(pixelData.price);
+    
+    // Add some XP and bonus credits for the purchase
+    addCredits(Math.floor(pixelData.price * 0.05)); // 5% cashback
+    
+    toast({
+      title: "Compra Bem-Sucedida!",
+      description: `Parabéns! O pixel (${pixelData.x}, ${pixelData.y}) é seu.`,
+    });
+    
+    return true;
   };
 
   const clearFilters = () => {
@@ -385,8 +653,15 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
     setSelectedRarity('all');
     setSelectedType('all');
     setSelectedRegion('all');
-    setPriceRange({ min: 0, max: 1000 });
+    setSelectedPriceRange('all');
     setSortBy('featured');
+    setActiveTab('all');
+  };
+
+  const formatNumber = (num: number) => {
+    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+    return num.toString();
   };
 
   return (
@@ -528,22 +803,18 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
 
                   <div>
                     <label className="text-sm font-medium mb-2 block">Faixa de Preço</label>
-                    <div className="flex gap-2">
-                      <Input
-                        type="number"
-                        placeholder="Min"
-                        value={priceRange.min}
-                        onChange={(e) => setPriceRange(prev => ({ ...prev, min: Number(e.target.value) }))}
-                        className="w-20"
-                      />
-                      <Input
-                        type="number"
-                        placeholder="Max"
-                        value={priceRange.max}
-                        onChange={(e) => setPriceRange(prev => ({ ...prev, max: Number(e.target.value) }))}
-                        className="w-20"
-                      />
-                    </div>
+                     <Select value={selectedPriceRange} onValueChange={setSelectedPriceRange}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {priceRanges.map(option => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                   </div>
                 </div>
               </div>
@@ -577,7 +848,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                           listing.isSponsored && "ring-2 ring-accent/50",
                           viewMode === 'list' && "flex flex-row"
                         )}
-                        onClick={() => handleResultClick(listing)}
+                        onClick={() => handleListingClick(listing)}
                       >
                         {listing.isSponsored && (
                           <div className="absolute -top-2 -right-2 z-10">
@@ -743,15 +1014,15 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                               <div className="flex items-center gap-3">
                                 <span className="flex items-center gap-1">
                                   <Eye className="h-3 w-3" />
-                                  {listing.views}
+                                  {formatNumber(listing.views)}
                                 </span>
                                 <span className="flex items-center gap-1">
                                   <Heart className="h-3 w-3" />
-                                  {listing.likes}
+                                  {formatNumber(listing.likes)}
                                 </span>
                                 <span className="flex items-center gap-1">
                                   <Bookmark className="h-3 w-3" />
-                                  {listing.watchers}
+                                  {formatNumber(listing.watchers)}
                                 </span>
                               </div>
                               
@@ -802,7 +1073,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                                     className="flex-1"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleResultClick(listing);
+                                      handleListingClick(listing);
                                     }}
                                   >
                                     <ShoppingCart className="h-4 w-4 mr-1" />
@@ -816,7 +1087,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                                     className="flex-1"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleResultClick(listing);
+                                      handleListingClick(listing);
                                     }}
                                   >
                                     <Gavel className="h-4 w-4 mr-1" />
@@ -831,7 +1102,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                                     className="flex-1"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleResultClick(listing);
+                                      handleListingClick(listing);
                                     }}
                                   >
                                     <DollarSign className="h-4 w-4 mr-1" />
