@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -27,7 +28,7 @@ import {
   RefreshCw, ArrowRight, ArrowLeft, Plus, Minus, Copy, Share2,
   Bookmark, Edit, Eye, Filter, Search, SortAsc, CheckSquare,
   XSquare, BarChart3, PieChart, LineChart, TrendingUp, Download,
-  Printer, Mail, Phone, Globe, MapPin, User, Settings, Bell
+  Printer, Mail, Phone, Globe, MapPin, User, Settings, Bell, Map as MapIcon
 } from "lucide-react";
 
 // Types
@@ -579,7 +580,7 @@ export default function FeedbackPage() {
               Pesquisas
             </TabsTrigger>
             <TabsTrigger value="roadmap" className="font-headline">
-              <Map className="h-4 w-4 mr-2"/>
+              <MapIcon className="h-4 w-4 mr-2"/>
               Roadmap
             </TabsTrigger>
           </TabsList>
@@ -1614,7 +1615,7 @@ export default function FeedbackPage() {
             <Card className="bg-gradient-to-br from-primary/10 to-accent/5 border-primary/20 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center text-primary">
-                  <Map className="h-5 w-5 mr-2 text-primary" />
+                  <MapIcon className="h-5 w-5 mr-2 text-primary" />
                   Visão Geral do Roadmap
                 </CardTitle>
                 <CardDescription>
@@ -1715,3 +1716,5 @@ const ClipboardList = (props: React.SVGProps<SVGSVGElement>) => (
     <path d="M8 16h.01"></path>
   </svg>
 );
+
+    
