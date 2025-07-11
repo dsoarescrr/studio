@@ -37,6 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { achievementsData, type Achievement, type AchievementCategory, type AchievementRarity } from '@/data/achievements-data';
+import { Label } from '@/components/ui/label';
 
 // Component for the Grid icon since it's not in lucide-react by default
 const Grid = (props: React.SVGProps<SVGSVGElement>) => (
@@ -714,7 +715,7 @@ export default function HelpCenter({ children }: HelpCenterProps) {
                                     
                                     <div className="space-y-2">
                                     <Label htmlFor="message">Mensagem</Label>
-                                    <Textarea id="message" placeholder="Descreva a sua questão em detalhe..." rows={6} />
+                                    <Input id="message" placeholder="Descreva a sua questão em detalhe..." />
                                     </div>
                                     
                                     <div className="space-y-2">
@@ -896,3 +897,5 @@ export default function HelpCenter({ children }: HelpCenterProps) {
     </Dialog>
   );
 }
+
+    
