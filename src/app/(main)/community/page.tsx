@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -38,7 +39,7 @@ import {
   Trash2, Eye, Bell, Settings, Zap, Sparkles, Trophy, Gift, Megaphone, Globe,
   Flame, Target, Crown, Gem, Activity, PieChart, BarChart3, LineChart, RefreshCw,
   Lightbulb, HelpCircle, Info, AlertTriangle, CheckCircle, XCircle, User, UserPlus,
-  UserMinus, Lock, Unlock, Tag, Hash, Palette, Camera, Video, Music, FileText, Mic
+  UserMinus, Lock, Unlock, Tag, Hash, Palette, Camera, Video, Music, FileText, Mic, Compass
 } from "lucide-react";
 import { useUserStore } from '@/lib/store';
 import { SoundEffect, SOUND_EFFECTS } from '@/components/ui/sound-effect';
@@ -1445,7 +1446,7 @@ export default function CommunityPage() {
                               >
                                 {group.isJoined ? (
                                   <>
-                                    <Check className="h-3 w-3 mr-1" />
+                                    <CheckCircle className="h-3 w-3 mr-1" />
                                     Membro
                                   </>
                                 ) : (
@@ -1588,7 +1589,7 @@ export default function CommunityPage() {
                             >
                               {event.isParticipating ? (
                                 <>
-                                  <Check className="h-4 w-4 mr-2" />
+                                  <CheckCircle className="h-4 w-4 mr-2" />
                                   Confirmado
                                 </>
                               ) : (
