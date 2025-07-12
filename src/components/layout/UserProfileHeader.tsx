@@ -10,7 +10,8 @@ import SearchSystem from './SearchSystem';
 import { 
   Award, CreditCard, Sparkles, Gift, Bell, Settings, Menu,
   User, Search, Plus, Crown, Star, LogOut, HelpCircle, MessageSquare,
-  BarChart3, Users2, Palette, Coins, Home, ShoppingCart, Users as UsersIcon, BarChart3 as AnalyticsIcon
+  BarChart3, Users2, Palette, Coins, Home, ShoppingCart, Users as UsersIcon, 
+  BarChart3 as AnalyticsIcon, Shield
 } from "lucide-react"; 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
@@ -149,7 +150,7 @@ export default function UserProfileHeader() {
                   <div className="relative">
                     <Avatar className="h-16 w-16 border-2 border-primary shadow-lg">
                       <AvatarImage src={userData.avatarUrl} alt={userData.name} data-ai-hint={userData.dataAiHint} />
-                      <AvatarFallback className="text-lg font-headline">{userData.name.substring(0, 1).toUpperCase()}</AvatarFallback>
+                      <AvatarFallback className="font-headline text-3xl">{userData.name.substring(0, 1).toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-0.5">
                       <Badge className="h-6 w-6 p-0 flex items-center justify-center bg-primary text-primary-foreground">

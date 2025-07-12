@@ -11,7 +11,7 @@ import { useAuth } from '@/lib/auth-context';
 import { AuthModal } from '@/components/auth/AuthModal';
 import { Button } from '@/components/ui/button';
 import { LogIn, UserPlus } from 'lucide-react';
-import { AppHeader } from '@/components/layout/AppHeader'; // Corrected import
+import UserProfileHeader from '@/components/layout/UserProfileHeader';
 import BottomNavBar from '@/components/layout/BottomNavBar';
 
 export default function HomePage() {
@@ -29,7 +29,7 @@ export default function HomePage() {
   
   return (
     <div className="flex flex-col min-h-screen">
-      <AppHeader />
+      <UserProfileHeader />
       <main className="flex-1 flex overflow-hidden pt-14 pb-[var(--bottom-nav-height)]">
         <SidebarProvider>
           <div className="relative h-full w-full flex">
