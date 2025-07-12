@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -930,7 +931,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                                   variant="secondary" 
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleLikeListing(listing.id);
+                                    handleLikeListing(listing.id, e);
                                   }}
                                 >
                                   <Heart className="h-4 w-4" />
@@ -940,7 +941,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                                   variant="secondary"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleWatchListing(listing.id);
+                                    handleWatchListing(listing.id, e);
                                   }}
                                 >
                                   <Bookmark className="h-4 w-4" /> 
@@ -950,6 +951,7 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                                   variant="secondary"
                                   onClick={(e) => {
                                     e.stopPropagation();
+                                    handleShareListing(listing.id, e);
                                   }}
                                 > 
                                   <Share2 className="h-4 w-4" />
@@ -1206,7 +1208,6 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                                       });
                                     }
                                   }}
-                                  }}
                                 >
                                   <Bookmark className="h-4 w-4" />
                                 </Button> 
@@ -1217,7 +1218,6 @@ export default function PixelMarketplace({ children, onSelectPixel }: PixelMarke
                       </Card>
                     ))}
                   </div>
-                  
                 )}
               </div>
             </ScrollArea>

@@ -34,12 +34,4 @@ export {
   facebookProvider, 
   twitterProvider, 
   githubProvider,
-  // Export a function to initialize the admin app
-  // This helps avoid direct admin SDK initialization in multiple places
-  initializeAdminApp
 };
-
-// This function should be defined in a separate admin file,
-// but for simplicity in this context, it's placed here.
-// NOTE: This should ideally be in a file that's only imported server-side.
-import { initializeAdminApp } from './firebase-admin';

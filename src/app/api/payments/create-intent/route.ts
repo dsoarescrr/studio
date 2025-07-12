@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
-import { initializeAdminApp } from '@/lib/firebase'; // Corrected import
+import { initializeAdminApp } from '@/lib/firebase-admin'; // Corrected import
 import Stripe from 'stripe';
 
 // Initialize Firebase Admin by getting the client-side app instance.
