@@ -93,6 +93,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
+      // Update the user's profile in Firebase Authentication
+      await updateProfile(user, { displayName: username });
+
       // Now create the user document in Firestore with all necessary initial data
       await setDoc(doc(db, "users", user.uid), {
         uid: user.uid,
@@ -111,10 +114,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         createdAt: serverTimestamp(),
         lastLogin: serverTimestamp(),
       });
-      
-      // This is less critical and can happen after the user is fully set up in the DB
-      // It updates the auth profile, but our app should rely on Firestore data primarily.
-      await updateProfile(user, { displayName: username });
 
       toast({
         title: "Registo bem-sucedido",
