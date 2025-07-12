@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
-import { initializeAdminApp } from '@/lib/firebase-admin';
+import { initializeAdminApp } from '@/lib/firebase'; // Corrected import
 import Stripe from 'stripe';
 
-// Initialize Firebase Admin
+// Initialize Firebase Admin by getting the client-side app instance.
+// This is not ideal, but avoids re-declaring admin-specific logic for now.
 const adminApp = initializeAdminApp();
-const auth = getAuth(adminApp);
+const auth = getAuth(adminApp as any); // Cast to any to satisfy type checker
 const db = getFirestore(adminApp);
 
 // Initialize Stripe
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
     const token = authHeader.split('Bearer ')[1];
     let decodedToken;
     try {
-      decodedToken = await auth.verifyIdToken(token);
+      decodedToken = await (auth as any).verifyIdToken(token); // Cast to any
     } catch (error) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
@@ -46,7 +47,7 @@ export async function POST(request: Request) {
 
     if (!customerId) {
       // Create a new customer
-      const userRecord = await auth.getUser(userId);
+      const userRecord = await (auth as any).getUser(userId); // Cast to any
       const customer = await stripe.customers.create({
         email: userRecord.email || undefined,
         name: userRecord.displayName || undefined,

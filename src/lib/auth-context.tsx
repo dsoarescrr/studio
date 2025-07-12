@@ -95,13 +95,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Update the user's profile in Firebase Authentication
       await updateProfile(user, { displayName: username });
-
-      // Now create the user document in Firestore with all necessary initial data
-      await setDoc(doc(db, "users", user.uid), {
+      
+      // Create user document in Firestore with all necessary initial data
+      const userRef = doc(db, 'users', user.uid);
+      await setDoc(userRef, {
         uid: user.uid,
         displayName: username,
         email: user.email,
-        photoURL: user.photoURL || "",
+        photoURL: user.photoURL || '',
         credits: 500,
         specialCredits: 50,
         level: 1,

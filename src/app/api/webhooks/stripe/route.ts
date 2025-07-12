@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { initializeAdminApp } from '@/lib/firebase-admin';
+import { initializeAdminApp } from '@/lib/firebase'; // Corrected import
 import Stripe from 'stripe';
 
-// Initialize Firebase Admin
+// Initialize Firebase Admin by getting the client-side app instance.
 const adminApp = initializeAdminApp();
 const db = getFirestore(adminApp);
 
@@ -196,7 +196,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
     
     // Add special credits based on plan
     await db.collection('users').doc(userId).update({
-      specialCredits: admin.firestore.FieldValue.increment(isAnnual ? 600 : 100),
+      specialCredits: FieldValue.increment(isAnnual ? 600 : 100),
     });
     
     // Add transaction record
@@ -262,9 +262,8 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
     // Determine if this is a monthly or annual plan
     const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
     const priceId = subscription.items.data[0].price.id;
-    const isAnnual = priceId.includes('annual') || priceId.includes('yearly');
     
-    // Add special credits based on plan (only for monthly renewals or first annual payment)
+    // Add special credits based on plan
     await db.collection('users').doc(userId).update({
       specialCredits: FieldValue.increment(100),
     });

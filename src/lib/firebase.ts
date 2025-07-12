@@ -1,11 +1,11 @@
 
 // src/lib/firebase.ts
-import { initializeApp, getApps, getApp } from 'firebase/app';
+import { initializeApp, getApps, getApp, FirebaseOptions } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, FacebookAuthProvider, TwitterAuthProvider, GithubAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 // Your web app's Firebase configuration
-const firebaseConfig = {
+const firebaseConfig: FirebaseOptions = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
@@ -33,5 +33,13 @@ export {
   googleProvider, 
   facebookProvider, 
   twitterProvider, 
-  githubProvider 
+  githubProvider,
+  // Export a function to initialize the admin app
+  // This helps avoid direct admin SDK initialization in multiple places
+  initializeAdminApp
 };
+
+// This function should be defined in a separate admin file,
+// but for simplicity in this context, it's placed here.
+// NOTE: This should ideally be in a file that's only imported server-side.
+import { initializeAdminApp } from './firebase-admin';

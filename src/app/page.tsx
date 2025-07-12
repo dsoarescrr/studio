@@ -11,6 +11,8 @@ import { useAuth } from '@/lib/auth-context';
 import { AuthModal } from '@/components/auth/AuthModal';
 import { Button } from '@/components/ui/button';
 import { LogIn, UserPlus } from 'lucide-react';
+import { AppHeader } from '@/components/layout/AppHeader'; // Corrected import
+import BottomNavBar from '@/components/layout/BottomNavBar';
 
 export default function HomePage() {
   const { t } = useTranslation();
@@ -26,40 +28,46 @@ export default function HomePage() {
   }, [user]);
   
   return (
-    <SidebarProvider>
-      <div className="relative h-full w-full flex">
-        <MapSidebar />
-        <div className="flex-1 h-full relative">
-          <PixelGrid />
-          
-          {/* Welcome overlay for non-authenticated users */}
-          {!user && (
-            <div className="absolute bottom-24 right-6 z-30 max-w-sm">
-              <div className="bg-card/90 backdrop-blur-md p-4 rounded-lg shadow-lg border border-primary/30 animate-fade-in">
-                <h3 className="text-lg font-semibold mb-2 text-primary">Bem-vindo ao Pixel Universe!</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Explore o mapa livremente. Para comprar pixels e desbloquear todas as funcionalidades, crie uma conta ou inicie sessão.
-                </p>
-                <div className="flex gap-2">
-                  <AuthModal defaultTab="login">
-                    <Button variant="outline" size="sm" className="flex-1">
-                      <LogIn className="h-4 w-4 mr-2" />
-                      Entrar
-                    </Button>
-                  </AuthModal>
-                  <AuthModal defaultTab="register">
-                    <Button size="sm" className="flex-1">
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Registar
-                    </Button>
-                  </AuthModal>
+    <div className="flex flex-col min-h-screen">
+      <AppHeader />
+      <main className="flex-1 flex overflow-hidden pt-14 pb-[var(--bottom-nav-height)]">
+        <SidebarProvider>
+          <div className="relative h-full w-full flex">
+            <MapSidebar />
+            <div className="flex-1 h-full relative">
+              <PixelGrid />
+              
+              {/* Welcome overlay for non-authenticated users */}
+              {!user && (
+                <div className="absolute bottom-24 right-6 z-30 max-w-sm">
+                  <div className="bg-card/90 backdrop-blur-md p-4 rounded-lg shadow-lg border border-primary/30 animate-fade-in">
+                    <h3 className="text-lg font-semibold mb-2 text-primary">Bem-vindo ao Pixel Universe!</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Explore o mapa livremente. Para comprar pixels e desbloquear todas as funcionalidades, crie uma conta ou inicie sessão.
+                    </p>
+                    <div className="flex gap-2">
+                      <AuthModal defaultTab="login">
+                        <Button variant="outline" size="sm" className="flex-1">
+                          <LogIn className="h-4 w-4 mr-2" />
+                          Entrar
+                        </Button>
+                      </AuthModal>
+                      <AuthModal defaultTab="register">
+                        <Button size="sm" className="flex-1">
+                          <UserPlus className="h-4 w-4 mr-2" />
+                          Registar
+                        </Button>
+                      </AuthModal>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
-          )}
-        </div>
-        <PerformanceMonitor />
-      </div>
-    </SidebarProvider>
+            <PerformanceMonitor />
+          </div>
+        </SidebarProvider>
+      </main>
+      <BottomNavBar />
+    </div>
   );
 }
