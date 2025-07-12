@@ -43,7 +43,7 @@ import {
   Target, Flame, Crown, Gem, Activity, Image as ImageIcon, Link as LinkIcon,
   Plus, Minus, RotateCcw, Maximize2, Settings, Bell, Flag, ThumbsUp, Layers, Palette,
   Calculator, Wallet, History, Camera, Palette as PaletteIcon, Eraser, RefreshCw,
-  BookImage, FileText, FolderPlus, Play, Volume2, X, Twitter, Instagram
+  BookImage, FileText, FolderPlus, Play, Volume2, X, Twitter, Instagram, UserPlus
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -90,6 +90,7 @@ interface SelectedPixelDetails {
   isFavorited?: boolean;
   loreSnippet?: string;
   gpsCoords?: { lat: number; lon: number; } | null;
+  specialCreditsPrice?: number;
 }
 
 interface EnhancedPixelPurchaseModalProps {
@@ -443,8 +444,8 @@ export default function EnhancedPixelPurchaseModal({
 
     if (paymentMethod === 'credits') {
       removeCredits(pixelData.price);
-    } else if (paymentMethod === 'special_credits') {
-      removeSpecialCredits(pixelData.price);
+    } else if (paymentMethod === 'special_credits' && pixelData.specialCreditsPrice) {
+      removeSpecialCredits(pixelData.specialCreditsPrice);
     }
     
     setIsProcessing(true);
@@ -517,8 +518,8 @@ export default function EnhancedPixelPurchaseModal({
     if (paymentMethod === 'credits') {
       return userCredits >= price;
     }
-    if (paymentMethod === 'special_credits') {
-      return userSpecialCredits >= price;
+    if (paymentMethod === 'special_credits' && pixelData.specialCreditsPrice) {
+      return userSpecialCredits >= pixelData.specialCreditsPrice;
     }
     return true;
   }, [pixelData, paymentMethod, userCredits, userSpecialCredits]);
