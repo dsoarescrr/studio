@@ -26,15 +26,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  PixelAnalytics,
-  PixelCollaborationSystem,
-  PixelMarketplace,
-  PixelWallet,
-  ThemeCustomizer,
-  HelpCenter,
-  FeedbackSystem
-} from '@/components/features';
 import { SoundEffect, SOUND_EFFECTS } from '@/components/ui/sound-effect';
 import { UserPlus, LogIn, Crown } from 'lucide-react';
 import '@/lib/i18n';
@@ -48,7 +39,7 @@ const navLinks = [
   { href: "/ranking", label: "Ranking", icon: AnalyticsIcon, color: "text-amber-500", badge: 2, description: "Classificações" },
   { href: "/community", label: "Comunidade", icon: Users2, color: "text-pink-500", badge: 3, description: "Interagir com a comunidade" },
   { href: "/settings", label: "Ajustes", icon: Settings, color: "text-gray-500", description: "Configurações" },
-  { href: "/premium", label: "Premium", icon: Crown, color: "text-yellow-500", description: "Subscrição Premium" },
+  { href: "/achievements", label: "Conquistas", icon: Award, color: "text-yellow-500", description: "Suas conquistas" },
 ];
 
 const BOTTOM_NAV_HEIGHT = '80px';
@@ -336,7 +327,6 @@ export default function BottomNavBar() {
                   </>
                 )}
               
-              <PixelMarketplace onSelectPixel={handleSelectPixel}>
                 <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer hover:bg-primary/10 transition-colors group">
                   <div className="flex items-center w-full"> 
                     <div className="p-2 rounded-lg bg-purple-500/20 mr-3 group-hover:scale-110 transition-transform">
@@ -348,83 +338,6 @@ export default function BottomNavBar() {
                     </div>
                   </div>
                 </DropdownMenuItem>
-              </PixelMarketplace>
-              
-              <PixelCollaborationSystem>
-                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer hover:bg-primary/10 transition-colors group">
-                  <div className="flex items-center w-full"> 
-                    <div className="p-2 rounded-lg bg-blue-500/20 mr-3 group-hover:scale-110 transition-transform">
-                      <Users2 className="h-4 w-4 text-blue-500" />
-                    </div>
-                    <div>
-                      <div className="font-medium">Projetos Colaborativos</div>
-                      <div className="text-xs text-muted-foreground">Trabalhar em equipa</div>
-                    </div>
-                  </div>
-                </DropdownMenuItem>
-              </PixelCollaborationSystem>
-              
-              <PixelAnalytics>
-                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer hover:bg-primary/10 transition-colors group">
-                  <div className="flex items-center w-full"> 
-                    <div className="p-2 rounded-lg bg-cyan-500/20 mr-3 group-hover:scale-110 transition-transform">
-                      <AnalyticsIcon className="h-4 w-4 text-cyan-500" />
-                    </div>
-                    <div>
-                      <div className="font-medium">Análise de Mercado</div>
-                      <div className="text-xs text-muted-foreground">Dados e insights</div>
-                    </div>
-                  </div>
-                </DropdownMenuItem>
-              </PixelAnalytics>
-
-              <DropdownMenuSeparator className="bg-primary/10" />
-
-              <ThemeCustomizer>
-                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer hover:bg-primary/10 transition-colors group">
-                  <div className="flex items-center w-full"> 
-                    <div className="p-2 rounded-lg bg-pink-500/20 mr-3 group-hover:scale-110 transition-transform">
-                      <Palette className="h-4 w-4 text-pink-500" />
-                    </div>
-                    <div>
-                      <div className="font-medium">Personalizar Tema</div>
-                      <div className="text-xs text-muted-foreground">Customizar aparência</div>
-                    </div>
-                  </div>
-                </DropdownMenuItem>
-              </ThemeCustomizer>
-              
-              <PixelWallet>
-                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer hover:bg-primary/10 transition-colors group">
-                  <div className="flex items-center w-full"> 
-                    <div className="p-2 rounded-lg bg-amber-500/20 mr-3 group-hover:scale-110 transition-transform">
-                      <Coins className="h-4 w-4 text-amber-500" />
-                    </div>
-                    <div>
-                      <div className="font-medium">Carteira Digital</div>
-                      <div className="text-xs text-muted-foreground">
-                        {credits.toLocaleString('pt-PT')} créditos
-                      </div>
-                    </div>
-                  </div>
-                </DropdownMenuItem>
-              </PixelWallet>
-
-              <Link href="/premium">
-                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer hover:bg-primary/10 transition-colors group">
-                  <div className="flex items-center w-full"> 
-                    <div className="p-2 rounded-lg bg-yellow-500/20 mr-3 group-hover:scale-110 transition-transform">
-                      <Crown className="h-4 w-4 text-yellow-500" />
-                    </div>
-                    <div>
-                      <div className="font-medium">Subscrição Premium</div>
-                      <div className="text-xs text-muted-foreground">
-                        Desbloqueie vantagens exclusivas
-                      </div>
-                    </div>
-                  </div>
-                </DropdownMenuItem>
-              </Link>
               
               <NotificationCenter>
                 <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer hover:bg-primary/10 transition-colors group">
