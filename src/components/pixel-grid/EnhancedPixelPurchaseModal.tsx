@@ -43,7 +43,7 @@ import {
   Target, Flame, Crown, Gem, Activity, Image as ImageIcon, Link as LinkIcon,
   Plus, Minus, RotateCcw, Maximize2, Settings, Bell, Flag, ThumbsUp, Layers, Palette,
   Calculator, Wallet, History, Camera, Palette as PaletteIcon, Eraser, RefreshCw,
-  BookImage, FileText, FolderPlus, Play, Volume2, X, Twitter, Instagram, UserPlus
+  BookImage, FileText, FolderPlus, Play, Volume2, X, Twitter, Instagram, UserPlus, LogIn
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
