@@ -1,5 +1,9 @@
 // src/lib/firebase-admin.ts
 import * as admin from 'firebase-admin';
+import * as dotenv from 'dotenv';
+
+// Load environment variables from .env.local
+dotenv.config({ path: './.env.local' });
 
 interface ServiceAccount {
   projectId?: string;
