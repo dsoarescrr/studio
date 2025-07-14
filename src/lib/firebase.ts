@@ -13,11 +13,21 @@ const firebaseConfig: FirebaseOptions = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+// Initialize Firebase App on the client side
+function getFirebaseApp() {
+  if (typeof window === 'undefined') {
+    // On the server, return a placeholder or null
+    // This part of the code won't be used for auth logic on the server
+    return null;
+  }
+  return !getApps().length ? initializeApp(firebaseConfig) : getApp();
+}
 
-const auth = getAuth(app);
-const db = getFirestore(app);
+const app = getFirebaseApp();
+
+// We need to handle the case where app is null on the server
+const auth = app ? getAuth(app) : ({} as any); // Provide a mock for SSR
+const db = app ? getFirestore(app) : ({} as any); // Provide a mock for SSR
 
 // Initialize providers for social login
 const googleProvider = new GoogleAuthProvider();
@@ -33,4 +43,5 @@ export {
   facebookProvider, 
   twitterProvider, 
   githubProvider,
+  getFirebaseApp, // Export the function
 };

@@ -1,18 +1,12 @@
 import { NextResponse } from 'next/server';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { initializeAdminApp } from '@/lib/firebase-admin'; // Corrected import
+import { adminDb } from '@/lib/firebase-admin';
 import Stripe from 'stripe';
+import { FieldValue } from 'firebase-admin/firestore';
 
-// Initialize Firebase Admin by getting the client-side app instance.
-const adminApp = initializeAdminApp();
-const db = getFirestore(adminApp);
-
-// Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2023-10-16',
 });
 
-// This is your Stripe webhook secret for testing your endpoint locally.
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
 export async function POST(request: Request) {
@@ -22,13 +16,15 @@ export async function POST(request: Request) {
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(payload, sig, endpointSecret!);
+    if (!endpointSecret) {
+      throw new Error("Stripe webhook secret is not set.");
+    }
+    event = stripe.webhooks.constructEvent(payload, sig, endpointSecret);
   } catch (err: any) {
     console.error(`Webhook Error: ${err.message}`);
     return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
   }
 
-  // Handle the event
   try {
     switch (event.type) {
       case 'payment_intent.succeeded':
@@ -38,7 +34,7 @@ export async function POST(request: Request) {
         await handlePaymentIntentFailed(event.data.object as Stripe.PaymentIntent);
         break;
       case 'customer.subscription.created':
-        await handleSubscriptionCreated(event.data.object as Stripe.Subscription);
+        await handleSubscriptionUpdated(event.data.object as Stripe.Subscription);
         break;
       case 'customer.subscription.updated':
         await handleSubscriptionUpdated(event.data.object as Stripe.Subscription);
@@ -57,8 +53,8 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ received: true });
-  } catch (error) {
-    console.error(`Error handling webhook event: ${error}`);
+  } catch (error: any) {
+    console.error(`Error handling webhook event: ${error.message}`);
     return NextResponse.json(
       { error: 'Error handling webhook event' },
       { status: 500 }
@@ -70,38 +66,28 @@ async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent)
   const { metadata } = paymentIntent;
   if (!metadata || !metadata.userId) return;
 
-  // Update payment intent in Firestore
-  await db.collection('paymentIntents').doc(paymentIntent.id).update({
+  await adminDb.collection('paymentIntents').doc(paymentIntent.id).update({
     status: paymentIntent.status,
-    updatedAt: new Date(),
+    updatedAt: FieldValue.serverTimestamp(),
   });
 
-  // If this is a pixel purchase, update pixel ownership
   if (metadata.pixelId) {
-    await db.collection('pixels').doc(metadata.pixelId).update({
+    await adminDb.collection('pixels').doc(metadata.pixelId).update({
       ownerId: metadata.userId,
-      purchaseDate: new Date(),
+      purchaseDate: FieldValue.serverTimestamp(),
       purchaseAmount: paymentIntent.amount,
       transactionId: paymentIntent.id,
     });
-
-    // Add credits to user
-    const userRef = db.collection('users').doc(metadata.userId);
-    await userRef.update({
-      credits: FieldValue.increment(parseInt(metadata.creditsToAdd || '0')),
-      specialCredits: FieldValue.increment(parseInt(metadata.specialCreditsToAdd || '0')),
-    });
   }
 
-  // Add transaction to user history
-  await db.collection('users').doc(metadata.userId).collection('transactions').add({
+  await adminDb.collection('users').doc(metadata.userId).collection('transactions').add({
     type: 'payment',
     amount: paymentIntent.amount,
     currency: paymentIntent.currency,
     status: 'completed',
     paymentIntentId: paymentIntent.id,
     metadata: metadata,
-    createdAt: new Date(),
+    createdAt: FieldValue.serverTimestamp(),
   });
 }
 
@@ -109,28 +95,25 @@ async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent) {
   const { metadata } = paymentIntent;
   if (!metadata || !metadata.userId) return;
 
-  // Update payment intent in Firestore
-  await db.collection('paymentIntents').doc(paymentIntent.id).update({
+  await adminDb.collection('paymentIntents').doc(paymentIntent.id).update({
     status: paymentIntent.status,
-    updatedAt: new Date(),
+    updatedAt: FieldValue.serverTimestamp(),
   });
 
-  // Add failed transaction to user history
-  await db.collection('users').doc(metadata.userId).collection('transactions').add({
+  await adminDb.collection('users').doc(metadata.userId).collection('transactions').add({
     type: 'payment',
     amount: paymentIntent.amount,
     currency: paymentIntent.currency,
     status: 'failed',
     paymentIntentId: paymentIntent.id,
     metadata: metadata,
-    createdAt: new Date(),
+    createdAt: FieldValue.serverTimestamp(),
   });
 }
 
-async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
-  // Find the user associated with this customer
+async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   const customerId = subscription.customer as string;
-  const userSnapshot = await db.collection('users').where('stripeCustomerId', '==', customerId).limit(1).get();
+  const userSnapshot = await adminDb.collection('users').where('stripeCustomerId', '==', customerId).limit(1).get();
   
   if (userSnapshot.empty) {
     console.error(`No user found for customer: ${customerId}`);
@@ -138,80 +121,30 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
   }
   
   const userId = userSnapshot.docs[0].id;
-  
-  // Update subscription in Firestore
-  await db.collection('subscriptions').doc(subscription.id).set({
+  const userRef = adminDb.collection('users').doc(userId);
+
+  await adminDb.collection('subscriptions').doc(subscription.id).set({
     userId,
     customerId,
     status: subscription.status,
     priceId: subscription.items.data[0].price.id,
     currentPeriodStart: new Date(subscription.current_period_start * 1000),
     currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-    createdAt: new Date(),
-  });
+    createdAt: new Date(subscription.created * 1000),
+    updatedAt: FieldValue.serverTimestamp(),
+  }, { merge: true });
   
-  // Update user document
-  await db.collection('users').doc(userId).update({
+  await userRef.update({
     subscriptionId: subscription.id,
     subscriptionStatus: subscription.status,
     subscriptionPriceId: subscription.items.data[0].price.id,
-    isPremium: subscription.status === 'active',
+    isPremium: subscription.status === 'active' || subscription.status === 'trialing',
     premiumUntil: new Date(subscription.current_period_end * 1000),
   });
-}
-
-async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
-  // Find the subscription in Firestore
-  const subscriptionDoc = await db.collection('subscriptions').doc(subscription.id).get();
-  
-  if (!subscriptionDoc.exists) {
-    console.error(`No subscription found with ID: ${subscription.id}`);
-    return;
-  }
-  
-  const userId = subscriptionDoc.data()?.userId;
-  
-  // Update subscription in Firestore
-  await db.collection('subscriptions').doc(subscription.id).update({
-    status: subscription.status,
-    priceId: subscription.items.data[0].price.id,
-    currentPeriodStart: new Date(subscription.current_period_start * 1000),
-    currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-    updatedAt: new Date(),
-  });
-  
-  // Update user document
-  await db.collection('users').doc(userId).update({
-    subscriptionStatus: subscription.status,
-    subscriptionPriceId: subscription.items.data[0].price.id,
-    isPremium: subscription.status === 'active',
-    premiumUntil: new Date(subscription.current_period_end * 1000),
-  });
-  
-  // If subscription is now active and was previously incomplete, add special credits
-  if (subscription.status === 'active' && subscriptionDoc.data()?.status === 'incomplete') {
-    // Determine if this is a monthly or annual plan
-    const priceId = subscription.items.data[0].price.id;
-    const isAnnual = priceId.includes('annual') || priceId.includes('yearly');
-    
-    // Add special credits based on plan
-    await db.collection('users').doc(userId).update({
-      specialCredits: FieldValue.increment(isAnnual ? 600 : 100),
-    });
-    
-    // Add transaction record
-    await db.collection('users').doc(userId).collection('transactions').add({
-      type: 'subscription_bonus',
-      amount: isAnnual ? 600 : 100,
-      description: `Bónus de créditos especiais por subscrição ${isAnnual ? 'anual' : 'mensal'}`,
-      createdAt: new Date(),
-    });
-  }
 }
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
-  // Find the subscription in Firestore
-  const subscriptionDoc = await db.collection('subscriptions').doc(subscription.id).get();
+  const subscriptionDoc = await adminDb.collection('subscriptions').doc(subscription.id).get();
   
   if (!subscriptionDoc.exists) {
     console.error(`No subscription found with ID: ${subscription.id}`);
@@ -220,14 +153,12 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   
   const userId = subscriptionDoc.data()?.userId;
   
-  // Update subscription in Firestore
-  await db.collection('subscriptions').doc(subscription.id).update({
+  await adminDb.collection('subscriptions').doc(subscription.id).update({
     status: 'canceled',
-    canceledAt: new Date(),
+    canceledAt: FieldValue.serverTimestamp(),
   });
   
-  // Update user document
-  await db.collection('users').doc(userId).update({
+  await adminDb.collection('users').doc(userId).update({
     subscriptionStatus: 'canceled',
     isPremium: false,
   });
@@ -236,44 +167,38 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
 async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
   if (!invoice.subscription) return;
   
-  // Find the subscription in Firestore
-  const subscriptionDoc = await db.collection('subscriptions').doc(invoice.subscription as string).get();
+  const subscriptionDoc = await adminDb.collection('subscriptions').doc(invoice.subscription as string).get();
   
-  if (!subscriptionDoc.exists) {
-    console.error(`No subscription found with ID: ${invoice.subscription}`);
-    return;
-  }
+  if (!subscriptionDoc.exists) return;
   
   const userId = subscriptionDoc.data()?.userId;
-  
-  // Add transaction record
-  await db.collection('users').doc(userId).collection('transactions').add({
+  const userRef = adminDb.collection('users').doc(userId);
+
+  await userRef.collection('transactions').add({
     type: 'subscription_payment',
     amount: invoice.amount_paid,
     currency: invoice.currency,
     invoiceId: invoice.id,
     subscriptionId: invoice.subscription,
     status: 'completed',
-    createdAt: new Date(),
+    createdAt: FieldValue.serverTimestamp(),
   });
   
-  // If this is a renewal, add monthly special credits
-  if (invoice.billing_reason === 'subscription_cycle') {
-    // Determine if this is a monthly or annual plan
+  if (invoice.billing_reason === 'subscription_cycle' || invoice.billing_reason === 'subscription_create') {
     const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
     const priceId = subscription.items.data[0].price.id;
-    
-    // Add special credits based on plan
-    await db.collection('users').doc(userId).update({
-      specialCredits: FieldValue.increment(100),
+    const isAnnual = priceId.includes('annual') || priceId.includes('yearly');
+    const creditsToAdd = isAnnual ? 600 : 100;
+
+    await userRef.update({
+      specialCredits: FieldValue.increment(creditsToAdd),
     });
     
-    // Add transaction record
-    await db.collection('users').doc(userId).collection('transactions').add({
+    await userRef.collection('transactions').add({
       type: 'subscription_bonus',
-      amount: 100,
-      description: 'Bónus mensal de créditos especiais',
-      createdAt: new Date(),
+      amount: creditsToAdd,
+      description: `Bónus de créditos por subscrição ${isAnnual ? 'anual' : 'mensal'}`,
+      createdAt: FieldValue.serverTimestamp(),
     });
   }
 }
@@ -281,29 +206,22 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
 async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
   if (!invoice.subscription) return;
   
-  // Find the subscription in Firestore
-  const subscriptionDoc = await db.collection('subscriptions').doc(invoice.subscription as string).get();
-  
-  if (!subscriptionDoc.exists) {
-    console.error(`No subscription found with ID: ${invoice.subscription}`);
-    return;
-  }
+  const subscriptionDoc = await adminDb.collection('subscriptions').doc(invoice.subscription as string).get();
+  if (!subscriptionDoc.exists) return;
   
   const userId = subscriptionDoc.data()?.userId;
   
-  // Add transaction record
-  await db.collection('users').doc(userId).collection('transactions').add({
+  await adminDb.collection('users').doc(userId).collection('transactions').add({
     type: 'subscription_payment',
     amount: invoice.amount_due,
     currency: invoice.currency,
     invoiceId: invoice.id,
     subscriptionId: invoice.subscription,
     status: 'failed',
-    createdAt: new Date(),
+    createdAt: FieldValue.serverTimestamp(),
   });
   
-  // Update user document to reflect payment failure
-  await db.collection('users').doc(userId).update({
+  await adminDb.collection('users').doc(userId).update({
     subscriptionStatus: 'past_due',
   });
 }

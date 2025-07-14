@@ -1,23 +1,14 @@
 import { NextResponse } from 'next/server';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
-import { initializeAdminApp } from '@/lib/firebase-admin'; // Corrected import
+import { adminAuth, adminDb } from '@/lib/firebase-admin';
 import Stripe from 'stripe';
+import { FieldValue } from 'firebase-admin/firestore';
 
-// Initialize Firebase Admin by getting the client-side app instance.
-// This is not ideal, but avoids re-declaring admin-specific logic for now.
-const adminApp = initializeAdminApp();
-const auth = getAuth(adminApp as any); // Cast to any to satisfy type checker
-const db = getFirestore(adminApp);
-
-// Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2023-10-16',
 });
 
 export async function POST(request: Request) {
   try {
-    // Verify authentication
     const authHeader = request.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -26,14 +17,12 @@ export async function POST(request: Request) {
     const token = authHeader.split('Bearer ')[1];
     let decodedToken;
     try {
-      decodedToken = await (auth as any).verifyIdToken(token); // Cast to any
+      decodedToken = await adminAuth.verifyIdToken(token);
     } catch (error) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
     const userId = decodedToken.uid;
-
-    // Get request body
     const body = await request.json();
     const { priceId } = body;
 
@@ -41,13 +30,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Price ID is required' }, { status: 400 });
     }
 
-    // Get or create customer
-    const userDoc = await db.collection('users').doc(userId).get();
+    const userDoc = await adminDb.collection('users').doc(userId).get();
     let customerId = userDoc.exists ? userDoc.data()?.stripeCustomerId : null;
 
     if (!customerId) {
-      // Create a new customer
-      const userRecord = await (auth as any).getUser(userId); // Cast to any
+      const userRecord = await adminAuth.getUser(userId);
       const customer = await stripe.customers.create({
         email: userRecord.email || undefined,
         name: userRecord.displayName || undefined,
@@ -58,13 +45,11 @@ export async function POST(request: Request) {
       
       customerId = customer.id;
       
-      // Save customer ID to Firestore
-      await db.collection('users').doc(userId).update({
+      await adminDb.collection('users').doc(userId).set({
         stripeCustomerId: customerId,
-      });
+      }, { merge: true });
     }
 
-    // Create subscription
     const subscription = await stripe.subscriptions.create({
       customer: customerId,
       items: [{ price: priceId }],
@@ -73,27 +58,22 @@ export async function POST(request: Request) {
       expand: ['latest_invoice.payment_intent'],
     });
 
-    // Save subscription to Firestore
-    await db.collection('subscriptions').doc(subscription.id).set({
+    await adminDb.collection('subscriptions').doc(subscription.id).set({
       userId,
       customerId,
       priceId,
       status: subscription.status,
-      currentPeriodStart: new Date(subscription.current_period_start * 1000),
-      currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-      createdAt: new Date(),
+      currentPeriodStart: FieldValue.serverTimestamp(),
+      currentPeriodEnd: FieldValue.serverTimestamp(), // Placeholder, will be updated by webhook
+      createdAt: FieldValue.serverTimestamp(),
     });
 
-    // Update user document with subscription info
-    await db.collection('users').doc(userId).update({
+    await adminDb.collection('users').doc(userId).update({
       subscriptionId: subscription.id,
       subscriptionStatus: subscription.status,
       subscriptionPriceId: priceId,
-      isPremium: true,
-      premiumUntil: new Date(subscription.current_period_end * 1000),
     });
 
-    // Get client secret for payment
     const invoice = subscription.latest_invoice as any;
     const clientSecret = invoice?.payment_intent?.client_secret;
 

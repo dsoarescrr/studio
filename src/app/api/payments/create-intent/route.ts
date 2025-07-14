@@ -1,23 +1,13 @@
 import { NextResponse } from 'next/server';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
-import { initializeAdminApp } from '@/lib/firebase-admin'; // Corrected import
+import { adminAuth, adminDb } from '@/lib/firebase-admin';
 import Stripe from 'stripe';
 
-// Initialize Firebase Admin by getting the client-side app instance.
-// This is not ideal, but avoids re-declaring admin-specific logic for now.
-const adminApp = initializeAdminApp();
-const auth = getAuth(adminApp as any); // Cast to any to satisfy type checker
-const db = getFirestore(adminApp);
-
-// Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2023-10-16',
 });
 
 export async function POST(request: Request) {
   try {
-    // Verify authentication
     const authHeader = request.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -26,14 +16,12 @@ export async function POST(request: Request) {
     const token = authHeader.split('Bearer ')[1];
     let decodedToken;
     try {
-      decodedToken = await (auth as any).verifyIdToken(token); // Cast to any
+      decodedToken = await adminAuth.verifyIdToken(token);
     } catch (error) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
     const userId = decodedToken.uid;
-
-    // Get request body
     const body = await request.json();
     const { amount, currency = 'eur', metadata = {} } = body;
 
@@ -41,13 +29,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
     }
 
-    // Get or create customer
-    const userDoc = await db.collection('users').doc(userId).get();
+    const userDoc = await adminDb.collection('users').doc(userId).get();
     let customerId = userDoc.exists ? userDoc.data()?.stripeCustomerId : null;
 
     if (!customerId) {
-      // Create a new customer
-      const userRecord = await (auth as any).getUser(userId); // Cast to any
+      const userRecord = await adminAuth.getUser(userId);
       const customer = await stripe.customers.create({
         email: userRecord.email || undefined,
         name: userRecord.displayName || undefined,
@@ -58,13 +44,11 @@ export async function POST(request: Request) {
       
       customerId = customer.id;
       
-      // Save customer ID to Firestore
-      await db.collection('users').doc(userId).update({
+      await adminDb.collection('users').doc(userId).set({
         stripeCustomerId: customerId,
-      });
+      }, { merge: true });
     }
 
-    // Create payment intent
     const paymentIntent = await stripe.paymentIntents.create({
       amount,
       currency,
@@ -78,8 +62,7 @@ export async function POST(request: Request) {
       },
     });
 
-    // Save payment intent to Firestore
-    await db.collection('paymentIntents').doc(paymentIntent.id).set({
+    await adminDb.collection('paymentIntents').doc(paymentIntent.id).set({
       userId,
       amount,
       currency,

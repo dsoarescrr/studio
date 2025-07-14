@@ -12,7 +12,7 @@ import {
   signInWithPopup,
   sendPasswordResetEmail,
   updateProfile,
-  AuthProvider
+  AuthProvider as FirebaseAuthProvider // Renamed to avoid conflict with our component
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db, googleProvider, facebookProvider, twitterProvider, githubProvider } from './firebase';
@@ -47,6 +47,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   } = useUserStore();
 
   useEffect(() => {
+    // The auth object might not be available immediately on SSR
+    if (!auth || typeof auth.onAuthStateChanged !== 'function') {
+      setLoading(false);
+      return;
+    }
+    
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
       
@@ -149,7 +155,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signInWithSocialProvider = async (provider: AuthProvider) => {
+  const signInWithSocialProvider = async (provider: FirebaseAuthProvider) => {
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
