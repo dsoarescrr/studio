@@ -6,9 +6,14 @@ import type { FirebaseOptions } from 'firebase/app';
  * 
  * Your Firebase credentials are now stored directly in this file.
  * This ensures they are correctly loaded by the application.
+ * 
+ * Please find your Web App configuration in the Firebase Console:
+ * Project Settings > General > Your apps > Firebase SDK snippet > Config
+ * https://console.firebase.google.com/project/pixel-universe-ub7uk/settings/general/
  */
 export const firebaseConfig: FirebaseOptions = {
-  apiKey: "AIzaSyDPbqjR3o8mSQ1itdaoUQzyOmPEaUtaTI8",
+  // TODO: PASTE YOUR BROWSER KEY HERE. It's the one with "25 APIs" restrictions.
+  apiKey: "PASTE_YOUR_BROWSER_KEY_HERE",
   authDomain: "pixel-universe-ub7uk.firebaseapp.com",
   projectId: "pixel-universe-ub7uk",
   storageBucket: "pixel-universe-ub7uk.appspot.com",

@@ -4,6 +4,9 @@ import * as admin from 'firebase-admin';
 // This is a simplified check. In a real app, you'd want a more robust
 // way to ensure server-side code isn't run on the client.
 if (typeof window === 'undefined') {
+  // This is for server-side Genkit, which uses the GenAI key.
+  process.env.GOOGLE_API_KEY = "AIzaSyDPbqjR3o8mSQ1itdaoUQzyOmPEaUtaTI8";
+  
   if (admin.apps.length === 0) {
     try {
       admin.initializeApp({
