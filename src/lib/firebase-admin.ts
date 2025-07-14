@@ -1,19 +1,20 @@
 // src/lib/firebase-admin.ts
 import * as admin from 'firebase-admin';
 
-// This is a simplified check. In a real app, you'd want a more robust
-// way to ensure server-side code isn't run on the client.
+// This is for server-side Genkit, which uses the GenAI key.
+// The key is hardcoded here for simplicity in this environment.
+// In a production app, use environment variables.
+process.env.GOOGLE_API_KEY = "AIzaSyDPbqjR3o8mSQ1itdaoUQzyOmPEaUtaTI8";
+
 if (typeof window === 'undefined') {
-  // This is for server-side Genkit, which uses the GenAI key.
-  process.env.GOOGLE_API_KEY = "AIzaSyDPbqjR3o8mSQ1itdaoUQzyOmPEaUtaTI8";
-  
   if (admin.apps.length === 0) {
     try {
+      // Use application default credentials provided by the environment
       admin.initializeApp({
         credential: admin.credential.applicationDefault(),
       });
     } catch (error: any) {
-      console.error("Firebase admin initialization error", error.stack);
+      console.error("Firebase admin initialization error:", error.stack);
     }
   }
 }
@@ -21,14 +22,9 @@ if (typeof window === 'undefined') {
 export const adminAuth = admin.apps.length > 0 ? admin.auth() : ({} as admin.auth.Auth);
 export const adminDb = admin.apps.length > 0 ? admin.firestore() : ({} as admin.firestore.Firestore);
 
-// This export is kept for compatibility with API routes, but might be refactored
-// to use the adminDb and adminAuth exports directly.
 export const initializeAdminApp = () => {
   if (admin.apps.length > 0) {
     return admin.app();
   }
-  // This part is problematic and likely won't work as expected without
-  // proper environment variable setup for server-side.
-  // The above check is safer.
   return admin.initializeApp();
 };

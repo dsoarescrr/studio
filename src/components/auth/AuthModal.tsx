@@ -37,6 +37,7 @@ import {
   Github,
   Instagram,
   Loader2,
+  Info,
 } from 'lucide-react';
 import { FcGoogle } from 'react-icons/fc';
 
@@ -122,8 +123,16 @@ export function AuthModal({ children, defaultTab = 'login' }: AuthModalProps) {
       setPlaySuccessSound(true);
       setIsOpen(false);
       resetForm();
-    } catch (error) {
-      // Error handling is done in the auth context
+    } catch (error: any) {
+      if (error.code === 'auth/configuration-not-found') {
+         toast({
+          title: "Configuração do Firebase Incompleta",
+          description: "O serviço de autenticação por Email/Password não está ativado no seu projeto Firebase. Por favor, ative-o no Firebase Console.",
+          variant: "destructive",
+          duration: 10000,
+        });
+      }
+      // Other errors are handled in auth context
     } finally {
       setIsLoading(false);
     }
@@ -188,7 +197,7 @@ export function AuthModal({ children, defaultTab = 'login' }: AuthModalProps) {
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={(open) => { setIsOpen(open); if (!open) setShowForgotPassword(false); }}>
       <SoundEffect src={SOUND_EFFECTS.SUCCESS} play={playSuccessSound} onEnd={() => setPlaySuccessSound(false)} />
       <Confetti active={showConfetti} duration={3000} onComplete={() => setShowConfetti(false)} />
       
@@ -278,6 +287,10 @@ export function AuthModal({ children, defaultTab = 'login' }: AuthModalProps) {
             </TabsList>
             
             <TabsContent value="login" className="space-y-4 py-4">
+              <div className="bg-blue-500/10 p-3 rounded-lg flex items-start gap-2 text-sm text-blue-300">
+                <Info className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                <span>Para testar, pode usar `test@test.com` com a password `password`.</span>
+              </div>
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="login-email">Email</Label>
@@ -382,8 +395,8 @@ export function AuthModal({ children, defaultTab = 'login' }: AuthModalProps) {
                   type="button"
                   variant="outline"
                   onClick={() => handleSocialLogin('facebook')}
-                  disabled={isLoading}
-                  className="flex items-center justify-center gap-2"
+                  disabled={true}
+                  className="flex items-center justify-center gap-2 opacity-50"
                 >
                   <Facebook className="h-4 w-4 text-blue-600" />
                   <span>Facebook</span>
@@ -392,8 +405,8 @@ export function AuthModal({ children, defaultTab = 'login' }: AuthModalProps) {
                   type="button"
                   variant="outline"
                   onClick={() => handleSocialLogin('twitter')}
-                  disabled={isLoading}
-                  className="flex items-center justify-center gap-2"
+                  disabled={true}
+                  className="flex items-center justify-center gap-2 opacity-50"
                 >
                   <Twitter className="h-4 w-4 text-blue-400" />
                   <span>Twitter</span>
@@ -402,8 +415,8 @@ export function AuthModal({ children, defaultTab = 'login' }: AuthModalProps) {
                   type="button"
                   variant="outline"
                   onClick={() => handleSocialLogin('github')}
-                  disabled={isLoading}
-                  className="flex items-center justify-center gap-2"
+                  disabled={true}
+                  className="flex items-center justify-center gap-2 opacity-50"
                 >
                   <Github className="h-4 w-4" />
                   <span>GitHub</span>
@@ -412,6 +425,10 @@ export function AuthModal({ children, defaultTab = 'login' }: AuthModalProps) {
             </TabsContent>
             
             <TabsContent value="register" className="space-y-4 py-4">
+              <div className="bg-red-500/10 p-3 rounded-lg flex items-start gap-2 text-sm text-red-300">
+                <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                <span>**IMPORTANTE:** Para o registo funcionar, tem de ativar o método "Email/Password" no seu projeto Firebase. Veja o ficheiro README.md.</span>
+              </div>
               <form onSubmit={handleRegister} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="register-username">Nome de Utilizador</Label>
@@ -554,8 +571,8 @@ export function AuthModal({ children, defaultTab = 'login' }: AuthModalProps) {
                   type="button"
                   variant="outline"
                   onClick={() => handleSocialLogin('facebook')}
-                  disabled={isLoading}
-                  className="flex items-center justify-center gap-2"
+                  disabled={true}
+                  className="flex items-center justify-center gap-2 opacity-50"
                 >
                   <Facebook className="h-4 w-4 text-blue-600" />
                   <span>Facebook</span>
@@ -564,8 +581,8 @@ export function AuthModal({ children, defaultTab = 'login' }: AuthModalProps) {
                   type="button"
                   variant="outline"
                   onClick={() => handleSocialLogin('twitter')}
-                  disabled={isLoading}
-                  className="flex items-center justify-center gap-2"
+                  disabled={true}
+                  className="flex items-center justify-center gap-2 opacity-50"
                 >
                   <Twitter className="h-4 w-4 text-blue-400" />
                   <span>Twitter</span>
@@ -574,8 +591,8 @@ export function AuthModal({ children, defaultTab = 'login' }: AuthModalProps) {
                   type="button"
                   variant="outline"
                   onClick={() => handleSocialLogin('github')}
-                  disabled={isLoading}
-                  className="flex items-center justify-center gap-2"
+                  disabled={true}
+                  className="flex items-center justify-center gap-2 opacity-50"
                 >
                   <Github className="h-4 w-4" />
                   <span>GitHub</span>
