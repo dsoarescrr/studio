@@ -12,8 +12,7 @@ import type { FirebaseOptions } from 'firebase/app';
  * https://console.firebase.google.com/project/pixel-universe-ub7uk/settings/general/
  */
 export const firebaseConfig: FirebaseOptions = {
-  // TODO: PASTE YOUR BROWSER KEY HERE. It's the one with "25 APIs" restrictions.
-  apiKey: "PASTE_YOUR_BROWSER_KEY_HERE",
+  apiKey: "AIzaSyCnAd3LUAS0D1AqulN314WxYNByMG2THDs",
   authDomain: "pixel-universe-ub7uk.firebaseapp.com",
   projectId: "pixel-universe-ub7uk",
   storageBucket: "pixel-universe-ub7uk.appspot.com",
